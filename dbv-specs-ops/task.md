@@ -97,9 +97,24 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 
 - [ ] **P2 — Smart contracts (S2, Blockchain)** — F1, F4, F5a, F5b, F7
   - [ ] P2.1 `ParticipantRegistry`: `ORGANIZATION`, `INTERNAL_VERIFIER`(→org), `AUDITOR`; Registry Admin vs Accreditation Authority as separate role admins; revocation.
+    - [ ] Enforce one participant role per wallet; reject zero addresses, duplicate accreditation, inactive organizations, and revoked participants.
+    - [ ] Track each verifier's organization and active verifier counts; `organizationOf()` returns zero for revoked verifiers.
+    - [ ] Configure OpenZeppelin `AccessControl` so Registry Admin cannot grant/revoke auditor roles and Accreditation Authority cannot manage organizations/verifiers.
   - [ ] P2.2 `ClaimRegistry` state machine: anchor (org must have ≥2 active internal verifiers), internal attest, auditor assignment/reassignment by Authority, proof request, supplementary anchor, 2nd-verifier confirm/return, final attest, dispute (one open at a time), resolve.
+    - [ ] Store one immutable original evidence root plus append-only supplementary roots; never overwrite an existing root or claim.
+    - [ ] Enforce the exact transitions from `IClaimRegistry.ClaimStatus`; every other transition reverts with `InvalidStatus`.
+    - [ ] Enforce separation of duties: the checkpoint-1 verifier, supplementary-proof verifier, organization submitter, and assigned auditor must satisfy the interface rules.
+    - [ ] Require the auditor to be active and assigned for proof requests and final attestations; allow Authority reassignment only in the three permitted pre-final states.
+    - [ ] Allow at most one open dispute through the `Verified → Disputed` status; only the Accreditation Authority resolves it.
+    - [ ] Emit `StatusChanged` on every transition and the action-specific event for every state-changing action.
   - [ ] P2.3 Foundry tests: every valid transition, every invalid one reverts, separation-of-duties checks, revoked wallets, role-admin isolation, fuzz on transition function.
+    - [ ] Cover both approval and rejection branches, proof acceptance and return, auditor reassignment, and dispute dismissal and upholding.
+    - [ ] Cover zero hashes, unknown/duplicate claims, wrong organization, wrong verifier, wrong auditor, revoked wallets, unauthorized administrators, and calls in invalid states.
+    - [ ] Assert custom errors, emitted events, stored claims, root indexes, timestamps, and the complete status sequence.
   - [ ] P2.4 `script/Deploy.s.sol` + `script/DemoLifecycle.s.sol` (full lifecycle with 7 test wallets); deploy to Arbitrum Sepolia; record addresses + tx hashes.
+    - [ ] Add `.env.example` for RPC/deployer configuration and keep private keys, mnemonics, and API keys local only.
+    - [ ] Write `code/shared/deployments/arbitrum-sepolia.json` with chain ID, both addresses, deploy block, and lifecycle transaction hashes.
+    - [ ] Use test-only wallets for Registry Admin, Accreditation Authority, Organization, two Internal Verifiers, Auditor, and Disputant; document the demo's initial state and reset path.
 
 - [ ] **P3 — Evidence pipeline (S2, Real-world connection)** — F2, F3
   - [ ] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
