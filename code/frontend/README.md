@@ -11,22 +11,22 @@ Query, zod, plain CSS with custom properties. Tests: Vitest + Testing Library (j
 
 ## Run
 
-Requires Node.js 20.19+ or 22.12+ (Vite 8).
+Requires Node.js 20.19+ or 22.12+ (Vite 8) and **pnpm** (version pinned in `package.json` → `packageManager`). Enable it once with `corepack enable`; Corepack then runs the pinned pnpm automatically. Do not use `npm install` here: the lockfile is `pnpm-lock.yaml`.
 
 ```bash
 cd code/frontend
-npm install
+pnpm install
 cp .env.example .env   # optional: without it the app runs on demo data
-npm run dev            # http://localhost:5173
+pnpm dev                # http://localhost:5173
 ```
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Dev server with hot reload |
-| `npm test` | Unit and component tests (`vitest run`) |
-| `npm run typecheck` | Strict TypeScript check (`tsc -b --noEmit`) |
-| `npm run lint` | oxlint (no `any`, rules of hooks, no `console`) |
-| `npm run build` | Typecheck, then production build into `dist/` |
+| `pnpm dev` | Dev server with hot reload |
+| `pnpm test` | Unit and component tests (`vitest run`) |
+| `pnpm typecheck` | Strict TypeScript check (`tsc -b --noEmit`) |
+| `pnpm lint` | oxlint (no `any`, rules of hooks, no `console`) |
+| `pnpm build` | Typecheck, then production build into `dist/` |
 
 ## Demo data vs. a real chain
 

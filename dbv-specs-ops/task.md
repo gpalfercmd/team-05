@@ -23,6 +23,14 @@
 | Claude Code (optional) | Same SDD workflow: it reads `CLAUDE.md` → `dbv-specs-ops/` | Open the repo root, ask it to continue from `task.md` |
 | MetaMask (browser extension) | Test wallets for demo roles | Add network **Arbitrum Sepolia** (chain id 421614, RPC `https://sepolia-rollup.arbitrum.io/rpc`, explorer `https://sepolia.arbiscan.io`) |
 
+### P5 — Frontend (`code/frontend/`)
+| Need | Detail |
+| --- | --- |
+| **Node.js** ≥ 20.19 (tested with 26) | Vite 8 requirement. |
+| **pnpm** 12.6.0 (pinned in `package.json` → `packageManager`) | Run `corepack enable` once; Corepack then uses the pinned pnpm. The lockfile is `pnpm-lock.yaml` — never run `npm install` here (it would create a second lockfile). If Corepack says a folder "is configured to use yarn", a stray `package.json` in a parent folder (e.g. your home directory) declares another manager; the frontend's own `packageManager` field wins inside `code/frontend/`. |
+| Setup | `cd code/frontend && pnpm install && cp .env.example .env` (empty addresses = demo data). |
+| Checks | `pnpm typecheck`, `pnpm test`, `pnpm lint`, `pnpm build`. |
+
 ### P2 — Smart contracts (`code/contracts/`)
 | Need | Detail |
 | --- | --- |
@@ -116,7 +124,7 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 
 - [ ] **P5 — Frontend (S2, UX)** · *owner: Guillermo*
   - [x] P5.1 Create `dbv-specs-ops/docs/DESIGN.md` (tokens, typography, components; status colours per `ClaimStatus`). Evidence: every text colour pair checked ≥ 4.5:1 (WCAG AA), light and dark. *Route: inline (single file).*
-  - [x] P5.2 `code/frontend/` React + Vite + TS + wagmi/viem, modular (`components/ hooks/ context/ utils/`). React 19.3, wagmi 3.7 + viem 2.56, react-router 7.18, zod 4, Vite 8, TypeScript 6 (strict flags), Vitest, oxlint. Mock mode when contract addresses are empty; ABIs imported from `code/shared/abi`; DESIGN.md tokens as CSS variables; StatusBadge + HashDisplay; contract error → plain-English map covering every ABI error. *Route: delegated (writer trigger).* Evidence: typecheck 0 errors, `npm test` 67 passed, oxlint 0 findings, `npm run build` OK (~200 kB gzip total).
+  - [x] P5.2 `code/frontend/` React + Vite + TS + wagmi/viem, modular (`components/ hooks/ context/ utils/`). React 19.3, wagmi 3.7 + viem 2.56, react-router 7.18, zod 4, Vite 8, TypeScript 6 (strict flags), Vitest, oxlint. Mock mode when contract addresses are empty; ABIs imported from `code/shared/abi`; DESIGN.md tokens as CSS variables; StatusBadge + HashDisplay; contract error → plain-English map covering every ABI error. *Route: delegated (writer trigger).* Evidence: typecheck 0 errors, 67 tests passed, oxlint 0 findings, build OK (~200 kB gzip total). Package manager switched to **pnpm 12.6.0** (lockfile imported from npm, same versions; all checks re-run green).
   - [ ] P5.3 Views: organization (create claim, upload, anchor, answer proof requests), internal verifier (attest / confirm proof), auditor (review, request proof, final attest), authority (accredit, assign, resolve disputes), admin (register org + verifiers).
   - [ ] P5.4 Public claim page (no wallet): timeline read **directly from the contract** via viem (P4 API optional), attestations, **browser-side** re-hash of a public file / bundle vs onchain root → match / mismatch.
 
