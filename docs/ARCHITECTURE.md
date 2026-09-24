@@ -66,18 +66,18 @@ The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Anchored: organization anchors evidence root
-  Anchored --> InternallyVerified: internal verifier approves
-  Anchored --> Rejected: internal verifier rejects
-  InternallyVerified --> ProofRequested: auditor requests proof
-  ProofRequested --> ProofSubmitted: organization anchors supplementary evidence
+  [*] --> Anchored: Organization anchors evidence root
+  Anchored --> InternallyVerified: Internal verifier approves
+  Anchored --> Rejected: Internal verifier rejects
+  InternallyVerified --> ProofRequested: Auditor requests proof
+  ProofRequested --> ProofSubmitted: Organization anchors supplementary evidence
   ProofSubmitted --> InternallyVerified: 2nd internal verifier confirms proof
   ProofSubmitted --> ProofRequested: 2nd internal verifier returns proof
-  InternallyVerified --> Verified: auditor approves (final)
-  InternallyVerified --> Rejected: auditor rejects (final)
-  Verified --> Disputed: dispute opened
-  Disputed --> Verified: dismissed
-  Disputed --> Rejected: upheld
+  InternallyVerified --> Verified: Auditor approves (final)
+  InternallyVerified --> Rejected: Auditor rejects (final)
+  Verified --> Disputed: Dispute opened
+  Disputed --> Verified: Dismissed
+  Disputed --> Rejected: Upheld
 ```
 
 ## System diagram
