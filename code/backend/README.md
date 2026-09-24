@@ -12,6 +12,17 @@ uv run uvicorn app.main:create_app --factory --reload
 uv run pytest -q              # whole suite (the anvil test runs when Foundry is on PATH)
 ```
 
+## Claim metadata hash (P8.4)
+
+`POST /claims` trims the title, description, region and date, stores them exactly as trimmed and
+returns `metadata_hash_hex` for `anchorClaim`: keccak256 of the UTF-8 fields joined by `"\n"`
+(title, description, location_region, claim_date `YYYY-MM-DD`, claim ID as 64 lowercase hex
+characters). The recipe is `poa_shared.metadata`, frozen by `../shared/metadata-vectors.json`, which
+the public page also runs. Only the description may span lines: a line break in the title or the
+region is rejected with `422`, so text can never move between fields under the same hash. The
+public claim view (`GET /claims/{id}`) serves the hashed strings unchanged, so anyone can recompute
+the hash (`tests/test_metadata.py`).
+
 ## Indexer (P4)
 
 The indexer reads the `ParticipantRegistry` and `ClaimRegistry` events over JSON-RPC, decodes

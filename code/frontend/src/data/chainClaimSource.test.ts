@@ -25,7 +25,9 @@ describe('ChainClaimSource', () => {
     const { client } = stubNode();
     const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n });
     const fromChain = await source.getClaim(fullStory.claimId);
-    const fromDemo = await new MockClaimSource([{ ...fullStory, published: new Map() }]).getClaim(fullStory.claimId);
+    const fromDemo = await new MockClaimSource([{ ...fullStory, published: new Map(), metadata: { kind: 'not-configured' } }]).getClaim(
+      fullStory.claimId,
+    );
     expect(fromChain.ok).toBe(true);
     expect(fromChain).toEqual(fromDemo.ok ? { ok: true, value: { ...fromDemo.value, source: 'chain' } } : fromDemo);
   });
@@ -35,8 +37,18 @@ describe('ChainClaimSource', () => {
     const manifests = new PublishedManifests({ apiUrl: undefined, staticManifests: DEMO_STATIC_MANIFESTS, fetch: stubFetch().fetch });
     const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n, manifests });
     const fromChain = await source.getClaim(fullStory.claimId);
-    const fromDemo = await new MockClaimSource([fullStory]).getClaim(fullStory.claimId);
+    const fromDemo = await new MockClaimSource([{ ...fullStory, metadata: { kind: 'not-configured' } }]).getClaim(fullStory.claimId);
     expect(fromChain).toEqual(fromDemo.ok ? { ok: true, value: { ...fromDemo.value, source: 'chain' } } : fromDemo);
+  });
+
+  it('checks the title and description its metadata resolver finds against the onchain hash (P8.4)', async () => {
+    const { client } = stubNode();
+    const metadata = { lookup: () => Promise.resolve(fullStory.metadata) };
+    const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n, metadata });
+    const fromChain = await source.getClaim(fullStory.claimId);
+    const fromDemo = await new MockClaimSource([{ ...fullStory, published: new Map() }]).getClaim(fullStory.claimId);
+    expect(fromChain.ok && fromChain.value.metadata.state).toBe('verified');
+    expect(fromChain.ok && fromChain.value.metadata).toEqual(fromDemo.ok && fromDemo.value.metadata);
   });
 
   it('reports not-found when statusOf is None, without scanning the history', async () => {

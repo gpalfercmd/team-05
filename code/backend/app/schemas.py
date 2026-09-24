@@ -31,13 +31,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # Lowercase on purpose: the backend always emits lowercase hex (manifest rule).
 BYTES32_HEX_PATTERN: Final[str] = r"^0x[0-9a-f]{64}$"
 
+# P8.4: `metadataHash` joins the fields with "\n", so only the description may span lines;
+# otherwise text could move between title and description without changing the hash.
+SINGLE_LINE_PATTERN: Final[str] = r"^[^\r\n]*$"
+
 
 class ClaimCreate(BaseModel):
     """Offchain claim metadata (spec F2: region level only, never coordinates)."""
 
-    title: str = Field(min_length=1, max_length=200)
+    title: str = Field(min_length=1, max_length=200, pattern=SINGLE_LINE_PATTERN)
     description: str = Field(min_length=1)
-    location_region: str = Field(min_length=1, max_length=120)
+    location_region: str = Field(min_length=1, max_length=120, pattern=SINGLE_LINE_PATTERN)
     claim_date: date
 
 

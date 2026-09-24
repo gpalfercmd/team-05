@@ -8,8 +8,10 @@
 import { getAddress, keccak256, slice, stringToHex, zeroAddress, type Address, type Hex } from 'viem';
 import { DEMO_EVIDENCE_PATH, type DemoManifestFile } from '../config/demoEvidence';
 import type { ClaimSnapshot, PublishedEvidence } from '../data/assembleClaimView';
+import type { MetadataLookup } from '../data/claimMetadata';
 import type { ClaimEventLog, DecodedClaimEvent } from '../data/timeline';
 import { statusIndexFromName, type ClaimStatusName } from '../utils/claimStatus';
+import { computeMetadataHash, type ClaimMetadataFields } from '../utils/metadata';
 
 // Everything here is made up. Like the real public view, it holds only hashes, wallet addresses
 // and public demo files: no names, places or other personal data. Each claim is shaped exactly
@@ -93,8 +95,31 @@ function story(claimKey: string, firstBlock: bigint, steps: readonly StoryStep[]
 
 const seconds = (isoTime: string): bigint => BigInt(Date.parse(isoTime) / 1000);
 
+type DemoMetadata = { hash: Hex; lookup: MetadataLookup };
+
+/**
+ * A claim's made-up title and description, served as the API would, and their real
+ * `metadataHash` (shared recipe), so demo mode shows the metadata check passing.
+ */
+function demoMetadata(claimId: Hex, text: ClaimMetadataFields): DemoMetadata {
+  const hash = computeMetadataHash(text, claimId);
+  if (!hash.ok) {
+    throw new Error(`Demo metadata of ${claimId} breaks the metadata recipe: ${hash.error}`);
+  }
+  const served = { title: text.title, description: text.description, location_region: text.locationRegion, claim_date: text.claimDate };
+  const metadata: DemoMetadata = { hash: hash.value, lookup: { kind: 'served', raw: served } };
+  return metadata;
+}
+
 // Claim 1 — the whole lifecycle, including a proof round and a dismissed dispute.
 const FULL_STORY_ANCHORED_AT = '2026-09-14T09:00:00Z';
+const FULL_STORY_METADATA = demoMetadata(FULL_STORY_CLAIM_ID, {
+  title: '500 food kits delivered in district X',
+  description:
+    'Food kits (rice, oil, lentils) for 500 households, handed out at the district X warehouse.\nThe signed distribution list stays private; a delivery summary and a stock count were added when the auditor asked for more proof.',
+  locationRegion: 'District X',
+  claimDate: '2026-09-12',
+});
 const fullStory: ClaimSnapshot = {
   claimId: FULL_STORY_CLAIM_ID,
   status: 'Verified',
@@ -103,9 +128,10 @@ const fullStory: ClaimSnapshot = {
     internalVerifier: VERIFIER_1,
     auditor: AUDITOR,
     anchoredAt: seconds(FULL_STORY_ANCHORED_AT),
-    metadataHash: demoHash('claim 1 metadata'),
+    metadataHash: FULL_STORY_METADATA.hash,
   },
   evidenceRoots: [DEMO_ORIGINAL_ROOT, DEMO_PROOF_ROOT],
+  metadata: FULL_STORY_METADATA.lookup,
   published: new Map([
     [0, demoFiles('manifest.json', ['receipt-001.txt', 'invoice-7781.txt'])],
     [1, demoFiles('manifest-proof-1.json', ['delivery-summary.csv', 'stock-count.txt'])],
@@ -120,7 +146,7 @@ const fullStory: ClaimSnapshot = {
             claimId: FULL_STORY_CLAIM_ID,
             organization: ORGANIZATION,
             evidenceRoot: DEMO_ORIGINAL_ROOT,
-            metadataHash: demoHash('claim 1 metadata'),
+            metadataHash: FULL_STORY_METADATA.hash,
           },
         },
         statusChanged(FULL_STORY_CLAIM_ID, 'None', 'Anchored'),
@@ -205,6 +231,12 @@ const fullStory: ClaimSnapshot = {
 // Claim 2 — still in the proof loop: the second verifier sent the first proof back.
 const PROOF_LOOP_CLAIM_ID: Hex = '0x82d7d0558f02cc464b6a7ea582b1b419d4b5fbde2722a96b33b24c62fc980b3c';
 const PROOF_LOOP_ANCHORED_AT = '2026-09-19T08:00:00Z';
+const PROOF_LOOP_METADATA = demoMetadata(PROOF_LOOP_CLAIM_ID, {
+  title: '40 water tanks installed in camp B',
+  description: '40 water tanks of 1,000 litres installed and filled in camp B, with a maintenance schedule.',
+  locationRegion: 'Camp B',
+  claimDate: '2026-09-17',
+});
 const PROOF_LOOP_ROOTS = [demoHash('claim 2 original evidence'), demoHash('claim 2 proof 1')] as const;
 const proofLoop: ClaimSnapshot = {
   claimId: PROOF_LOOP_CLAIM_ID,
@@ -214,9 +246,10 @@ const proofLoop: ClaimSnapshot = {
     internalVerifier: VERIFIER_1,
     auditor: AUDITOR,
     anchoredAt: seconds(PROOF_LOOP_ANCHORED_AT),
-    metadataHash: demoHash('claim 2 metadata'),
+    metadataHash: PROOF_LOOP_METADATA.hash,
   },
   evidenceRoots: PROOF_LOOP_ROOTS,
+  metadata: PROOF_LOOP_METADATA.lookup,
   published: new Map(),
   logs: story('claim 2', 8_310_000n, [
     {
@@ -228,7 +261,7 @@ const proofLoop: ClaimSnapshot = {
             claimId: PROOF_LOOP_CLAIM_ID,
             organization: ORGANIZATION,
             evidenceRoot: PROOF_LOOP_ROOTS[0],
-            metadataHash: demoHash('claim 2 metadata'),
+            metadataHash: PROOF_LOOP_METADATA.hash,
           },
         },
         statusChanged(PROOF_LOOP_CLAIM_ID, 'None', 'Anchored'),
@@ -283,6 +316,12 @@ const proofLoop: ClaimSnapshot = {
 // Claim 3 — just anchored, waiting for its internal check.
 const ANCHORED_CLAIM_ID: Hex = '0x239f591f48a6c0be54381da11fde953b0cf0821aaa3abc374b104750c6f94863';
 const ANCHORED_AT = '2026-09-23T11:00:00Z';
+const ANCHORED_METADATA = demoMetadata(ANCHORED_CLAIM_ID, {
+  title: 'Hygiene kits for the northern shelters',
+  description: '350 hygiene kits (soap, towels, sanitary pads) delivered to three shelters.',
+  locationRegion: 'Northern region',
+  claimDate: '2026-09-22',
+});
 const anchoredOnly: ClaimSnapshot = {
   claimId: ANCHORED_CLAIM_ID,
   status: 'Anchored',
@@ -291,9 +330,10 @@ const anchoredOnly: ClaimSnapshot = {
     internalVerifier: zeroAddress,
     auditor: zeroAddress,
     anchoredAt: seconds(ANCHORED_AT),
-    metadataHash: demoHash('claim 3 metadata'),
+    metadataHash: ANCHORED_METADATA.hash,
   },
   evidenceRoots: [demoHash('claim 3 original evidence')],
+  metadata: ANCHORED_METADATA.lookup,
   published: new Map(),
   logs: story('claim 3', 8_402_000n, [
     {
@@ -305,7 +345,7 @@ const anchoredOnly: ClaimSnapshot = {
             claimId: ANCHORED_CLAIM_ID,
             organization: OTHER_ORGANIZATION,
             evidenceRoot: demoHash('claim 3 original evidence'),
-            metadataHash: demoHash('claim 3 metadata'),
+            metadataHash: ANCHORED_METADATA.hash,
           },
         },
         statusChanged(ANCHORED_CLAIM_ID, 'None', 'Anchored'),

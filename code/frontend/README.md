@@ -73,6 +73,14 @@ onchain. The optional P4 indexer API only speeds up the history (see *P4 API mod
   badge and the action event of the same transaction gives the sentence (`AuditorAssigned` changes
   no status). The summary card (checkpoint 1, auditor, final decision, dispute) is derived from the
   same entries.
+- **Claim title and description** (`src/utils/metadata.ts`, `src/data/claimMetadata.ts`,
+  `ClaimMetadata`): the text lives only in the backend, the contract keeps its `metadataHash`. With
+  `VITE_API_URL` the page reads the public claim view (`GET /claims/{id}`), recomputes the hash in
+  the browser over the claim ID read from the chain (recipe and vectors in
+  `code/shared/metadata-vectors.json`) and shows the text only on a match ("Title and description
+  match the blockchain record"). On a mismatch the text is hidden behind a warning with both
+  fingerprints; with no answer from the server, or in chain-only mode, the card says there is
+  nothing to check. Demo claims carry made-up text with its real hash.
 - **Browser-side Merkle** (`src/utils/merkle.ts`): the frozen P1 recipe — SHA-256 with WebCrypto,
   keccak256 leaves, sorted leaves and pairs, odd node promoted. It passes every case of
   `code/shared/merkle-vectors.json`, like the Solidity and Python implementations. Since P8.2 the

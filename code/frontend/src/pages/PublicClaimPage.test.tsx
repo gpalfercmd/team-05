@@ -49,6 +49,13 @@ describe('PublicClaimPage (demo data)', () => {
     expect(within(history).getByText('Demo data: sample records, not read from a blockchain.')).toBeInTheDocument();
   });
 
+  it('shows the claim’s title and description only after checking them against the recorded fingerprint', async () => {
+    await openFullStory();
+    const card = section('What was claimed');
+    expect(within(card).getByRole('heading', { level: 3, name: '500 food kits delivered in district X' })).toBeInTheDocument();
+    expect(within(card).getByText('Title and description match the blockchain record.')).toBeInTheDocument();
+  });
+
   it('summarises the checkpoints, the auditor and the dispute', async () => {
     await openFullStory();
     const summary = section('Verification checks');

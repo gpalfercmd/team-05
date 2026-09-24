@@ -6,6 +6,7 @@
 // =============================================================================
 
 import type { Address, Hex } from 'viem';
+import type { MetadataCheck } from '../data/claimMetadata';
 import type { RecordedClaimStatus } from '../utils/claimStatus';
 
 /** What a timeline entry says happened, from the action event of the transaction. */
@@ -74,6 +75,8 @@ export type ClaimView = {
   /** `anchoredAt` from the contract: seconds since the epoch. */
   anchoredAt: number;
   metadataHash: Hex;
+  /** Title and description from the API, shown only if they hash to `metadataHash` (P8.4). */
+  metadata: MetadataCheck;
   evidence: readonly EvidenceBundle[];
   /** Oldest first. */
   timeline: readonly TimelineEntry[];

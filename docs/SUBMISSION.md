@@ -48,7 +48,7 @@
 | Disputes | Implemented | Any accredited wallet disputes a `Verified` claim; the Authority upholds or dismisses it onchain (demo: dismissed) |
 | Privacy pipeline (EXIF strip, hashing, encryption, role-based access) | Implemented | FastAPI evidence service; private files exposed to outsiders as fingerprints only |
 | Evidence bundles and manifests | Implemented | Per-bundle roots matching `evidenceRoots[i]`; manifest endpoint in the shared JSON Schema |
-| Public verification page | Implemented | Reads the deployed contract directly; single-file and whole-bundle checks in the browser |
+| Public verification page | Implemented | Reads the deployed contract directly; single-file and whole-bundle checks in the browser; the claim's title and description from the API are shown only after their hash is recomputed in the browser and matches the onchain `metadataHash` (otherwise hidden with a warning) |
 | Signing actions from the UI (role screens) | Simulated *(pending)* | Actions are performed by Foundry scripts (`DemoLifecycle.s.sol`) with test wallets; role screens are being built |
 | Participants and assigned auditor in the backend | Simulated | Seeded in the backend database instead of synced from contract events |
 | Real-world identity of participants | Simulated | Accreditation is a manual admin action on test wallets |

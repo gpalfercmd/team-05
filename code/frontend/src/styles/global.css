@@ -350,6 +350,34 @@ pre {
   box-shadow: var(--shadow-card);
 }
 
+/* Inline verdict lines: a success note, or a warning notice (icon + text, never colour alone). */
+.verified-note,
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.verified-note__icon {
+  flex: none;
+  margin-top: 0.3em;
+  color: var(--color-success);
+}
+
+.notice {
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
+  border-left: 4px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}
+
+.notice__icon {
+  flex: none;
+  margin-top: 0.3em;
+  color: var(--color-warning);
+}
+
 .muted {
   color: var(--color-on-neutral);
 }

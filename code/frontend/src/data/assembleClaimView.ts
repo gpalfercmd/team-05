@@ -9,6 +9,7 @@ import { isAddressEqual, zeroAddress, type Address, type Hex } from 'viem';
 import type { ClaimSource, ClaimView, EvidenceBundle, PublicFileLink, TimelineEntry } from '../types/claim';
 import type { RecordedClaimStatus } from '../utils/claimStatus';
 import { err, ok, type Result } from '../utils/result';
+import { checkMetadata, type MetadataLookup } from './claimMetadata';
 import type { DataError } from './source';
 import { buildTimeline, type ClaimEventLog } from './timeline';
 
@@ -41,6 +42,8 @@ export type ClaimSnapshot = {
   evidenceRoots: readonly Hex[];
   logs: readonly ClaimEventLog[];
   published: ReadonlyMap<number, PublishedEvidence>;
+  /** The claim's title and description as served offchain; checked against `metadataHash` here. */
+  metadata: MetadataLookup;
 };
 
 const unlessZero = (address: Address): Address | undefined =>
@@ -86,6 +89,7 @@ export function assembleClaimView(snapshot: ClaimSnapshot, source: ClaimSource):
     auditor: unlessZero(snapshot.record.auditor),
     anchoredAt,
     metadataHash: snapshot.record.metadataHash,
+    metadata: checkMetadata(snapshot.metadata, snapshot.claimId, snapshot.record.metadataHash),
     evidence: evidenceBundles(snapshot, timeline.value, anchoredAt),
     timeline: timeline.value,
     source,

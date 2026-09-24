@@ -7,6 +7,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
+import { ClaimMetadata } from '../components/ClaimMetadata';
 import { EvidenceSection } from '../components/EvidenceSection';
 import { EvidenceVerifier } from '../components/EvidenceVerifier';
 import { HashDisplay } from '../components/HashDisplay';
@@ -74,6 +75,7 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
   return (
     <>
       <ClaimRecord claim={claim} />
+      <ClaimMetadata claim={claim} />
       <VerificationSummary claim={claim} />
       <Timeline entries={claim.timeline} source={claim.source} />
       <EvidenceSection claim={claim} manifests={manifests} />

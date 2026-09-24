@@ -22,6 +22,7 @@ import { isRecordedStatus, statusNameFromIndex, type RecordedClaimStatus } from 
 import { err, ok, type Result } from '../utils/result';
 import { assembleClaimView, type ClaimRecord, type PublishedEvidence } from './assembleClaimView';
 import { CLAIM_EVENT_SELECTORS, claimRegistryReadAbi } from './claimRegistryAbi';
+import type { MetadataLookup, MetadataResolver } from './claimMetadata';
 import type { ManifestResolver } from './publishedManifests';
 import type { ClaimDataSource, DataError } from './source';
 import type { ClaimEventLog, DecodedClaimEvent } from './timeline';
@@ -39,6 +40,8 @@ export type ChainClaimSourceOptions = {
   maxHalvings?: number | undefined;
   /** Where published file lists are looked up; without it every bundle shows "no file list". */
   manifests?: ManifestResolver | undefined;
+  /** Where the claim's title and description are looked up; without it the page says it has none. */
+  metadata?: MetadataResolver | undefined;
 };
 
 /** What the contract's views say about a claim right now; the page trusts nothing else for these. */
@@ -135,6 +138,7 @@ export class ChainClaimSource implements ClaimDataSource {
   readonly #chunkSize: bigint;
   readonly #maxHalvings: number;
   readonly #manifests: ManifestResolver | undefined;
+  readonly #metadata: MetadataResolver | undefined;
 
   constructor(client: ChainReadClient, options: ChainClaimSourceOptions) {
     this.#client = client;
@@ -143,6 +147,7 @@ export class ChainClaimSource implements ClaimDataSource {
     this.#chunkSize = options.chunkSize ?? DEFAULT_LOG_CHUNK_SIZE;
     this.#maxHalvings = options.maxHalvings ?? DEFAULT_MAX_HALVINGS;
     this.#manifests = options.manifests;
+    this.#metadata = options.metadata;
   }
 
   async getClaim(claimId: Hex): Promise<Result<ClaimView, DataError>> {
@@ -157,8 +162,11 @@ export class ChainClaimSource implements ClaimDataSource {
     if (!logs.ok) {
       return logs;
     }
-    const published = await this.publishedFor(claimId, state.value.evidenceRoots);
-    const view = assembleClaimView({ claimId, ...state.value, logs: logs.value, published }, 'chain');
+    const [published, metadata] = await Promise.all([
+      this.publishedFor(claimId, state.value.evidenceRoots),
+      this.metadataFor(claimId),
+    ]);
+    const view = assembleClaimView({ claimId, ...state.value, logs: logs.value, published, metadata }, 'chain');
     return view;
   }
 
@@ -192,6 +200,13 @@ export class ChainClaimSource implements ClaimDataSource {
         ? new Map<number, PublishedEvidence>()
         : await this.#manifests.resolve(claimId, evidenceRoots);
     return published;
+  }
+
+  /** The claim's title and description as served offchain (unchecked; the view assembly checks them). */
+  async metadataFor(claimId: Hex): Promise<MetadataLookup> {
+    const lookup: MetadataLookup =
+      this.#metadata === undefined ? { kind: 'not-configured' } : await this.#metadata.lookup(claimId);
+    return lookup;
   }
 
   async #readViews(claimId: Hex, status: RecordedClaimStatus): Promise<Result<ContractState, DataError>> {

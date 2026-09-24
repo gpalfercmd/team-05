@@ -1,0 +1,99 @@
+{
+  "spec": {
+    "hash": "metadataHash = keccak256(preimage) (Ethereum keccak256, not NIST SHA3-256), anchored by anchorClaim.",
+    "preimage": "UTF-8 of title + \"\\n\" + description + \"\\n\" + location_region + \"\\n\" + claim_date + \"\\n\" + claim_id_hex, with no Unicode normalization.",
+    "fields": "The strings exactly as the API serves them (the backend trims surrounding whitespace once, before storing and hashing). claim_date is YYYY-MM-DD; claim_id_hex is the 32-byte claim id as 64 lowercase hex characters without 0x (the claim the page is showing, read from the chain, never from the server).",
+    "single_line": "title and location_region must not contain a line feed; only description may span lines, so the preimage splits back into exactly one set of fields.",
+    "invalid": "Every invalid case must be rejected: no hash is computed for it.",
+    "encoding": "Byte values are lowercase 0x-prefixed hex strings."
+  },
+  "cases": [
+    {
+      "name": "ascii",
+      "title": "500 food kits delivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "preimage_hex": "0x35303020666f6f64206b6974732064656c6976657265640a466f6f64206b69747320666f722035303020686f757365686f6c64732c2064697374726962757465642061742074686520646973747269637420582077617265686f7573652e0a446973747269637420580a323032362d30392d31340a32376466396534663339366230343961333866656364363233376336353063356466336633373237383535383563643763656433666165383164363165356364",
+      "metadata_hash": "0x3014f132acf1c8ab524d787e7ce1299d8c52304193b456e49bd96217a81ad958"
+    },
+    {
+      "name": "multiline_description",
+      "title": "Water tanks installed",
+      "description": "40 water tanks installed in camp B.\n\nChecked by the site lead:\n- 38 working\n- 2 leaking",
+      "location_region": "Camp B",
+      "claim_date": "2026-02-28",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "preimage_hex": "0x57617465722074616e6b7320696e7374616c6c65640a34302077617465722074616e6b7320696e7374616c6c656420696e2063616d7020422e0a0a436865636b6564206279207468652073697465206c6561643a0a2d20333820776f726b696e670a2d2032206c65616b696e670a43616d7020420a323032362d30322d32380a32376466396534663339366230343961333866656364363233376336353063356466336633373237383535383563643763656433666165383164363165356364",
+      "metadata_hash": "0x8391cb21f9e0822d52df36069af366d75eee65b69c4efa8d157a33b808012010"
+    },
+    {
+      "name": "unicode",
+      "title": "Kits de higiene — Región Norte",
+      "description": "Entrega de 350 kits (jabón, toallas) · 中文说明 · agua potable 🚰",
+      "location_region": "Región Norte",
+      "claim_date": "2026-01-05",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "preimage_hex": "0x4b6974732064652068696769656e6520e280942052656769c3b36e204e6f7274650a456e747265676120646520333530206b69747320286a6162c3b36e2c20746f616c6c61732920c2b720e4b8ade69687e8afb4e6988e20c2b7206167756120706f7461626c6520f09f9ab00a52656769c3b36e204e6f7274650a323032362d30312d30350a32376466396534663339366230343961333866656364363233376336353063356466336633373237383535383563643763656433666165383164363165356364",
+      "metadata_hash": "0xdfeae9a76f4407f5db08a72c631ff1e9d5367edbba692ec038dadd78df2c4af8"
+    },
+    {
+      "name": "same_text_other_claim",
+      "title": "500 food kits delivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x8adc8521429ab8b7b532599fdd73bca165687a3bcde731075646fd863f854915",
+      "preimage_hex": "0x35303020666f6f64206b6974732064656c6976657265640a466f6f64206b69747320666f722035303020686f757365686f6c64732c2064697374726962757465642061742074686520646973747269637420582077617265686f7573652e0a446973747269637420580a323032362d30392d31340a38616463383532313432396162386237623533323539396664643733626361313635363837613362636465373331303735363436666438363366383534393135",
+      "metadata_hash": "0xafd2a6c678d9d14d77156747227a765b4035a8085da10dc093ad1e4e5d52c680"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "title_with_line_feed",
+      "title": "500 food kits\ndelivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "reason": "title must be a single line"
+    },
+    {
+      "name": "region_with_line_feed",
+      "title": "500 food kits delivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District\nX",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "reason": "location_region must be a single line"
+    },
+    {
+      "name": "empty_title",
+      "title": "",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "reason": "empty field"
+    },
+    {
+      "name": "not_a_date",
+      "title": "500 food kits delivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-02-30",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5cd",
+      "reason": "claim_date is not a real date"
+    },
+    {
+      "name": "short_claim_id",
+      "title": "500 food kits delivered",
+      "description": "Food kits for 500 households, distributed at the district X warehouse.",
+      "location_region": "District X",
+      "claim_date": "2026-09-14",
+      "claim_id": "0x27df9e4f396b049a38fecd6237c650c5df3f372785585cd7ced3fae81d61e5",
+      "reason": "claim id is not 32 bytes"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import { createPublicClient, http } from 'viem';
 import type { AppEnv } from '../config/env';
 import { ApiClaimSource } from './apiClaimSource';
 import { ChainClaimSource } from './chainClaimSource';
+import { ApiClaimMetadata } from './claimMetadata';
 import { MockClaimSource } from './mockClaimSource';
 import { DEMO_STATIC_MANIFESTS, PublishedManifests } from './publishedManifests';
 import type { ClaimDataSource } from './source';
@@ -19,7 +20,8 @@ import type { ClaimDataSource } from './source';
  *
  * With `env.apiUrl` (P4) the history and the published file lists come from the indexer API, but
  * status and evidence roots are still read from the contract, so the integrity check never
- * depends on the backend. Without it everything is read from the chain.
+ * depends on the backend. Without it everything is read from the chain. The claim's title and
+ * description come only from the API and are shown only if they hash to the onchain metadataHash.
  */
 export function createClaimSource(env: AppEnv): ClaimDataSource {
   if (env.contracts.mode === 'mock') {
@@ -31,6 +33,8 @@ export function createClaimSource(env: AppEnv): ClaimDataSource {
     fromBlock: env.contracts.deployBlock,
     chunkSize: env.logChunkSize,
     manifests,
+    // The title and description exist only in the backend; without it the page says so.
+    metadata: env.apiUrl === undefined ? undefined : new ApiClaimMetadata({ apiUrl: env.apiUrl }),
   });
   const source: ClaimDataSource =
     env.apiUrl === undefined

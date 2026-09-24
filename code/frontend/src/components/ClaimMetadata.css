@@ -1,0 +1,30 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Claim title/description card, shown only once checked (P8.4)
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.claim-metadata {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.claim-metadata > h2,
+.claim-metadata > p {
+  margin: 0;
+}
+
+.claim-metadata__title {
+  margin: 0;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  overflow-wrap: anywhere;
+}
+
+/* The description is the one field that may span lines; keep the author's line breaks. */
+.claim-metadata__description {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

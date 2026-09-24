@@ -87,14 +87,18 @@ export class ApiClaimSource implements ClaimDataSource {
     if (!state.ok) {
       return state;
     }
-    const [history, published] = await Promise.all([
+    const [history, published, metadata] = await Promise.all([
       this.#history(claimId, state.value, indexed),
       this.#chain.publishedFor(claimId, state.value.evidenceRoots),
+      this.#chain.metadataFor(claimId),
     ]);
     if (!history.ok) {
       return history;
     }
-    const view = assembleClaimView({ claimId, ...state.value, logs: history.value.logs, published }, history.value.source);
+    const view = assembleClaimView(
+      { claimId, ...state.value, logs: history.value.logs, published, metadata },
+      history.value.source,
+    );
     return view;
   }
 
