@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd code/frontend && pnpm dev --port 5173 --strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "frontend-sepolia",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd code/frontend && VITE_CHAIN=arbitrumSepolia VITE_CLAIM_REGISTRY_ADDRESS=0x44780Bed68bDd0f9B9a74d82de81B4C069234BFE VITE_PARTICIPANT_REGISTRY_ADDRESS=0x32a479e9Ad3C0C9e6e00eF2Dff4D7374b6460564 VITE_DEPLOY_BLOCK=312262109 pnpm dev --port 5174 --strictPort"
+      ],
+      "port": 5174
+    }
+  ]
+}
