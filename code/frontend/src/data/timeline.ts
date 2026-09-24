@@ -14,8 +14,20 @@ import type { claimRegistryReadAbi } from './claimRegistryAbi';
 /** A ClaimRegistry event decoded against the typed ABI subset. */
 export type DecodedClaimEvent = DecodeEventLogReturnType<typeof claimRegistryReadAbi>;
 
+/**
+ * The public indexer API does not publish the wei `amount` of the escrow events (P9), so the
+ * timeline treats it as optional: it is present when decoded from the chain, absent from the API,
+ * and no timeline sentence depends on it (the amount held is read from `lockedOf` instead).
+ */
+type AmountOptional<E> = E extends { args: infer A }
+  ? Omit<E, 'args'> & { args: Omit<A, 'amount'> & Partial<Pick<A, Extract<keyof A, 'amount'>>> }
+  : never;
+
+/** A claim event as the timeline needs it, from either source. */
+export type TimelineEvent = AmountOptional<DecodedClaimEvent>;
+
 /** A decoded event with its position in the chain and the timestamp of its block. */
-export type ClaimEventLog = DecodedClaimEvent & {
+export type ClaimEventLog = TimelineEvent & {
   blockNumber: bigint;
   logIndex: number;
   transactionHash: Hex;
@@ -52,7 +64,7 @@ function rootIndexOf(value: bigint): Result<number, string> {
 
 const action = (value: TimelineAction): Result<MappedEvent, string> => ok({ kind: 'action', action: value });
 
-function mapEvent(event: DecodedClaimEvent): Result<MappedEvent, string> {
+function mapEvent(event: TimelineEvent): Result<MappedEvent, string> {
   let mapped: Result<MappedEvent, string>;
   switch (event.eventName) {
     case 'StatusChanged':
@@ -94,6 +106,15 @@ function mapEvent(event: DecodedClaimEvent): Result<MappedEvent, string> {
     case 'DisputeResolved':
       mapped = action({ kind: 'dispute-resolved', authority: event.args.authority, upheld: event.args.upheld });
       break;
+    case 'DepositLocked':
+      mapped = action({ kind: 'deposit-locked', depositor: event.args.depositor });
+      break;
+    case 'Credited':
+      mapped = action({ kind: 'credited', account: event.args.account });
+      break;
+    case 'ClaimSettled':
+      mapped = action({ kind: 'settled', settler: event.args.settler });
+      break;
   }
   return mapped;
 }
@@ -107,10 +128,14 @@ const toEntry = (log: ClaimEventLog, entryAction: TimelineAction, newStatus: Rec
   action: entryAction,
 });
 
+/** Actions whose transaction may carry no StatusChanged of their own. */
+const KEEPS_STATUS: ReadonlySet<TimelineAction['kind']> = new Set(['auditor-assigned', 'deposit-locked', 'credited', 'settled']);
+
 /**
  * StatusChanged gives the badge and the action event gives the sentence, so both merge into one
  * entry. Pairing is by order inside the transaction, which also stays correct if a future batch
- * transaction carries several actions. AuditorAssigned never changes the status.
+ * transaction carries several actions. AuditorAssigned and the escrow events (deposits, credits,
+ * settlement) never change the status: they sit beside the action that did.
  */
 function mergeTransaction(
   actions: readonly Located<{ action: TimelineAction }>[],
@@ -119,7 +144,7 @@ function mergeTransaction(
   const entries: TimelineEntry[] = [];
   let nextStatus = 0;
   for (const { log, action: entryAction } of actions) {
-    const changesStatus = entryAction.kind !== 'auditor-assigned';
+    const changesStatus = !KEEPS_STATUS.has(entryAction.kind);
     entries.push(toEntry(log, entryAction, changesStatus ? statuses[nextStatus]?.status : undefined));
     nextStatus += changesStatus ? 1 : 0;
   }

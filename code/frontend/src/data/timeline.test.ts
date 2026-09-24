@@ -11,7 +11,7 @@ import type { TimelineEntry } from '../types/claim';
 import { statusIndexFromName, type ClaimStatusName } from '../utils/claimStatus';
 import { describeAction, sentenceText } from '../utils/timelineText';
 import { summarizeVerification } from './summary';
-import { buildTimeline, type ClaimEventLog, type DecodedClaimEvent } from './timeline';
+import { buildTimeline, type ClaimEventLog, type DecodedClaimEvent, type TimelineEvent } from './timeline';
 
 const CLAIM_ID = `0x${'ab'.repeat(32)}` as Hex;
 const ORGANIZATION: Address = '0x1111111111111111111111111111111111111111';
@@ -24,7 +24,7 @@ const JUSTIFICATION = `0x${'ef'.repeat(32)}` as Hex;
 
 const tx = (n: number): Hex => `0x${n.toString(16).padStart(64, '0')}`;
 
-function log(event: DecodedClaimEvent, block: number, logIndex: number, transaction = tx(block)): ClaimEventLog {
+function log(event: TimelineEvent, block: number, logIndex: number, transaction = tx(block)): ClaimEventLog {
   const located: ClaimEventLog = { ...event, blockNumber: BigInt(block), logIndex, transactionHash: transaction, timestamp: block * 100 };
   return located;
 }
@@ -111,6 +111,30 @@ describe('buildTimeline', () => {
     ]);
   });
 
+  it('gives each escrow event (P9) its own entry and leaves the status to the action beside it', () => {
+    const rejection: DecodedClaimEvent = {
+      eventName: 'FinalAttestation',
+      args: { claimId: CLAIM_ID, auditor: AUDITOR, approved: false, justificationHash: JUSTIFICATION },
+    };
+    const timeline = timelineOf([
+      log(anchored, 10, 0),
+      log({ eventName: 'DepositLocked', args: { claimId: CLAIM_ID, depositor: ORGANIZATION, amount: 10n } }, 10, 1),
+      log(changed('None', 'Anchored'), 10, 2),
+      log(rejection, 20, 0),
+      // From the indexer API: the amount is not published.
+      log({ eventName: 'Credited', args: { claimId: CLAIM_ID, account: ORGANIZATION } }, 20, 1),
+      log(changed('InternallyVerified', 'Rejected'), 20, 2),
+      log({ eventName: 'ClaimSettled', args: { claimId: CLAIM_ID, settler: AUTHORITY } }, 30, 0),
+    ]);
+    expect(timeline.map((entry) => [entry.action, entry.newStatus])).toEqual([
+      [{ kind: 'anchored', organization: ORGANIZATION, evidenceRoot: ROOT }, 'Anchored'],
+      [{ kind: 'deposit-locked', depositor: ORGANIZATION }, undefined],
+      [{ kind: 'final-attestation', auditor: AUDITOR, approved: false }, 'Rejected'],
+      [{ kind: 'credited', account: ORGANIZATION }, undefined],
+      [{ kind: 'settled', settler: AUTHORITY }, undefined],
+    ]);
+  });
+
   it('converts the proof bundle number from uint256', () => {
     const [entry] = timelineOf([
       log({ eventName: 'ProofSubmitted', args: { claimId: CLAIM_ID, organization: ORGANIZATION, supplementaryRoot: ROOT, rootIndex: 2n } }, 30, 0),
@@ -194,6 +218,9 @@ describe('timeline sentences', () => {
       { kind: 'dispute-resolved', authority: AUTHORITY, upheld: false },
       'The Accreditation Authority dismissed the dispute: the claim stays verified.',
     ],
+    [{ kind: 'deposit-locked', depositor: ORGANIZATION }, '0x1111…1111 locked a deposit in the contract.'],
+    [{ kind: 'credited', account: AUDITOR }, 'The contract credited a payout to 0x3333…3333.'],
+    [{ kind: 'settled', settler: AUTHORITY }, '0x5555…5555 settled the claim: its deposits were released.'],
   ] as const)('describes %o', (action, sentence) => {
     expect(sentenceText(describeAction(action))).toBe(sentence);
   });

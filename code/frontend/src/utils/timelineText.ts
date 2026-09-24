@@ -69,6 +69,15 @@ export function describeAction(action: TimelineAction): SentencePart[] {
           : 'The Accreditation Authority dismissed the dispute: the claim stays verified.',
       ];
       break;
+    case 'deposit-locked':
+      parts = [{ address: action.depositor }, ' locked a deposit in the contract.'];
+      break;
+    case 'credited':
+      parts = ['The contract credited a payout to ', { address: action.account }, '.'];
+      break;
+    case 'settled':
+      parts = [{ address: action.settler }, ' settled the claim: its deposits were released.'];
+      break;
     case 'status-changed':
       parts = ['The claim’s status changed.'];
       break;

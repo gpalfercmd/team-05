@@ -71,6 +71,9 @@ function applyEntry(summary: VerificationSummary, entry: TimelineEntry): Verific
     case 'proof-submitted':
     case 'proof-reviewed':
     case 'status-changed':
+    case 'deposit-locked':
+    case 'credited':
+    case 'settled':
       break;
   }
   return next;

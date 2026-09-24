@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { isAddressEqual, zeroAddress, type Address, type Hex } from 'viem';
-import type { ClaimSource, ClaimView, EvidenceBundle, PublicFileLink, TimelineEntry } from '../types/claim';
+import type { ClaimSource, ClaimView, EscrowState, EvidenceBundle, PublicFileLink, TimelineEntry } from '../types/claim';
 import type { RecordedClaimStatus } from '../utils/claimStatus';
 import { err, ok, type Result } from '../utils/result';
 import { checkMetadata, type MetadataLookup } from './claimMetadata';
@@ -44,6 +44,8 @@ export type ClaimSnapshot = {
   published: ReadonlyMap<number, PublishedEvidence>;
   /** The claim's title and description as served offchain; checked against `metadataHash` here. */
   metadata: MetadataLookup;
+  /** P9 escrow from the contract views; `undefined` when they could not be read. */
+  escrow?: EscrowState | undefined;
 };
 
 const unlessZero = (address: Address): Address | undefined =>
@@ -92,6 +94,7 @@ export function assembleClaimView(snapshot: ClaimSnapshot, source: ClaimSource):
     metadata: checkMetadata(snapshot.metadata, snapshot.claimId, snapshot.record.metadataHash),
     evidence: evidenceBundles(snapshot, timeline.value, anchoredAt),
     timeline: timeline.value,
+    escrow: snapshot.escrow,
     source,
   });
   return view;

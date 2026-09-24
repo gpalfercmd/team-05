@@ -16,7 +16,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { FIRST_BLOCK, fullStory, REGISTRY, stubNode, toRawLog, UNKNOWN_CLAIM } from '../test/stubChainNode';
 import { stubFetch } from '../test/stubFetch';
-import { ChainClaimSource, isLogRangeError } from './chainClaimSource';
+import { ChainClaimSource, isLogRangeError, type ChainReadClient } from './chainClaimSource';
 import { MockClaimSource } from './mockClaimSource';
 import { DEMO_STATIC_MANIFESTS, PublishedManifests } from './publishedManifests';
 
@@ -96,6 +96,29 @@ describe('ChainClaimSource', () => {
     expect(await source.getClaim(fullStory.claimId)).toMatchObject({ ok: false, error: { kind: 'unavailable' } });
   });
 
+  it('reads the escrow (P9) from lockedOf, disputeWindowClosesAt and settled', async () => {
+    const { client } = stubNode();
+    const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n });
+    const state = await source.readState(fullStory.claimId);
+    expect(state.ok && state.value.escrow).toEqual(fullStory.escrow);
+    expect(fullStory.escrow?.disputeWindowClosesAt).toBeGreaterThan(0);
+  });
+
+  it('hides the escrow instead of failing the page when its views revert (a pre-P9 registry)', async () => {
+    const { client } = stubNode();
+    const preP9: ChainReadClient = {
+      ...client,
+      readContract: ((parameters: { functionName: string }) =>
+        parameters.functionName === 'lockedOf'
+          ? Promise.reject(new Error('execution reverted'))
+          : client.readContract(parameters as Parameters<typeof client.readContract>[0])) as ChainReadClient['readContract'],
+    };
+    const source = new ChainClaimSource(preP9, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n });
+    const view = await source.getClaim(fullStory.claimId);
+    expect(view.ok).toBe(true);
+    expect(view.ok && view.value.escrow).toBeUndefined();
+  });
+
   it('ignores logs of other events or other claims that share the topic filter', async () => {
     const [firstLog] = fullStory.logs;
     const stray = firstLog === undefined ? [] : [toRawLog(firstLog)].map((log) => ({ ...log, topics: [`0x${'12'.repeat(32)}` as Hex, ...log.topics.slice(1)] }));
@@ -103,7 +126,7 @@ describe('ChainClaimSource', () => {
     const { client } = stubNode({ extraLogs: [...stray, ...removed] });
     const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n });
     const result = await source.getClaim(fullStory.claimId);
-    expect(result.ok && result.value.timeline).toHaveLength(9);
+    expect(result.ok && result.value.timeline).toHaveLength(14);
   });
 });
 

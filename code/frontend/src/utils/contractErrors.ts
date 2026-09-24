@@ -24,6 +24,14 @@ export const CONTRACT_ERROR_MESSAGES = {
   NotAssignedAuditor: 'Only the auditor assigned to this claim can do this.',
   NotAccreditationAuthority: 'Only the Accreditation Authority can do this.',
   NotAccredited: 'Only accredited participants (organizations, internal verifiers and auditors) can do this.',
+  // IClaimRegistry escrow (P9)
+  WrongDepositAmount: 'The amount sent does not match the deposit this action requires. Nothing was recorded.',
+  CannotDisputeOwnClaim: 'The organization and the approving auditor cannot dispute their own claim.',
+  DisputeWindowClosed: 'The dispute window for this claim has closed, so it can no longer be disputed.',
+  DisputeWindowOpen: 'This claim can only be settled once its dispute window has closed.',
+  AlreadySettled: 'This claim’s deposits have already been paid out.',
+  NothingToWithdraw: 'This wallet has no funds waiting to be withdrawn.',
+  WithdrawFailed: 'The payment to this wallet failed, so the funds stay available to withdraw.',
   // Both contracts
   NotActiveOrganization: 'This wallet is not an active, registered organization.',
   NotActiveAuditor: 'This wallet is not an active, accredited auditor.',

@@ -81,6 +81,15 @@ describe('describeContractFailure', () => {
     expect(describeContractFailure(error)).toBe(CONTRACT_ERROR_MESSAGES.AccessControlUnauthorizedAccount);
   });
 
+  it('explains the P9 escrow errors decoded from a reverted call', () => {
+    const data = encodeErrorResult({ abi: claimRegistryAbi, errorName: 'WrongDepositAmount', args: [10_100n, 0n] });
+    const error = new ContractFunctionRevertedError({ abi: claimRegistryAbi, data, functionName: 'anchorClaim' });
+    expect(describeContractFailure(error)).toBe(CONTRACT_ERROR_MESSAGES.WrongDepositAmount);
+    expect(contractErrorMessage('DisputeWindowClosed')).toBe(
+      'The dispute window for this claim has closed, so it can no longer be disputed.',
+    );
+  });
+
   it('recognises the user cancelling in the wallet', () => {
     const error = new UserRejectedRequestError(new Error('User rejected the request.'));
     expect(describeContractFailure(error)).toBe('You cancelled the request in your wallet. Nothing was recorded.');

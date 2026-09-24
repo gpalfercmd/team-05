@@ -79,10 +79,12 @@ describe('typed ClaimRegistry ABI subset', () => {
     }
   });
 
-  it('includes every IClaimRegistry event, so no timeline entry can be silently dropped', () => {
+  it('includes every claim-scoped IClaimRegistry event, so no timeline entry can be silently dropped', () => {
     const frozenEvents = frozenAbi.filter((item): item is AbiEvent => item.type === 'event');
-    expect(frozenEvents).toHaveLength(10);
-    expect(new Set(frozenEvents.map((event) => toEventSelector(event)))).toEqual(CLAIM_EVENT_SELECTORS);
+    const claimScoped = frozenEvents.filter((event) => event.inputs[0]?.name === 'claimId');
+    expect(frozenEvents).toHaveLength(14);
+    expect(frozenEvents.filter((event) => !claimScoped.includes(event)).map((event) => event.name)).toEqual(['Withdrawn']);
+    expect(new Set(claimScoped.map((event) => toEventSelector(event)))).toEqual(CLAIM_EVENT_SELECTORS);
   });
 
   it('has claimId as the first indexed parameter of every event (the eth_getLogs topic filter)', () => {

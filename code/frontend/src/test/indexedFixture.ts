@@ -43,5 +43,17 @@ export const toIndexedEvent = (log: ClaimEventLog): IndexedEventJson => ({
   logIndex: log.logIndex,
   timestamp: new Date(log.timestamp * 1000).toISOString().replace('.000Z', 'Z'),
   event: log.eventName,
-  args: Object.fromEntries(Object.entries(log.args).map(([name, value]) => [name, indexedArg(log.eventName, name, value)])),
+  // The public API drops the escrow events' wei `amount` (P9), like `_safe_args` does.
+  args: Object.fromEntries(
+    Object.entries(log.args)
+      .filter(([name]) => name !== 'amount')
+      .map(([name, value]) => [name, indexedArg(log.eventName, name, value)]),
+  ),
 });
+
+/** What the API history holds for these logs: the same events without the escrow amounts. */
+export const withoutAmounts = (logs: readonly ClaimEventLog[]): ClaimEventLog[] =>
+  logs.map((log): ClaimEventLog => {
+    const { amount: _amount, ...args } = log.args as Record<string, unknown>;
+    return { ...log, args } as ClaimEventLog;
+  });

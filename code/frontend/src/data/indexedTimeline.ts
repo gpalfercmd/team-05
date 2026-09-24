@@ -66,6 +66,10 @@ const indexedEventSchema: z.ZodType<ClaimEventLog> = z.union([
   indexedEvent('FinalAttestation', { claimId, auditor: addressSchema, approved: z.boolean(), justificationHash: bytes32Schema }),
   indexedEvent('DisputeOpened', { claimId, disputant: addressSchema, counterEvidenceHash: bytes32Schema }),
   indexedEvent('DisputeResolved', { claimId, authority: addressSchema, upheld: z.boolean(), justificationHash: bytes32Schema }),
+  // P9 escrow: the API does not publish `amount` (a uint256), so these carry addresses only.
+  indexedEvent('DepositLocked', { claimId, depositor: addressSchema }),
+  indexedEvent('Credited', { claimId, account: addressSchema }),
+  indexedEvent('ClaimSettled', { claimId, settler: addressSchema }),
 ]);
 
 const claimTimelineSchema = z.object({

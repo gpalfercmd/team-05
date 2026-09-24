@@ -112,14 +112,19 @@ describe('demo claims', () => {
     const steps = view.ok ? view.value.timeline.map((entry) => [entry.action.kind, entry.newStatus]) : [];
     expect(steps).toEqual([
       ['anchored', 'Anchored'],
+      ['deposit-locked', undefined],
       ['internal-attestation', 'InternallyVerified'],
       ['auditor-assigned', undefined],
       ['proof-requested', 'ProofRequested'],
       ['proof-submitted', 'ProofSubmitted'],
       ['proof-reviewed', 'InternallyVerified'],
       ['final-attestation', 'Verified'],
+      ['deposit-locked', undefined],
       ['dispute-opened', 'Disputed'],
+      ['deposit-locked', undefined],
       ['dispute-resolved', 'Verified'],
+      ['credited', undefined],
+      ['credited', undefined],
     ]);
   });
 

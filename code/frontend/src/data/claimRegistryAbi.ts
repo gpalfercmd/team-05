@@ -16,6 +16,9 @@ export const claimRegistryReadAbi = parseAbi([
   'function statusOf(bytes32 claimId) view returns (uint8)',
   'function getClaim(bytes32 claimId) view returns (Claim)',
   'function evidenceRoots(bytes32 claimId) view returns (bytes32[])',
+  'function lockedOf(bytes32 claimId) view returns (uint256)',
+  'function disputeWindowClosesAt(bytes32 claimId) view returns (uint256)',
+  'function settled(bytes32 claimId) view returns (bool)',
   'event StatusChanged(bytes32 indexed claimId, uint8 from, uint8 to)',
   'event ClaimAnchored(bytes32 indexed claimId, address indexed organization, bytes32 evidenceRoot, bytes32 metadataHash)',
   'event InternalAttestation(bytes32 indexed claimId, address indexed verifier, bool approved, bytes32 justificationHash)',
@@ -26,13 +29,17 @@ export const claimRegistryReadAbi = parseAbi([
   'event FinalAttestation(bytes32 indexed claimId, address indexed auditor, bool approved, bytes32 justificationHash)',
   'event DisputeOpened(bytes32 indexed claimId, address indexed disputant, bytes32 counterEvidenceHash)',
   'event DisputeResolved(bytes32 indexed claimId, address indexed authority, bool upheld, bytes32 justificationHash)',
+  // P9 escrow. `Withdrawn` is left out on purpose: it belongs to an account, not to a claim.
+  'event DepositLocked(bytes32 indexed claimId, address indexed depositor, uint256 amount)',
+  'event Credited(bytes32 indexed claimId, address indexed account, uint256 amount)',
+  'event ClaimSettled(bytes32 indexed claimId, address indexed settler)',
 ] as const);
 
 export type ClaimRegistryEvent = Extract<(typeof claimRegistryReadAbi)[number], { type: 'event' }>;
 
 export type ClaimRegistryEventName = ClaimRegistryEvent['name'];
 
-/** topic0 of every timeline event; logs with any other signature are ignored, not decoded. */
+/** topic0 of every claim-scoped event (all but `Withdrawn`); logs with any other signature are ignored, not decoded. */
 export const CLAIM_EVENT_SELECTORS: ReadonlySet<Hex> = new Set(
   claimRegistryReadAbi
     .filter((item): item is ClaimRegistryEvent => item.type === 'event')

@@ -7,7 +7,7 @@
 
 import { getAddress } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { toIndexedEvent } from '../test/indexedFixture';
+import { toIndexedEvent, withoutAmounts } from '../test/indexedFixture';
 import { fullStory } from '../test/stubChainNode';
 import { parseIndexedTimeline } from './indexedTimeline';
 
@@ -79,7 +79,9 @@ describe('parseIndexedTimeline', () => {
 
   it('round-trips every event kind of the demo story', () => {
     const parsed = parseIndexedTimeline({ ...backendSample, claimId: fullStory.claimId, events: fullStory.logs.map(toIndexedEvent) });
-    expect(parsed.ok && parsed.value.logs).toEqual(fullStory.logs);
+    // The API does not publish the escrow amounts (P9); every other argument survives.
+    expect(parsed.ok && parsed.value.logs).toEqual(withoutAmounts(fullStory.logs));
+    expect(parsed.ok && parsed.value.logs.map((log) => log.eventName)).toContain('DepositLocked');
   });
 
   it('refuses unknown events, unknown statuses, missing arguments and foreign claims', () => {

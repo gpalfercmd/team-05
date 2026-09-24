@@ -20,6 +20,12 @@ export type TimelineAction =
   | { kind: 'final-attestation'; auditor: Address; approved: boolean }
   | { kind: 'dispute-opened'; disputant: Address }
   | { kind: 'dispute-resolved'; authority: Address; upheld: boolean }
+  /** P9 escrow: a deposit, reward or bond was locked by `depositor` (amount omitted, see timeline.ts). */
+  | { kind: 'deposit-locked'; depositor: Address }
+  /** P9 escrow: part of the escrow was credited to `account`, withdrawable with `withdraw()`. */
+  | { kind: 'credited'; account: Address }
+  /** P9 escrow: the dispute window closed and `settler` released the deposits. */
+  | { kind: 'settled'; settler: Address }
   /** A StatusChanged without an action event in the same transaction (not expected from P2). */
   | { kind: 'status-changed' };
 
@@ -62,6 +68,16 @@ export type EvidenceBundle = {
  */
 export type ClaimSource = 'chain' | 'indexer' | 'demo';
 
+/** The claim's P9 escrow, read from the contract views (never from the indexer). */
+export type EscrowState = {
+  /** `lockedOf`: wei the contract currently holds for this claim. */
+  lockedWei: bigint;
+  /** `disputeWindowClosesAt` in seconds since the epoch; `undefined` if the claim was never Verified. */
+  disputeWindowClosesAt: number | undefined;
+  /** `settled`: the deposits were released after the dispute window. */
+  settled: boolean;
+};
+
 /** Only public, onchain values (plus public demo files): no personal data ever reaches this type. */
 export type ClaimView = {
   /** keccak256 of the backend's claim UUID (bytes32). */
@@ -80,5 +96,7 @@ export type ClaimView = {
   evidence: readonly EvidenceBundle[];
   /** Oldest first. */
   timeline: readonly TimelineEntry[];
+  /** P9 escrow; `undefined` when it could not be read (e.g. a registry deployed before P9). */
+  escrow?: EscrowState | undefined;
   source: ClaimSource;
 };

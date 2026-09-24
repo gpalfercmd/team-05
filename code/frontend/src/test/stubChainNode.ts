@@ -110,6 +110,19 @@ export function stubNode(options: NodeOptions = {}) {
       case 'evidenceRoots':
         result = encodeFunctionResult({ abi: claimRegistryReadAbi, functionName, result: claim?.evidenceRoots ?? [] });
         break;
+      case 'lockedOf':
+        result = encodeFunctionResult({ abi: claimRegistryReadAbi, functionName, result: claim?.escrow?.lockedWei ?? 0n });
+        break;
+      case 'disputeWindowClosesAt':
+        result = encodeFunctionResult({
+          abi: claimRegistryReadAbi,
+          functionName,
+          result: BigInt(claim?.escrow?.disputeWindowClosesAt ?? 0),
+        });
+        break;
+      case 'settled':
+        result = encodeFunctionResult({ abi: claimRegistryReadAbi, functionName, result: claim?.escrow?.settled ?? false });
+        break;
     }
     return result;
   }

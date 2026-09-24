@@ -17,7 +17,7 @@ import {
   type PublicClient,
 } from 'viem';
 import { z } from 'zod';
-import type { ClaimView } from '../types/claim';
+import type { ClaimView, EscrowState } from '../types/claim';
 import { isRecordedStatus, statusNameFromIndex, type RecordedClaimStatus } from '../utils/claimStatus';
 import { err, ok, type Result } from '../utils/result';
 import { assembleClaimView, type ClaimRecord, type PublishedEvidence } from './assembleClaimView';
@@ -49,6 +49,8 @@ export type ContractState = {
   status: RecordedClaimStatus;
   record: ClaimRecord;
   evidenceRoots: readonly Hex[];
+  /** P9 escrow; `undefined` when its views fail (e.g. a registry deployed before P9). */
+  escrow: EscrowState | undefined;
 };
 
 export const DEFAULT_LOG_CHUNK_SIZE = 50_000n;
@@ -210,14 +212,46 @@ export class ChainClaimSource implements ClaimDataSource {
   }
 
   async #readViews(claimId: Hex, status: RecordedClaimStatus): Promise<Result<ContractState, DataError>> {
-    const [record, roots] = await Promise.all([this.#readRecord(claimId), this.#readRoots(claimId)]);
+    const [record, roots, escrow] = await Promise.all([
+      this.#readRecord(claimId),
+      this.#readRoots(claimId),
+      this.#readEscrow(claimId),
+    ]);
     if (!record.ok) {
       return record;
     }
     const state: Result<ContractState, DataError> = roots.ok
-      ? ok({ status, record: record.value, evidenceRoots: roots.value })
+      ? ok({ status, record: record.value, evidenceRoots: roots.value, escrow })
       : roots;
     return state;
+  }
+
+  /**
+   * The money side of the claim (P9). It is informative, not part of the integrity proof, so a
+   * failed read hides it instead of failing the page.
+   */
+  async #readEscrow(claimId: Hex): Promise<EscrowState | undefined> {
+    const read = await attempt(() =>
+      Promise.all([
+        this.#client.readContract({ address: this.#address, abi: claimRegistryReadAbi, functionName: 'lockedOf', args: [claimId] }),
+        this.#client.readContract({
+          address: this.#address,
+          abi: claimRegistryReadAbi,
+          functionName: 'disputeWindowClosesAt',
+          args: [claimId],
+        }),
+        this.#client.readContract({ address: this.#address, abi: claimRegistryReadAbi, functionName: 'settled', args: [claimId] }),
+      ]),
+    );
+    if (!read.ok) {
+      return undefined;
+    }
+    const [lockedWei, closesAt, settled] = read.value;
+    const escrow: EscrowState | undefined =
+      closesAt > BigInt(Number.MAX_SAFE_INTEGER)
+        ? undefined
+        : { lockedWei, disputeWindowClosesAt: closesAt === 0n ? undefined : Number(closesAt), settled };
+    return escrow;
   }
 
   /** `statusOf` decides existence: `None` means no claim, whatever the logs say. */
@@ -294,8 +328,8 @@ export class ChainClaimSource implements ClaimDataSource {
   }
 
   #decodeClaimLogs(claimId: Hex, logs: readonly RpcClaimLog[]): Result<DecodedLog[], DataError> {
-    // Another event of the registry could share a topic value by coincidence; only the ten
-    // timeline events with this exact claimId are kept. Removed logs belong to reorged blocks.
+    // Another event of the registry could share a topic value by coincidence; only the
+    // claim-scoped events with this exact claimId are kept. Removed logs belong to reorged blocks.
     const relevant = logs.filter(
       (log) =>
         log.removed !== true &&

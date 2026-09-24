@@ -32,20 +32,23 @@ const section = (name: string): HTMLElement => {
 };
 
 describe('PublicClaimPage (demo data)', () => {
-  it('tells the claim’s story as a timeline, oldest first, one entry per transaction', async () => {
+  it('tells the claim’s story as a timeline, oldest first, one entry per action', async () => {
     await openFullStory();
     const history = section('History');
     const entries = within(history).getAllByRole('listitem');
-    expect(entries).toHaveLength(9);
+    expect(entries).toHaveLength(14);
     expect(entries[0]).toHaveTextContent(/Organization 0x\w{4}…\w{4} recorded the claim/);
-    expect(entries[1]).toHaveTextContent(/Internal verifier 0x\w{4}…\w{4} approved the evidence \(checkpoint 1\)\./);
-    expect(entries[1]).toHaveTextContent('Internally verified');
-    expect(entries[2]).toHaveTextContent(/The Accreditation Authority assigned auditor 0x/);
-    expect(within(entries[2] as HTMLElement).queryByText('Internally verified')).not.toBeInTheDocument();
-    expect(entries[4]).toHaveTextContent('The organization submitted supplementary proof (bundle #1).');
-    expect(entries[5]).toHaveTextContent(/A second internal verifier \(0x\w{4}…\w{4}\) confirmed the proof\./);
-    expect(entries[8]).toHaveTextContent('The Accreditation Authority dismissed the dispute: the claim stays verified.');
-    expect(within(history).getAllByRole('button', { name: 'Copy transaction' })).toHaveLength(9);
+    expect(entries[1]).toHaveTextContent(/0x\w{4}…\w{4} locked a deposit in the contract\./);
+    expect(within(entries[1] as HTMLElement).queryByText('Anchored')).not.toBeInTheDocument();
+    expect(entries[2]).toHaveTextContent(/Internal verifier 0x\w{4}…\w{4} approved the evidence \(checkpoint 1\)\./);
+    expect(entries[2]).toHaveTextContent('Internally verified');
+    expect(entries[3]).toHaveTextContent(/The Accreditation Authority assigned auditor 0x/);
+    expect(within(entries[3] as HTMLElement).queryByText('Internally verified')).not.toBeInTheDocument();
+    expect(entries[5]).toHaveTextContent('The organization submitted supplementary proof (bundle #1).');
+    expect(entries[6]).toHaveTextContent(/A second internal verifier \(0x\w{4}…\w{4}\) confirmed the proof\./);
+    expect(entries[11]).toHaveTextContent('The Accreditation Authority dismissed the dispute: the claim stays verified.');
+    expect(entries[12]).toHaveTextContent(/The contract credited a payout to 0x\w{4}…\w{4}\./);
+    expect(within(history).getAllByRole('button', { name: 'Copy transaction' })).toHaveLength(14);
     expect(within(history).getByText('Demo data: sample records, not read from a blockchain.')).toBeInTheDocument();
   });
 
@@ -63,6 +66,13 @@ describe('PublicClaimPage (demo data)', () => {
     expect(summary).toHaveTextContent(/assigned by the Accreditation Authority on .*More proof requested once\./);
     expect(summary).toHaveTextContent(/Final decision \(checkpoint 2\)Approved by auditor 0x/);
     expect(summary).toHaveTextContent(/Dismissed, so the claim stays verified/);
+  });
+
+  it('shows the deposits held for the claim and its dispute window (P9)', async () => {
+    await openFullStory();
+    const deposits = section('Deposits');
+    expect(deposits).toHaveTextContent('0.0111 ETH');
+    expect(deposits).toHaveTextContent(/Disputes open until|Dispute window closed/);
   });
 
   it('lists each evidence bundle with its fingerprint, public downloads and private entries', async () => {
@@ -151,6 +161,8 @@ describe('PublicClaimPage (demo data)', () => {
     expect(status.closest('section')).toHaveTextContent('Proof requested');
     expect(section('History')).toHaveTextContent(/A second internal verifier \(0x\w{4}…\w{4}\) sent the proof back to the organization\./);
     expect(section('Verification checks')).toHaveTextContent(/Final decision \(checkpoint 2\)Pending\./);
+    expect(section('Deposits')).toHaveTextContent('0.0101 ETH');
+    expect(section('Deposits')).not.toHaveTextContent(/Dispute window|Disputes open/);
     expect(section('Verify it yourself')).toHaveTextContent(/none that matches the blockchain is available/);
   });
 });

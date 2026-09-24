@@ -5,7 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { getAddress, keccak256, slice, stringToHex, zeroAddress, type Address, type Hex } from 'viem';
+import { getAddress, keccak256, parseEther, slice, stringToHex, zeroAddress, type Address, type Hex } from 'viem';
 import { DEMO_EVIDENCE_PATH, type DemoManifestFile } from '../config/demoEvidence';
 import type { ClaimSnapshot, PublishedEvidence } from '../data/assembleClaimView';
 import type { MetadataLookup } from '../data/claimMetadata';
@@ -75,6 +75,24 @@ const statusChanged = (claimId: Hex, from: ClaimStatusName, to: ClaimStatusName)
   args: { claimId, from: statusIndexFromName(from), to: statusIndexFromName(to) },
 });
 
+// P9 escrow amounts, as script/DeploymentFile.sol configures them.
+const AUDITOR_REWARD = parseEther('0.0001');
+const AUDITOR_DEPOSIT = parseEther('0.001');
+const ORGANIZATION_PENALTY = parseEther('0.01');
+const DISPUTE_BOND = parseEther('0.001');
+const ANCHOR_DEPOSIT = ORGANIZATION_PENALTY + AUDITOR_REWARD;
+const DISPUTE_WINDOW_SECONDS = 60 * 24 * 60 * 60;
+
+const depositLocked = (claimId: Hex, depositor: Address, amount: bigint): DecodedClaimEvent => ({
+  eventName: 'DepositLocked',
+  args: { claimId, depositor, amount },
+});
+
+const credited = (claimId: Hex, account: Address, amount: bigint): DecodedClaimEvent => ({
+  eventName: 'Credited',
+  args: { claimId, account, amount },
+});
+
 type StoryStep = { at: string; events: readonly DecodedClaimEvent[] };
 
 /** One transaction per step, in its own block, with the given UTC time. */
@@ -113,6 +131,7 @@ function demoMetadata(claimId: Hex, text: ClaimMetadataFields): DemoMetadata {
 
 // Claim 1 — the whole lifecycle, including a proof round and a dismissed dispute.
 const FULL_STORY_ANCHORED_AT = '2026-09-14T09:00:00Z';
+const FULL_STORY_VERIFIED_AT = '2026-09-18T16:20:00Z';
 const FULL_STORY_METADATA = demoMetadata(FULL_STORY_CLAIM_ID, {
   title: '500 food kits delivered in district X',
   description:
@@ -136,6 +155,13 @@ const fullStory: ClaimSnapshot = {
     [0, demoFiles('manifest.json', ['receipt-001.txt', 'invoice-7781.txt'])],
     [1, demoFiles('manifest-proof-1.json', ['delivery-summary.csv', 'stock-count.txt'])],
   ]),
+  // Still holds the organization's penalty and prepaid reward plus the auditor's deposit; the
+  // dispute bond was paid out. Disputes stay open for 60 days after the final approval.
+  escrow: {
+    lockedWei: ANCHOR_DEPOSIT + AUDITOR_DEPOSIT,
+    disputeWindowClosesAt: Date.parse(FULL_STORY_VERIFIED_AT) / 1000 + DISPUTE_WINDOW_SECONDS,
+    settled: false,
+  },
   logs: story('claim 1', 8_120_000n, [
     {
       at: FULL_STORY_ANCHORED_AT,
@@ -149,6 +175,7 @@ const fullStory: ClaimSnapshot = {
             metadataHash: FULL_STORY_METADATA.hash,
           },
         },
+        depositLocked(FULL_STORY_CLAIM_ID, ORGANIZATION, ANCHOR_DEPOSIT),
         statusChanged(FULL_STORY_CLAIM_ID, 'None', 'Anchored'),
       ],
     },
@@ -196,12 +223,13 @@ const fullStory: ClaimSnapshot = {
       ],
     },
     {
-      at: '2026-09-18T16:20:00Z',
+      at: FULL_STORY_VERIFIED_AT,
       events: [
         {
           eventName: 'FinalAttestation',
           args: { claimId: FULL_STORY_CLAIM_ID, auditor: AUDITOR, approved: true, justificationHash: demoHash('claim 1 final') },
         },
+        depositLocked(FULL_STORY_CLAIM_ID, AUDITOR, AUDITOR_DEPOSIT),
         statusChanged(FULL_STORY_CLAIM_ID, 'InternallyVerified', 'Verified'),
       ],
     },
@@ -212,6 +240,7 @@ const fullStory: ClaimSnapshot = {
           eventName: 'DisputeOpened',
           args: { claimId: FULL_STORY_CLAIM_ID, disputant: DISPUTANT, counterEvidenceHash: demoHash('claim 1 counter-evidence') },
         },
+        depositLocked(FULL_STORY_CLAIM_ID, DISPUTANT, DISPUTE_BOND),
         statusChanged(FULL_STORY_CLAIM_ID, 'Verified', 'Disputed'),
       ],
     },
@@ -222,6 +251,9 @@ const fullStory: ClaimSnapshot = {
           eventName: 'DisputeResolved',
           args: { claimId: FULL_STORY_CLAIM_ID, authority: AUTHORITY, upheld: false, justificationHash: demoHash('claim 1 ruling') },
         },
+        // Dismissed: the bond is split between the organization and the approving auditor.
+        credited(FULL_STORY_CLAIM_ID, ORGANIZATION, DISPUTE_BOND - DISPUTE_BOND / 2n),
+        credited(FULL_STORY_CLAIM_ID, AUDITOR, DISPUTE_BOND / 2n),
         statusChanged(FULL_STORY_CLAIM_ID, 'Disputed', 'Verified'),
       ],
     },
@@ -251,6 +283,7 @@ const proofLoop: ClaimSnapshot = {
   evidenceRoots: PROOF_LOOP_ROOTS,
   metadata: PROOF_LOOP_METADATA.lookup,
   published: new Map(),
+  escrow: { lockedWei: ANCHOR_DEPOSIT, disputeWindowClosesAt: undefined, settled: false },
   logs: story('claim 2', 8_310_000n, [
     {
       at: PROOF_LOOP_ANCHORED_AT,
@@ -264,6 +297,7 @@ const proofLoop: ClaimSnapshot = {
             metadataHash: PROOF_LOOP_METADATA.hash,
           },
         },
+        depositLocked(PROOF_LOOP_CLAIM_ID, ORGANIZATION, ANCHOR_DEPOSIT),
         statusChanged(PROOF_LOOP_CLAIM_ID, 'None', 'Anchored'),
       ],
     },
@@ -335,6 +369,7 @@ const anchoredOnly: ClaimSnapshot = {
   evidenceRoots: [demoHash('claim 3 original evidence')],
   metadata: ANCHORED_METADATA.lookup,
   published: new Map(),
+  escrow: { lockedWei: ANCHOR_DEPOSIT, disputeWindowClosesAt: undefined, settled: false },
   logs: story('claim 3', 8_402_000n, [
     {
       at: ANCHORED_AT,
@@ -348,6 +383,7 @@ const anchoredOnly: ClaimSnapshot = {
             metadataHash: ANCHORED_METADATA.hash,
           },
         },
+        depositLocked(ANCHORED_CLAIM_ID, OTHER_ORGANIZATION, ANCHOR_DEPOSIT),
         statusChanged(ANCHORED_CLAIM_ID, 'None', 'Anchored'),
       ],
     },

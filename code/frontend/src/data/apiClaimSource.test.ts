@@ -103,7 +103,7 @@ describe('ApiClaimSource', () => {
     const { api, ranges } = sources({ [timelineUrl()]: json(timelineBody(indexed, { indexedToBlock: Number(cursor) })) });
     const result = await api.getClaim(fullStory.claimId);
     expect(result).toEqual({ ok: true, value: await chainView() });
-    expect(result.ok && result.value.timeline).toHaveLength(9);
+    expect(result.ok && result.value.timeline).toHaveLength(14);
     expect(ranges).toEqual([
       [cursor + 1n, LATEST_BLOCK],
       [FIRST_BLOCK, LATEST_BLOCK],
