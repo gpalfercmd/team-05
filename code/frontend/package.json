@@ -9,7 +9,8 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:sepolia": "vite --mode sepolia"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.2",

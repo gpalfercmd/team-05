@@ -17,6 +17,7 @@ Requires Node.js 20.19+ or 22.12+ (Vite 8) and **pnpm** (version pinned in `pack
 cd code/frontend
 pnpm install
 cp .env.example .env   # optional: without it the app runs on demo data
+pnpm dev:sepolia        # same app, reading the real Arbitrum Sepolia deployment (.env.sepolia)
 pnpm dev                # http://localhost:5173
 ```
 

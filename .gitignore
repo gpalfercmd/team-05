@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Public testnet addresses only (no secrets), shared so everyone runs the same deployment
+!code/frontend/.env.sepolia
 
 # OS / editor
 .DS_Store
