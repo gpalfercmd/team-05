@@ -1,0 +1,33 @@
+# Secrets — never commit private keys or RPC keys
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local agent tooling
+.atl/
+.codegraph/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Foundry
+code/contracts/out/
+code/contracts/cache/
+code/contracts/broadcast/*/31337/
+code/contracts/broadcast/**/dry-run/
+
+# Evidence storage (encrypted demo files, never committed)
+code/backend/storage/

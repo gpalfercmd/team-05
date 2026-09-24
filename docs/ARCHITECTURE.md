@@ -3,7 +3,7 @@
 Describe the complete Proof of Aid system, including parts beyond the prototype.
 Keep implementation status in [SUBMISSION.md](SUBMISSION.md).
 
-> **Status:** Draft from `/spec` (2026-09-24). Items marked **[ASSUMPTION]** are pending team validation.
+> **Status:** Validated design (2026-09-24, checkpoint). Implementation status per capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary).
 > Requirements and acceptance criteria live in [`dbv-specs-ops/docs/SPECIFICATIONS.md`](../dbv-specs-ops/docs/SPECIFICATIONS.md).
 
 ## Vision and actors
@@ -24,13 +24,28 @@ verifier and finally approved by an officially accredited external auditor, **wi
 
 | Actor | Role |
 | --- | --- |
-| **Registry Admin** | Registers organizations and their internal verifier accounts (maps wallets to real-world entities). **[ASSUMPTION]** a platform/consortium operator role. |
-| **Accreditation Authority** | Official body that approves external auditors onchain, assigns one auditor to each internally verified claim, and resolves disputes. **[ASSUMPTION]** a separate role from the Registry Admin (e.g. a public audit oversight body). |
+| **Registry Admin** | Registers organizations and their internal verifier accounts (maps wallets to real-world entities). A platform or consortium operator role. |
+| **Accreditation Authority** | Official body that approves external auditors onchain, assigns one auditor to each internally verified claim, and resolves disputes. Deliberately a separate role from the Registry Admin (e.g. a public audit oversight body), so no single party both registers organizations and chooses their auditors. |
 | **Aid Organization** | Registers needs and aid claims, uploads evidence, anchors evidence hashes onchain, answers auditors' proof requests. |
-| **Internal Verifier** | Verified account belonging to the organization. First checkpoint: promptly confirms (or rejects) that the aid was provided correctly. When the auditor requests proof, a **second** internal verifier (different from the one who approved at checkpoint 1) confirms the supplementary proof before it returns to the auditor. **[ASSUMPTION]** must be a different wallet from the one that submitted the claim (separation of duties). |
+| **Internal Verifier** | Verified account belonging to the organization. First checkpoint: promptly confirms (or rejects) that the aid was provided correctly. When the auditor requests proof, a **second** internal verifier (different from the one who approved at checkpoint 1) confirms the supplementary proof before it returns to the auditor. Always a different wallet from the one that submitted the claim (separation of duties), so each organization registers at least two internal verifiers. |
 | **External Auditor** | Independent auditor approved by the Accreditation Authority and assigned to the claim by it. Can request additional proof from the organization and gives the final confirmation (or rejection). |
 | **Beneficiary** | Receives aid. Personal data is protected; in the future (Delivery & Impact) can confirm or challenge receipt. |
 | **Donor / Public Auditor** | Unauthenticated third party that inspects a claim's timeline and verifies evidence integrity and attestations. |
+
+## Implementation focus
+
+> Within our complete Proof of Aid design, we focus on **Trust, Evidence & Privacy**, addressing **how a third party can trust an aid claim whose evidence contains beneficiaries' personal data and therefore cannot be published** through **offchain encrypted evidence whose Merkle root is anchored onchain, a contract-enforced two-stage verification (internal verifier → independent, officially accredited auditor with proof requests), accredited disputes, and a public page that re-verifies evidence integrity without revealing personal data**.
+
+How the design answers the area's questions:
+
+| Question | Answer in this design |
+| --- | --- |
+| **Who verifies claims?** | An internal verifier of the organization (fast first checkpoint, never the submitter), then an external auditor accredited **and assigned** by an independent Accreditation Authority (final say). Supplementary proof is confirmed by a second internal verifier. |
+| **How is evidence checked?** | Each file is SHA-256 hashed after metadata stripping; the bundle's Merkle root is anchored onchain before review. Verifiers, auditors and the public recompute hashes and compare against the onchain root; any change after anchoring is a mismatch. |
+| **How is it disputed?** | Any accredited participant can dispute a `Verified` claim with a counter-evidence hash; the Accreditation Authority resolves it; the whole history stays public and append-only. |
+| **How is it kept private?** | Files stay offchain, encrypted at rest, decryptable only by the organization, its internal verifiers and the assigned auditor. EXIF/GPS is stripped. Nothing personal (not even hashes of names or IDs) goes onchain; the organization may publish individual non-personal files. |
+
+The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **not implemented**.
 
 ## End-to-end flow
 
@@ -106,13 +121,22 @@ flowchart LR
   CLM -- events --> IDX --> DB
   CLM -. role checks .-> REG
 
+  subgraph Future["Designed only — not implemented"]
+    ESC[FundingEscrow<br/>milestone release]
+    BEN[Beneficiary confirmation<br/>attestation type]
+  end
+  CLM -. Verified unlocks .-> ESC
+  BEN -. attests .-> CLM
+
   classDef impl fill:#d4f4dd,stroke:#2e7d32;
-  class EVS,CLM,REG,API,IDX impl;
+  classDef future fill:#eeeeee,stroke:#9e9e9e,stroke-dasharray: 4 4;
+  class UI,EVS,CLM,REG,API,IDX impl;
+  class ESC,BEN future;
 ```
 
 Every state-changing action (accreditation, auditor assignment, anchoring, attestations, proof requests, disputes) is a transaction signed in the user's own MetaMask wallet; the contracts authorize it by the signer's role. The backend never holds user keys. The Donor / Public Auditor only reads and never signs.
 
-Green components form the implemented contribution (evidence anchoring, two-stage verification with proof requests, public verification). Funding and beneficiary confirmation are designed but not implemented.
+Green components form the prototype's contribution (evidence anchoring, two-stage verification with proof requests, disputes, public verification). Grey dashed components are designed but not implemented.
 
 ## Components
 
@@ -122,17 +146,19 @@ Green components form the implemented contribution (evidence anchoring, two-stag
 | `ClaimRegistry` contract | Claim anchors, evidence roots, two-stage attestations, proof requests, lifecycle state machine, disputes | Solidity, Foundry tests | The only state that must be independently verifiable |
 | Backend API | Claims CRUD, auth (wallet signature login), role-based access to evidence | Python — FastAPI + Pydantic v2 | Team language; validation at the boundary |
 | Evidence service | Hashing (SHA-256), Merkle bundles, encryption at rest, metadata stripping (EXIF/GPS) | Python | Keeps personal data offchain and private |
-| Event indexer | Consumes contract events into queryable timelines | Python + web3 RPC polling (**[ASSUMPTION]**) | Fast queries without trusting the DB as source of truth |
+| Event indexer | Consumes contract events into queryable timelines | Python + web3.py RPC polling from the deployment block, idempotent per (tx hash, log index) | Fast queries without trusting the DB as source of truth |
 | Database | Operational data, indexed events, access logs | PostgreSQL | Mature, relational, suggested by organizers |
 | File storage | Encrypted evidence files | Local Docker volume, files encrypted with a key from `.env` (MinIO/S3 is the production path) | Files do not belong onchain |
-| Frontend | Organization, verifier and public-auditor views; wallet signing | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps |
+| Frontend | Views per role (organization, internal verifier, auditor, authority, admin) and a public claim page that re-hashes public files in the browser; wallet signing | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps |
+| `FundingEscrow` contract *(designed only)* | Holds donations per claim milestone; releases funds only when the linked claim is `Verified` and not `Disputed` | Solidity, reads `ClaimRegistry` status | Makes verification economically meaningful |
+| Beneficiary confirmation *(designed only, Delivery & Impact)* | Beneficiary acknowledges or challenges receipt through a one-time code redeemed by the backend into an attestation, without exposing their identity | Backend + new attestation type in `ClaimRegistry` | Closes the gap between delivery evidence and the recipient's own voice |
 
 ## Decisions and trade-offs
 
 | Decision | Choice and rationale | Trade-off / alternative |
 | --- | --- | --- |
 | On/off-chain boundary | Onchain: accreditation, evidence roots, attestations, disputes, status. Offchain: files, descriptions, personal data. | Less transparency of content; gained privacy, cost and right-to-erasure compatibility. |
-| Evidence integrity | SHA-256 per file, Merkle root per bundle anchored onchain. | Single hash per file is simpler but costs one tx per file; Merkle root allows selective proof of one file. |
+| Evidence integrity | SHA-256 per file (on sanitized bytes), Merkle root per bundle anchored onchain; tree built with the OpenZeppelin standard (keccak256, sorted pairs) and shared test vectors across Solidity, Python and TypeScript. | Single hash per file is simpler but costs one tx per file; Merkle root allows selective proof of one file. |
 | Privacy of low-entropy data | Structured personal data (names, IDs) is never hashed raw; salted commitments only, salt kept offchain. | Salt loss makes the commitment unverifiable; raw hashes of names are brute-forceable. |
 | Evidence confidentiality | Files private by default and encrypted at rest; the organization can mark individual non-personal files (receipts, invoices, aggregate reports) as public; only the owning organization, its internal verifiers and the auditor reviewing the claim can decrypt via backend; public sees hashes and attestations. | Public cannot inspect content themselves, so trust shifts to the auditor. Mitigated by the auditor's independent accreditation and public, attributable attestations. |
 | Trust / verification | Two sequential stages enforced by the contract: internal verifier (fast first checkpoint, affiliated with the organization, not the submitter) then an external accredited auditor assigned by the Accreditation Authority (final, independent). Supplementary proof is confirmed by a second internal verifier before it returns to the auditor (four-eyes inside the organization). | The internal checks are not independent, so independence rests on the auditor; authority assignment stops the organization from choosing a friendly auditor, but a single auditor can still collude. Alternative: multiple auditors per claim. |
