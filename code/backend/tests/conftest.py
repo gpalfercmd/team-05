@@ -151,13 +151,16 @@ def create_claim(client: TestClient, body: dict | None = None) -> dict:
 
 def upload_file(
     client: TestClient, claim_id_hex: str, content: bytes, name: str = "evidence.bin",
-    mime: str = "application/octet-stream", public: bool = False,
+    mime: str = "application/octet-stream", public: bool = False, root_index: int | None = None,
 ) -> dict:
-    """Upload one file to a claim; returns the upload response JSON."""
+    """Upload one file to a claim (bundle `root_index`, server default 0 when None)."""
+    form = {"public": "true" if public else "false"}
+    if root_index is not None:
+        form["root_index"] = str(root_index)
     response = client.post(
         f"/claims/{claim_id_hex}/evidence",
         files={"files": (name, content, mime)},
-        data={"public": "true" if public else "false"},
+        data=form,
     )
     assert response.status_code == 201, response.text
     uploaded: dict = response.json()

@@ -71,7 +71,7 @@ def test_create_claim_returns_anchor_ids(
     authed = _org_client(client, engine, wallets)
     claim = create_claim(authed)
     assert claim["created_by"] == wallets["org"].address.lower()
-    assert claim["evidence"] == [] and claim["evidence_root"] is None
+    assert claim["bundles"] == []
     expected = metadata_digest(
         title="500 food kits",
         description="Delivered in district X",
@@ -92,8 +92,9 @@ def test_read_claim_is_public_with_hashes_and_root(
     second = upload_file(authed, claim["claim_id_hex"], b"pdf bytes", "b.pdf",
                          "application/pdf", public=True)
     public = client.get(f"/claims/{claim['claim_id_hex']}").json()
-    assert len(public["evidence"]) == 2
-    assert public["evidence_root"] == second["evidence_root"]
+    assert len(public["bundles"]) == 1
+    assert len(public["bundles"][0]["files"]) == 2
+    assert public["bundles"][0]["evidence_root"] == second["evidence_root"]
     expected = build_evidence_root(
         [bytes.fromhex(item["sha256_hex"].removeprefix("0x")) for item in first["files"] + second["files"]]
     )

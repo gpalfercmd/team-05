@@ -10,6 +10,8 @@
   matches the onchain `bytes32 claimId` (memory.md: claim ID decision).
 - `EvidenceFile` holds one row per uploaded file; the bytes live encrypted in
   `STORAGE_DIR`, only the SHA-256 of the *sanitized* bytes is stored here (F3).
+  `root_index` is the file's bundle: its position in the onchain
+  `evidenceRoots(claimId)` (0 = original evidence, n = supplementary proof n).
 - `Participant` is the local role resolver until P4 reads accreditation onchain
   (memory.md: RolResolver local decision). `auditor_address` on the claim is
   the assigned auditor for the access matrix (F3).
@@ -74,7 +76,10 @@ class EvidenceFile(Base):
     """One uploaded evidence file: hash + storage pointer (spec F3)."""
 
     __tablename__ = "evidence_files"
-    __table_args__ = (UniqueConstraint("claim_id", "sha256_hex", name="uq_file_per_claim"),)
+    __table_args__ = (
+        UniqueConstraint("claim_id", "sha256_hex", name="uq_file_per_claim"),
+        CheckConstraint("root_index >= 0", name="ck_evidence_root_index_nonnegative"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     claim_id: Mapped[uuid.UUID] = mapped_column(
@@ -86,6 +91,7 @@ class EvidenceFile(Base):
     mime_type: Mapped[str] = mapped_column(String(127))
     size_bytes: Mapped[int] = mapped_column(Integer)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    root_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     uploaded_by: Mapped[str] = mapped_column(String(ADDRESS_LENGTH))
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

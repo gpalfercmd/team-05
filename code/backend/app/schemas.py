@@ -8,15 +8,22 @@
 validated here; responses serialize from ORM rows (`from_attributes`).
 
 Privacy note: file *contents* never appear in any schema — only hashes and
-metadata. The public sees hashes and the root (spec Q3), never bytes.
+metadata. The public sees hashes and the roots (spec Q3), never bytes. Private
+file metadata is split into its own models (`PrivateFileFingerprint`,
+`ManifestPrivateFile`) so the outsider view is fingerprint-only by
+construction, not by remembering to blank fields.
 """
 
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Final, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# Lowercase on purpose: the backend always emits lowercase hex (manifest rule).
+BYTES32_HEX_PATTERN: Final[str] = r"^0x[0-9a-f]{64}$"
 
 
 class ClaimCreate(BaseModel):
@@ -29,9 +36,13 @@ class ClaimCreate(BaseModel):
 
 
 class EvidenceFileResponse(BaseModel):
-    """Public metadata of one stored file (no bytes, ever)."""
+    """Full metadata of one stored file (no bytes, ever).
 
-    model_config = ConfigDict(from_attributes=True)
+    Only for the uploader and the claim's authorized viewers (access matrix):
+    `original_name` of a private file can carry beneficiaries' personal data.
+    """
+
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID
     sha256_hex: str
@@ -39,14 +50,63 @@ class EvidenceFileResponse(BaseModel):
     mime_type: str
     size_bytes: int
     is_public: bool
+    root_index: int = Field(ge=0)
     uploaded_by: str
     uploaded_at: datetime
 
 
-class ClaimResponse(BaseModel):
-    """A claim with its file list and current evidence root (None if empty)."""
+class PublicFileResponse(BaseModel):
+    """A public file as anyone sees it: enough to download and re-hash it."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    sha256_hex: str
+    original_name: str
+    mime_type: str
+    size_bytes: int
+    is_public: Literal[True]
+    root_index: int = Field(ge=0)
+
+
+class PrivateFileFingerprint(BaseModel):
+    """A private file as outsiders see it: its fingerprint and bundle, nothing else.
+
+    A distinct model (not an optional-field variant) so name, type, size, id,
+    uploader or upload time cannot leak through a forgotten `None` default.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    sha256_hex: str
+    is_public: Literal[False]
+    root_index: int = Field(ge=0)
+
+
+class EvidenceBundleResponse(BaseModel):
+    """One onchain bundle (`evidenceRoots[root_index]`) with full file detail."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    root_index: int = Field(ge=0)
+    evidence_root: str
+    files: list[EvidenceFileResponse]
+
+
+class PublicEvidenceBundleResponse(BaseModel):
+    """One onchain bundle as the public sees it (private files as fingerprints)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    root_index: int = Field(ge=0)
+    evidence_root: str
+    files: list[PublicFileResponse | PrivateFileFingerprint]
+
+
+class ClaimFields(BaseModel):
+    """Claim metadata shared by every view (all of it is public, spec F6)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     claim_id_hex: str
@@ -58,15 +118,70 @@ class ClaimResponse(BaseModel):
     created_by: str
     auditor_address: str | None
     created_at: datetime
-    evidence: list[EvidenceFileResponse] = []
-    evidence_root: str | None = None
+
+
+class ClaimResponse(ClaimFields):
+    """A claim for its authorized viewers: every bundle with full file detail."""
+
+    bundles: list[EvidenceBundleResponse] = []
+
+
+class PublicClaimResponse(ClaimFields):
+    """A claim for anyone else: bundles with private files reduced to fingerprints."""
+
+    bundles: list[PublicEvidenceBundleResponse] = []
 
 
 class EvidenceUploadResponse(BaseModel):
-    """Result of an upload: stored files plus the root ready to anchor onchain."""
+    """Result of an upload: stored files plus their bundle's root, ready to anchor."""
 
+    root_index: int = Field(ge=0)
     files: list[EvidenceFileResponse]
     evidence_root: str
+
+
+class ManifestPublicFile(BaseModel):
+    """Manifest entry of a public file; its name is a plain base name."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sha256: str = Field(pattern=BYTES32_HEX_PATTERN)
+    public: Literal[True]
+    name: str = Field(min_length=1, max_length=255, pattern=r"^[^/\\]+$")
+
+
+class ManifestPrivateFile(BaseModel):
+    """Manifest entry of a private file: fingerprint only, never a name."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sha256: str = Field(pattern=BYTES32_HEX_PATTERN)
+    public: Literal[False]
+
+
+class EvidenceManifest(BaseModel):
+    """One bundle's file list, exactly `code/shared/manifest.schema.json` v1.
+
+    Field names are camelCase on the wire because the schema is shared with
+    the frontend verifier. Duplicate fingerprints are checked here because
+    JSON Schema cannot express that uniqueness.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    version: Literal[1] = 1
+    claim_id: str = Field(alias="claimId", pattern=BYTES32_HEX_PATTERN)
+    root_index: int = Field(alias="rootIndex", ge=0)
+    files: list[ManifestPublicFile | ManifestPrivateFile] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _fingerprints_must_be_unique(self) -> EvidenceManifest:
+        """Reject duplicate sha256 values (the Merkle recipe rejects them too)."""
+        fingerprints = [item.sha256 for item in self.files]
+        if len(set(fingerprints)) != len(fingerprints):
+            raise ValueError("manifest files must have unique sha256 values")
+        validated: EvidenceManifest = self
+        return validated
 
 
 class ChallengeRequest(BaseModel):

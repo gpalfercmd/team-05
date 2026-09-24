@@ -11,6 +11,9 @@
   the claim's assigned auditor — nobody else. Roles resolve through the local
   `participants` table until P4 reads accreditation onchain (memory.md).
 
+The same matrix decides who sees private file *metadata* (name, type, size,
+uploader) on claim reads; everyone else gets fingerprints only.
+
 Denied private reads look identical to missing files at the HTTP layer (404),
 so file ids cannot be used as an existence oracle.
 """
@@ -31,12 +34,12 @@ from app.models import (
 )
 
 
-def can_read_file(
-    db: Session, *, viewer: str | None, claim: Claim, evidence_file: EvidenceFile
-) -> bool:
-    """Return True when `viewer` may download this file's decrypted bytes."""
-    if evidence_file.is_public:
-        return True
+def can_view_private_evidence(db: Session, *, viewer: str | None, claim: Claim) -> bool:
+    """Return True when `viewer` may see this claim's private evidence.
+
+    The single source of the matrix: it gates both private downloads and the
+    private file metadata (names can carry beneficiaries' personal data).
+    """
     if viewer is None:
         return False
     if claim.created_by == viewer:
@@ -49,9 +52,17 @@ def can_read_file(
         and participant.organization == claim.created_by
     ):
         return True
-    if participant.role == ROLE_AUDITOR and claim.auditor_address == viewer:
-        return True
-    allowed = False
+    allowed = participant.role == ROLE_AUDITOR and claim.auditor_address == viewer
+    return allowed
+
+
+def can_read_file(
+    db: Session, *, viewer: str | None, claim: Claim, evidence_file: EvidenceFile
+) -> bool:
+    """Return True when `viewer` may download this file's decrypted bytes."""
+    allowed = evidence_file.is_public or can_view_private_evidence(
+        db, viewer=viewer, claim=claim
+    )
     return allowed
 
 

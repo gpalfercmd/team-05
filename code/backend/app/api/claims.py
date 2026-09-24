@@ -9,9 +9,14 @@
 - `POST /claims` (org only): stores metadata, returns `claim_id_hex` and
   `metadata_hash_hex` for the wallet to anchor onchain (`anchorClaim`).
 - `POST /claims/{id}/evidence` (owning org only): runs the P3.2 pipeline per
-  file and returns the `evidence_root` ready to anchor. `public` applies to
-  the batch; flip individual files via `PATCH /files/{id}`.
-- `GET /claims/{id}`: public metadata + file hashes + root (never bytes).
+  file into bundle `root_index` (0 = original evidence, n = supplementary
+  proof n) and returns that bundle's `evidence_root` ready to anchor. `public`
+  applies to the batch; flip individual files via `PATCH /files/{id}`.
+- `GET /claims/{id}`: metadata + one root per bundle (never bytes). Authorized
+  viewers see full file detail; everyone else sees private files as
+  fingerprints only (`api.views`).
+- `GET /claims/{id}/bundles/{n}/manifest`: public per-bundle manifest in the
+  `code/shared/manifest.schema.json` format.
 """
 
 from __future__ import annotations
@@ -27,19 +32,33 @@ from sqlalchemy.orm import Session
 from poa_shared.result import Err
 
 from app.api.auth import current_address
+from app.api.views import authorized_claim_view, manifest_view, public_claim_view
 from app.db import get_session
 from app.models import Claim, EvidenceFile
-from app.schemas import ClaimCreate, ClaimResponse, EvidenceFileResponse, EvidenceUploadResponse
-from app.services.access import require_organization
-from app.services.claims import build_evidence_root, claim_id_from_uuid, metadata_digest
-from app.services.evidence import process_upload, store_packed
+from app.schemas import (
+    ClaimCreate,
+    ClaimResponse,
+    EvidenceFileResponse,
+    EvidenceManifest,
+    EvidenceUploadResponse,
+    PublicClaimResponse,
+)
+from app.services.access import can_view_private_evidence, require_organization
+from app.services.bundles import (
+    EvidenceBundle,
+    build_bundles,
+    bundle_root,
+    check_bundle_target,
+    highest_root_index,
+)
+from app.services.claims import claim_id_from_uuid, metadata_digest
+from app.services.evidence import process_upload, safe_filename, store_packed
 from app.settings import Settings
 
 router = APIRouter(tags=["claims"])
 
 MAX_UPLOAD_BYTES: Final[int] = 25 * 1024 * 1024
 CLAIM_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"^0x[0-9a-f]{64}$")
-FILENAME_SAFE_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def _claim_or_404(db: Session, claim_id_hex: str) -> Claim:
@@ -53,46 +72,19 @@ def _claim_or_404(db: Session, claim_id_hex: str) -> Claim:
     return found
 
 
-def _root_of(hashes: list[bytes]) -> str | None:
-    """Return the `0x` evidence root, or None when the claim holds no files."""
-    if not hashes:
-        return None
-    root = build_evidence_root(hashes)
-    if isinstance(root, Err):
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, root.message)
-    hexed: str | None = f"0x{root.value.hex()}"
-    return hexed
+def _files_of(db: Session, claim: Claim) -> list[EvidenceFile]:
+    """Return every stored file of a claim, across all bundles."""
+    files = list(db.scalars(select(EvidenceFile).where(EvidenceFile.claim_id == claim.id)).all())
+    return files
 
 
-def _claim_response(db: Session, claim: Claim) -> ClaimResponse:
-    """Serialize a claim with its files and current root."""
-    files = db.scalars(select(EvidenceFile).where(EvidenceFile.claim_id == claim.id)).all()
-    hashes = [bytes.fromhex(item.sha256_hex.removeprefix("0x")) for item in files]
-    response = ClaimResponse(
-        id=claim.id,
-        claim_id_hex=claim.claim_id_hex,
-        title=claim.title,
-        description=claim.description,
-        location_region=claim.location_region,
-        claim_date=claim.claim_date,
-        metadata_hash_hex=claim.metadata_hash_hex,
-        created_by=claim.created_by,
-        auditor_address=claim.auditor_address,
-        created_at=claim.created_at,
-        evidence=[EvidenceFileResponse.model_validate(item) for item in files],
-        evidence_root=_root_of(hashes),
-    )
-    return response
-
-
-def _safe_filename(name: str | None) -> str:
-    """Strip paths and unsafe chars from an upload name (never logged anyway)."""
-    if not name:
-        return "upload.bin"
-    base = name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
-    cleaned = FILENAME_SAFE_PATTERN.sub("_", base).strip("._") or "upload.bin"
-    trimmed: str = cleaned[:100]
-    return trimmed
+def _bundles_of(db: Session, claim: Claim) -> list[EvidenceBundle]:
+    """Return the claim's bundles with their roots (500 if a stored set is invalid)."""
+    bundles = build_bundles(_files_of(db, claim))
+    if isinstance(bundles, Err):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, bundles.message)
+    grouped: list[EvidenceBundle] = bundles.value
+    return grouped
 
 
 @router.post("/claims", response_model=ClaimResponse, status_code=status.HTTP_201_CREATED)
@@ -130,16 +122,51 @@ def create_claim(
     db.add(claim)
     db.commit()
     db.refresh(claim)
-    created: ClaimResponse = _claim_response(db, claim)
+    created: ClaimResponse = authorized_claim_view(claim, [])
     return created
 
 
-@router.get("/claims/{claim_id_hex}", response_model=ClaimResponse)
-def read_claim(claim_id_hex: str, db: Session = Depends(get_session)) -> ClaimResponse:
-    """Public claim metadata, file hashes and root (spec F6: no bytes, no login)."""
+@router.get("/claims/{claim_id_hex}", response_model=ClaimResponse | PublicClaimResponse)
+def read_claim(
+    request: Request, claim_id_hex: str, db: Session = Depends(get_session)
+) -> ClaimResponse | PublicClaimResponse:
+    """Claim metadata and per-bundle roots (spec F6: no bytes, no login needed).
+
+    The file detail depends on the viewer: the access matrix that guards
+    private downloads also guards private names, types, sizes and uploaders.
+    """
     claim = _claim_or_404(db, claim_id_hex)
-    public: ClaimResponse = _claim_response(db, claim)
-    return public
+    bundles = _bundles_of(db, claim)
+    authorized = can_view_private_evidence(db, viewer=current_address(request), claim=claim)
+    view: ClaimResponse | PublicClaimResponse = (
+        authorized_claim_view(claim, bundles) if authorized else public_claim_view(claim, bundles)
+    )
+    return view
+
+
+@router.get(
+    "/claims/{claim_id_hex}/bundles/{root_index}/manifest",
+    response_model=EvidenceManifest,
+)
+def read_bundle_manifest(
+    claim_id_hex: str, root_index: int, db: Session = Depends(get_session)
+) -> EvidenceManifest:
+    """Public manifest of one bundle (`evidenceRoots(claimId)[root_index]`).
+
+    Untrusted by design: the verifier page recomputes the root from the
+    fingerprints and accepts the list only if it matches the chain.
+    """
+    claim = _claim_or_404(db, claim_id_hex)
+    bundle = next(
+        (item for item in _bundles_of(db, claim) if item.root_index == root_index), None
+    )
+    if bundle is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "bundle not found")
+    manifest = manifest_view(claim, bundle)
+    if isinstance(manifest, Err):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, manifest.message)
+    published: EvidenceManifest = manifest.value
+    return published
 
 
 @router.post(
@@ -152,9 +179,10 @@ async def upload_evidence(
     claim_id_hex: str,
     files: list[UploadFile] = File(...),
     public: bool = Form(False),
+    root_index: int = Form(0, ge=0),
     db: Session = Depends(get_session),
 ) -> EvidenceUploadResponse:
-    """Run the evidence pipeline for each file (owning org only)."""
+    """Run the evidence pipeline for each file into bundle `root_index` (owning org only)."""
     viewer = current_address(request)
     if viewer is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "login required")
@@ -163,6 +191,11 @@ async def upload_evidence(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "only the owning organization uploads here")
     if not files:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "at least one file is required")
+    # Checked before any processing: a sealed or gapped bundle fails fast and
+    # writes nothing to storage.
+    target = check_bundle_target(highest_root_index(_files_of(db, claim)), root_index)
+    if isinstance(target, Err):
+        raise HTTPException(status.HTTP_409_CONFLICT, target.message)
     settings: Settings = request.app.state.settings
     claim_id = bytes.fromhex(claim.claim_id_hex.removeprefix("0x"))
     stored: list[EvidenceFile] = []
@@ -182,7 +215,9 @@ async def upload_evidence(
             ).first()
             is not None
         )
-        if duplicate:
+        # Same bytes twice in one request would otherwise hit the unique
+        # constraint at commit time as a 500 instead of a clear 409.
+        if duplicate or any(item.sha256_hex == sha_hex for item in stored):
             raise HTTPException(status.HTTP_409_CONFLICT, "file already uploaded to this claim")
         saved = store_packed(settings.storage_path, processed.value.packed)
         if isinstance(saved, Err):
@@ -192,10 +227,11 @@ async def upload_evidence(
                 claim_id=claim.id,
                 sha256_hex=sha_hex,
                 storage_name=saved.value,
-                original_name=_safe_filename(upload.filename),
+                original_name=safe_filename(upload.filename),
                 mime_type=upload.content_type or "application/octet-stream",
                 size_bytes=processed.value.size_bytes,
                 is_public=public,
+                root_index=target.value,
                 uploaded_by=viewer,
             )
         )
@@ -203,12 +239,13 @@ async def upload_evidence(
     db.commit()
     for item in stored:
         db.refresh(item)
-    all_files = db.scalars(select(EvidenceFile).where(EvidenceFile.claim_id == claim.id)).all()
-    root = _root_of([bytes.fromhex(item.sha256_hex.removeprefix("0x")) for item in all_files])
-    if root is None:  # unreachable: we just stored files, but stay total
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "evidence root missing")
+    bundle_files = [item for item in _files_of(db, claim) if item.root_index == target.value]
+    root = bundle_root(bundle_files)
+    if isinstance(root, Err):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, root.message)
     uploaded = EvidenceUploadResponse(
+        root_index=target.value,
         files=[EvidenceFileResponse.model_validate(item) for item in stored],
-        evidence_root=root,
+        evidence_root=root.value,
     )
     return uploaded

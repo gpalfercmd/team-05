@@ -10,6 +10,9 @@ Secrets are validated at startup — fail fast instead of running half-configure
 - `EVIDENCE_ENCRYPTION_KEY` must decode from base64 to exactly 32 bytes (AES-256).
 - `SESSION_SECRET` must be non-empty (it signs the wallet-login session cookies).
 - `STORAGE_DIR` is created on first use, never at import time.
+- `CORS_ORIGINS` lists explicit browser origins (comma-separated). A wildcard
+  is refused because the session cookie travels with credentialed requests,
+  and `*` plus credentials would let any site act as the logged-in wallet.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENCRYPTION_KEY_LENGTH: Final[int] = 32
+DEFAULT_CORS_ORIGINS: Final[str] = "http://localhost:5173"  # Vite dev server
 
 
 class Settings(BaseSettings):
@@ -34,6 +38,7 @@ class Settings(BaseSettings):
     evidence_encryption_key: str = Field(min_length=1)
     storage_dir: str = Field(min_length=1)
     session_secret: str = Field(min_length=16)
+    cors_origins: str = Field(default=DEFAULT_CORS_ORIGINS, min_length=1)
 
     @field_validator("evidence_encryption_key")
     @classmethod
@@ -51,6 +56,31 @@ class Settings(BaseSettings):
         validated: str = value
         return validated
 
+    @field_validator("cors_origins")
+    @classmethod
+    def _origins_must_be_explicit(cls, value: str) -> str:
+        """Accept only `scheme://host[:port]` entries; never `*` (credentials are on)."""
+        origins = _split_origins(value)
+        if not origins:
+            raise ValueError("CORS_ORIGINS must name at least one origin")
+        if "*" in origins:
+            raise ValueError("CORS_ORIGINS must list explicit origins, '*' is not allowed")
+        malformed = [
+            origin
+            for origin in origins
+            if not origin.startswith(("http://", "https://")) or origin.endswith("/")
+        ]
+        if malformed:
+            raise ValueError("CORS_ORIGINS entries must look like http(s)://host[:port]")
+        validated: str = value
+        return validated
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Return the allowed browser origins as a list for `CORSMiddleware`."""
+        origins = _split_origins(self.cors_origins)
+        return origins
+
     @property
     def encryption_key_bytes(self) -> bytes:
         """Return the raw 32-byte AES key."""
@@ -62,6 +92,12 @@ class Settings(BaseSettings):
         """Return the evidence storage directory as a path."""
         path = Path(self.storage_dir)
         return path
+
+
+def _split_origins(value: str) -> list[str]:
+    """Split a comma-separated origin list, dropping blanks from stray commas."""
+    origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+    return origins
 
 
 def load_settings(env_file: str | None = None) -> Settings:

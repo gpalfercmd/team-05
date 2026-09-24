@@ -77,6 +77,6 @@ def metadata_digest(
 
 
 def build_evidence_root(file_hashes: list[bytes]) -> Result[bytes]:
-    """Return the Merkle root of the claim's file hashes (shared P1.3 recipe)."""
+    """Return the Merkle root of one bundle's file hashes (shared P1.3 recipe)."""
     root: Result[bytes] = shared_build_root(file_hashes)
     return root
