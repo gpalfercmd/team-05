@@ -6,8 +6,9 @@
 * **Concrete problem (README Start here §2)**: Trust, Evidence & Privacy — letting a third party trust an aid claim whose evidence cannot be published because it contains beneficiaries' personal data. Scope statement in `docs/ARCHITECTURE.md#implementation-focus`; reuse it verbatim in `SUBMISSION.md` (P0.2). Every task must serve this problem; Funding and Delivery & Impact stay designed-only.
 * **Build order**: contracts → backend → frontend (option 1). `DESIGN.md` is written at the start of P5, not in `/spec` (logged in `memory.md`).
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
+* **Branching**: all work happens on `develop`; nothing is merged or pushed to `main` until the team decides. Evaluation only reads `main`, so `develop` must be merged into `main` before the checkpoint/final SHA is submitted (team decision, not automatic).
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: P0.4 — team pushes `main` and submits the checkpoint form; then `/build` P1 (freeze the contract interface) → P2.
+* **Next step**: continue on `develop` with `/build` P1 (freeze the contract interface) → P2.
 
 ## Task Checklist
 
@@ -26,7 +27,8 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
   - [x] P0.1 Final pass on `docs/ARCHITECTURE.md`: assumptions resolved, designed-only components (`FundingEscrow`, beneficiary confirmation) added to diagram and table. Per-capability status lives in `SUBMISSION.md` (the template says so), not in ARCHITECTURE.
   - [x] P0.2 Draft `docs/SUBMISSION.md` §1 snapshot, problem & approach, planned implementation boundary, effort split (planned: Blockchain 50% · Real-world connection 30% · UX 20%), what works / what is missing.
   - [x] P0.3 `.gitignore` (`.env`, `venv/`, `node_modules/`, `out/`, `cache/`, `broadcast/*/dry-run`, `.DS_Store`, evidence volume) and `code/README.md` skeleton.
-  - [ ] P0.4 Commit to `main`; **team** pushes and sends Team ID + SHA through the checkpoint form.
+  - [x] P0.4a Commit on `develop` (`4efa4bb`).
+  - [ ] P0.4b **Team decision:** merge `develop` into `main`, push, and send Team ID + SHA through the checkpoint form.
 
 - [ ] **P1 — Contract interface freeze (S2, blocks every other lane)**
   - [ ] P1.1 `code/contracts/` Foundry project with OpenZeppelin (pinned version).
@@ -65,7 +67,7 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 - [ ] **P7 — Final submission (S4, before Friday 14:00)**
   - [ ] P7.1 Complete `docs/SUBMISSION.md` (real boundary table, measured effort split, validation evidence: test output + Arbiscan tx links, limitations, next step, AI usage table).
   - [ ] P7.2 README "Before submitting" checklist; secret scan (`git grep` for keys) before push.
-  - [ ] P7.3 **Team** pushes `main` and sends Team ID + SHA through the final form.
+  - [ ] P7.3 **Team** merges `develop` into `main`, pushes `main` and sends Team ID + SHA through the final form.
 
 **Cut line if time runs short (in order):** drop P5.3 admin/authority views (use Foundry scripts) → drop P4 indexer (frontend reads events directly via viem) → keep P2 + P3 + P5.4 + P6, which is the minimum end-to-end proof.
 
