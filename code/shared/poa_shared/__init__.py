@@ -10,6 +10,8 @@ The contracts, the backend and the public page must compute the same root for
 the same evidence files; `merkle-vectors.json` (next to this package) freezes it.
 """
 
+from __future__ import annotations
+
 from poa_shared.merkle import (
     HASH_LENGTH,
     build_proof,

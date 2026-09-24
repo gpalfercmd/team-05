@@ -6,6 +6,8 @@
 # =============================================================================
 """The recipe must match the committed vectors and reject invalid input with Err."""
 
+from __future__ import annotations
+
 import json
 from typing import Any
 

@@ -6,20 +6,22 @@
 # =============================================================================
 """Result pattern: functions return `Ok(value)` or `Err(message)` instead of raising."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Generic, TypeAlias, TypeVar
 
 T = TypeVar("T")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Ok(Generic[T]):
     """Successful outcome carrying its value."""
 
     value: T
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Err:
     """Failed outcome with a human-readable reason and an optional cause."""
 

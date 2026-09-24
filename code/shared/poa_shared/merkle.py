@@ -17,6 +17,8 @@
    verifies with OpenZeppelin `MerkleProof.verify(proof, root, leaf)`.
 """
 
+from __future__ import annotations
+
 import hashlib
 from functools import reduce
 from typing import Final
