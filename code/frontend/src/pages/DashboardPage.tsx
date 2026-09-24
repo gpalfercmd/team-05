@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Dashboard (`/`): wallet area and, in demo mode, sample claims
+// Proof of Aid — Team 05 — Dashboard (`/`): wallet area, sample claims (demo) or demo claim + lookup (chain)
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -7,11 +7,12 @@
 
 import { Link } from 'react-router';
 import { useConnection } from 'wagmi';
+import { ClaimLookup } from '../components/ClaimLookup';
 import { HashDisplay } from '../components/HashDisplay';
 import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { MOCK_CLAIMS } from '../mocks/claims';
+import { FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
 import { truncateMiddle } from '../utils/format';
 
 const HERO_BADGES = [
@@ -43,6 +44,12 @@ export function DashboardPage() {
           {contracts.mode === 'mock' && featuredClaim !== undefined && (
             <Link className="btn btn-primary" to={`/claims/${featuredClaim.claimId}`}>
               See a sample claim
+            </Link>
+          )}
+          {/* The deploy script anchors the demo claim with the committed demo evidence on every chain. */}
+          {contracts.mode === 'chain' && (
+            <Link className="btn btn-primary" to={`/claims/${FULL_STORY_CLAIM_ID}`}>
+              See the demo claim
             </Link>
           )}
           <a className="btn btn-secondary" href="#how-it-works">
@@ -92,6 +99,21 @@ export function DashboardPage() {
           </p>
         )}
       </section>
+
+      {contracts.mode === 'chain' && (
+        <section className="card" aria-labelledby="find-claim-heading">
+          <h2 id="find-claim-heading">Find a claim</h2>
+          <p className="muted">
+            Open the demo claim recorded on the blockchain, or paste the ID of any other claim.
+          </p>
+          <p>
+            <Link to={`/claims/${FULL_STORY_CLAIM_ID}`}>Demo claim</Link>{' '}
+            <code>{truncateMiddle(FULL_STORY_CLAIM_ID)}</code>: verified after a proof request and a
+            dismissed dispute.
+          </p>
+          <ClaimLookup />
+        </section>
+      )}
 
       {contracts.mode === 'mock' && (
         <section className="card" aria-labelledby="demo-claims-heading">

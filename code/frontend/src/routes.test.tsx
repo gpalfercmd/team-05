@@ -81,6 +81,16 @@ describe('routes', () => {
     expect(screen.queryByText('Sample claims')).not.toBeInTheDocument();
   });
 
+  it('offers the demo claim and a claim lookup on a real chain', async () => {
+    renderRoute('/', chainEnv);
+    const demoLinks = await screen.findAllByRole('link', { name: /demo claim/i });
+    expect(demoLinks.length).toBeGreaterThan(0);
+    for (const link of demoLinks) {
+      expect(link).toHaveAttribute('href', '/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28');
+    }
+    expect(screen.getByRole('textbox', { name: 'Look up a claim by its ID' })).toBeInTheDocument();
+  });
+
   it('renders the not-found page for unknown routes', async () => {
     renderRoute('/nowhere');
     expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();

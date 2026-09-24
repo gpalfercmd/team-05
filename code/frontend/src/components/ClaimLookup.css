@@ -1,0 +1,47 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Claim lookup form styles (DESIGN.md input tokens)
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.claim-lookup {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.claim-lookup__label {
+  font-weight: 600;
+}
+
+.claim-lookup__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.claim-lookup__input {
+  flex: 1 1 22rem;
+  min-width: 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.claim-lookup__input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.claim-lookup__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-on-neutral);
+}
+
+.claim-lookup__hint--error {
+  color: var(--color-error);
+}
