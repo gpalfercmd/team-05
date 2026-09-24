@@ -126,9 +126,12 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
     - [ ] Use test-only wallets for Registry Admin, Accreditation Authority, Organization, two Internal Verifiers, Auditor, and Disputant; document the demo's initial state and reset path.
 
 - [ ] **P3 — Evidence pipeline (S2, Real-world connection)** — F2, F3
-  - [ ] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
-  - [ ] P3.2 Upload: EXIF/GPS strip → SHA-256 on sanitized bytes → AES-GCM encryption to the local volume; `public` flag per file; no personal data in logs.
-  - [ ] P3.3 Merkle root builder in Python, passing P1.3 vectors.
+  - [x] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
+    - Evidence (2026-09-24): `app/{settings,db,models,main}.py` with project headers; `itsdangerous` added for sessions; `alembic/` env reads `DATABASE_URL` from settings (never in `alembic.ini`); migration `0001` (`claims`, `evidence_files`, `participants`, `challenges`); `alembic upgrade head` OK on native Postgres; `GET /health` → 200; key validation rejects short keys.
+  - [x] P3.2 Upload: EXIF/GPS strip → SHA-256 on sanitized bytes → AES-GCM encryption to the local volume; `public` flag per file; no personal data in logs.
+    - Evidence (2026-09-24): `app/services/crypto.py` (HKDF per claim + AES-GCM, `Result`) and `app/services/evidence.py` (`sanitize_upload` re-encodes JPEG/PNG/WebP with empty EXIF, passthrough for non-images; `process_upload` → hash + packed blob; `store/load_packed` with traversal guard). Inline run: GPS-laden demo JPEG stripped (exif gone), hash == SHA-256(sanitized) ≠ raw, encrypt/store/load/decrypt roundtrip OK, tampered blob and wrong key → `Err`. `public` flag enforced at the API layer (P3.4 slice).
+  - [x] P3.3 Merkle root builder in Python, passing P1.3 vectors.
+    - Evidence (2026-09-24): `app/services/claims.py` (`claim_id_from_uuid` = keccak256(uuid), `metadata_digest` canónico v1, `build_evidence_root` sobre la receta P1.3). Inline run: keccak == `eth_utils.keccak` (coincide con Solidity), claim_id determinista/único, digest sensible a cada campo + guards, 6/6 vectores P1.3, e2e pipeline → root → proof válida.
   - [ ] P3.4 Wallet login (EIP-191 signed nonce → session) and role-based decryption: org, its internal verifiers, and the claim's assigned auditor only.
   - [ ] P3.5 pytest: EXIF removed, ciphertext unreadable without key, hash = sanitized bytes, access matrix, Merkle vectors.
 

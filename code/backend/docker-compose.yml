@@ -1,0 +1,27 @@
+# =============================================================================
+# Proof of Aid — Team 05 — Local PostgreSQL for the demo environment
+# Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+# Licensed under the MIT License. See LICENSE for details.
+# Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: poa-postgres
+    environment:
+      POSTGRES_USER: poa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-poa_dev_password}
+      POSTGRES_DB: proof_of_aid
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poa -d proof_of_aid"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

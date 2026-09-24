@@ -1,0 +1,21 @@
+# =============================================================================
+# Proof of Aid — Team 05 — Local backend overrides
+# Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+# =============================================================================
+
+# Same project: local Python caches never leave the machine.
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/.venv/
+
+# Secrets (already covered by the root .gitignore; kept here for tooling safety).
+.env
+.env.*
+
+# Encrypted evidence files from local runs.
+storage/
+
+# Local working notes (lane B): exact per-piece documentation, not committed.
+backend.md
