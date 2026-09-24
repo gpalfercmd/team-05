@@ -14,6 +14,8 @@ import {
   checkFilesAgainstManifest,
   checkManifest,
   examineManifest,
+  listedFingerprint,
+  publicSalts,
   verifiedFor,
   type HashedFile,
 } from './verification';
@@ -169,6 +171,90 @@ describe('checkBundle (no file list needed)', () => {
     expect(checkBundle([receipt, { ...receipt, name: 'copy.txt' }], ROOT)).toEqual({
       ok: false,
       error: { kind: 'duplicate', fileHash: receipt.sha256 },
+    });
+  });
+});
+
+describe('salted fingerprints (P8.2, manifest version 2)', () => {
+  // salted vectors: the same receipt and invoice, committed as SHA-256(salt ‖ bytes).
+  const [saltedReceipt, saltedInvoice] = vectors.salted.files;
+  if (saltedReceipt === undefined || saltedInvoice === undefined) {
+    throw new Error('merkle-vectors.json must contain two salted files.');
+  }
+  const SALTED_ROOT = vectors.salted.root as Hex;
+  const saltedManifest: EvidenceManifest = {
+    version: 2,
+    claimId: CLAIM_ID,
+    rootIndex: 0,
+    files: [
+      { sha256: saltedReceipt.commitment as Hex, public: true, name: saltedReceipt.name, salt: saltedReceipt.salt as Hex },
+      // Private: the salt is never published, so this entry cannot be matched from a guessed file.
+      { sha256: saltedInvoice.commitment as Hex, public: false },
+    ],
+  };
+  // What the hook computes for a dropped file: its SHA-256 plus its commitment for each public salt.
+  const dropped = (file: typeof saltedReceipt, commitment: string): HashedFile => ({
+    name: file.name,
+    sha256: file.sha256 as Hex,
+    salted: [{ salt: saltedReceipt.salt as Hex, commitment: commitment as Hex }],
+  });
+  const verifiedSalted = () => {
+    const check = checkManifest(saltedManifest, CLAIM_ID, [SALTED_ROOT]);
+    if (!check.ok) {
+      throw new Error('The salted manifest must verify against the salted vector root.');
+    }
+    return check.value;
+  };
+
+  it('verifies a version 2 list against the root of its commitments', () => {
+    expect(checkManifest(saltedManifest, CLAIM_ID, [SALTED_ROOT]).ok).toBe(true);
+  });
+
+  it('lists only the public salts', () => {
+    expect(publicSalts(saltedManifest)).toEqual([saltedReceipt.salt]);
+  });
+
+  it('matches a public salted file through SHA-256(salt ‖ file)', () => {
+    const file = dropped(saltedReceipt, saltedReceipt.commitment);
+    expect(checkFilesAgainstManifest(verifiedSalted(), [file])).toEqual([
+      { kind: 'match', file, visibility: 'public', listedName: saltedReceipt.name },
+    ]);
+    expect(listedFingerprint(file, saltedManifest)).toBe(saltedReceipt.commitment);
+  });
+
+  it('never matches a private salted file from a guessed copy', () => {
+    // The visitor only has the public salt, so the guessed invoice cannot reach its commitment.
+    const guess: HashedFile = { name: 'invoice.txt', sha256: saltedInvoice.sha256 as Hex, salted: [] };
+    expect(checkFilesAgainstManifest(verifiedSalted(), [guess])).toEqual([
+      { kind: 'mismatch', file: guess, sameNameListed: false },
+    ]);
+  });
+
+  it('does not accept a commitment computed with a salt other than the listed one', () => {
+    const file: HashedFile = {
+      name: saltedReceipt.name,
+      sha256: saltedReceipt.sha256 as Hex,
+      salted: [{ salt: saltedInvoice.salt as Hex, commitment: saltedReceipt.commitment as Hex }],
+    };
+    expect(checkFilesAgainstManifest(verifiedSalted(), [file])[0]?.kind).toBe('mismatch');
+  });
+
+  it('still matches unsalted version 1 entries by plain SHA-256', () => {
+    expect(listedFingerprint(receipt, manifest)).toBe(receipt.sha256);
+    expect(checkFilesAgainstManifest(verified(), [{ ...receipt, salted: [] }])[0]?.kind).toBe('match');
+  });
+
+  it('checks a salted bundle with the listed commitments, and cannot without the list', () => {
+    const receiptFile = dropped(saltedReceipt, saltedReceipt.commitment);
+    const invoiceWithoutSalt: HashedFile = { name: saltedInvoice.name, sha256: saltedInvoice.sha256 as Hex };
+    const onlyPublic = { ...saltedManifest, files: saltedManifest.files.slice(0, 1) };
+    expect(checkBundle([receiptFile], saltedReceipt.leaf as Hex, onlyPublic)).toMatchObject({
+      ok: true,
+      value: { kind: 'match' },
+    });
+    expect(checkBundle([receiptFile, invoiceWithoutSalt], SALTED_ROOT)).toMatchObject({
+      ok: true,
+      value: { kind: 'mismatch' },
     });
   });
 });

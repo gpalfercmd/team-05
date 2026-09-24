@@ -127,8 +127,8 @@ export async function saltedSha256Hex(salt: string, bytes: ArrayBuffer): Promise
   return result;
 }
 
-/** Reads a file chosen or dropped by the visitor and returns its SHA-256 (the Merkle fileHash). */
-export async function hashFile(file: Blob): Promise<Result<Hex, string>> {
+/** Reads a file chosen or dropped by the visitor into memory; oversized files are refused. */
+export async function readFileBytes(file: Blob): Promise<Result<ArrayBuffer, string>> {
   if (file.size > MAX_FILE_BYTES) {
     return err('This file is too large to check in the browser (limit: 256 MB).');
   }
@@ -138,6 +138,12 @@ export async function hashFile(file: Blob): Promise<Result<Hex, string>> {
   } catch (error: unknown) {
     bytes = err(error instanceof Error ? error.message : 'The file could not be read.');
   }
+  return bytes;
+}
+
+/** Reads a file chosen or dropped by the visitor and returns its SHA-256 (the Merkle fileHash). */
+export async function hashFile(file: Blob): Promise<Result<Hex, string>> {
+  const bytes = await readFileBytes(file);
   const result = bytes.ok ? await sha256Hex(bytes.value) : bytes;
   return result;
 }

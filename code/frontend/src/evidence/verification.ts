@@ -8,13 +8,20 @@
 import type { Hex } from 'viem';
 import { buildRoot, type MerkleError } from '../utils/merkle';
 import { err, ok, type Result } from '../utils/result';
-import { parseManifest, type EvidenceManifest } from './manifest';
+import { parseManifest, type EvidenceManifest, type ManifestFile } from './manifest';
 
 // Everything here works on fingerprints already computed in the browser, so it is synchronous,
 // deterministic and fully unit-tested. The only trusted input is the list of onchain roots.
 
-/** A file the visitor chose, reduced to what the checks need. Its bytes never leave the browser. */
-export type HashedFile = { name: string; sha256: Hex };
+/** SHA-256(salt ‖ bytes) of a chosen file for one salt published in a verified file list. */
+export type SaltedDigest = { salt: Hex; commitment: Hex };
+
+/**
+ * A file the visitor chose, reduced to what the checks need. Its bytes never leave the browser.
+ * `salted` holds its commitment for every public salt of the verified list (P8.2), so salted
+ * entries can be matched without the checks needing the bytes.
+ */
+export type HashedFile = { name: string; sha256: Hex; salted?: readonly SaltedDigest[] };
 
 export type ManifestProblem =
   | { kind: 'other-claim'; manifestClaimId: Hex }
@@ -91,10 +98,37 @@ export function verifiedFor(state: ManifestState | undefined, rootIndex: number)
   return result;
 }
 
-/** Each chosen file matches when its SHA-256 is one of the fingerprints in the verified list. */
+/** Public salts of a file list: the only salts a visitor needs to re-hash files with. */
+export function publicSalts(manifest: EvidenceManifest): Hex[] {
+  const salts = manifest.files.flatMap((file) => (file.public && file.salt !== undefined ? [file.salt] : []));
+  return salts;
+}
+
+/**
+ * True when `entry` lists this file: its plain SHA-256 equals the fingerprint (unsalted, pre-P8.2
+ * files), or the entry publishes a salt and SHA-256(salt ‖ file) equals it. A private salted entry
+ * publishes no salt, so it can never be matched here; that is what keeps guessed files unconfirmable.
+ */
+function lists(entry: ManifestFile, file: HashedFile): boolean {
+  const salt = entry.public ? entry.salt : undefined;
+  const listed =
+    sameHex(entry.sha256, file.sha256) ||
+    (salt !== undefined &&
+      (file.salted ?? []).some((digest) => sameHex(digest.salt, salt) && sameHex(digest.commitment, entry.sha256)));
+  return listed;
+}
+
+/** The fingerprint this file has in the list (its salted commitment when salted), else its SHA-256. */
+export function listedFingerprint(file: HashedFile, manifest: EvidenceManifest | undefined): Hex {
+  const entry = manifest?.files.find((listed) => lists(listed, file));
+  const fingerprint = entry === undefined ? file.sha256 : entry.sha256;
+  return fingerprint;
+}
+
+/** Each chosen file matches when the verified list holds its SHA-256 or its salted commitment. */
 export function checkFilesAgainstManifest(verified: VerifiedManifest, files: readonly HashedFile[]): FileCheck[] {
   const checks = files.map((file): FileCheck => {
-    const entry = verified.manifest.files.find((listed) => sameHex(listed.sha256, file.sha256));
+    const entry = verified.manifest.files.find((listed) => lists(listed, file));
     const check: FileCheck =
       entry === undefined
         ? {
@@ -115,10 +149,16 @@ export function checkFilesAgainstManifest(verified: VerifiedManifest, files: rea
 
 /**
  * Bundle mode, no file list needed: the visitor provides every file of a bundle and their Merkle
- * root must equal the onchain root. A missing, extra or changed file all give a mismatch.
+ * root must equal the onchain root. A missing, extra or changed file all give a mismatch. Salted
+ * files (P8.2) need their salts: with a verified list, each file counts with its listed commitment;
+ * without one, only unsalted bundles (recorded before P8.2) can match.
  */
-export function checkBundle(files: readonly HashedFile[], onchainRoot: Hex): Result<BundleCheck, MerkleError> {
-  const computed = buildRoot(files.map((file) => file.sha256));
+export function checkBundle(
+  files: readonly HashedFile[],
+  onchainRoot: Hex,
+  manifest?: EvidenceManifest,
+): Result<BundleCheck, MerkleError> {
+  const computed = buildRoot(files.map((file) => listedFingerprint(file, manifest)));
   if (!computed.ok) {
     return computed;
   }

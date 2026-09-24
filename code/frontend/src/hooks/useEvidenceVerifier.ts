@@ -11,15 +11,18 @@ import {
   checkBundle,
   checkFilesAgainstManifest,
   checkManifest,
+  publicSalts,
   verifiedFor,
   type BundleCheck,
   type FileCheck,
   type HashedFile,
   type ManifestState,
+  type SaltedDigest,
   type VerifiedManifest,
 } from '../evidence/verification';
 import type { ClaimView, EvidenceBundle } from '../types/claim';
-import { hashFile, merkleErrorMessage } from '../utils/merkle';
+import type { Hex } from 'viem';
+import { merkleErrorMessage, readFileBytes, saltedSha256Hex, sha256Hex } from '../utils/merkle';
 import { err, ok, type Result } from '../utils/result';
 
 export type VerifierMode = 'files' | 'bundle';
@@ -32,14 +35,35 @@ export type CheckOutcome =
 /** A file list the visitor loaded; unlike a published one, it always exists once loaded. */
 export type LoadedManifest = { fileName: string; state: Exclude<ManifestState, { kind: 'none' }> };
 
+/** SHA-256 of one file plus its commitment for every public salt of the verified list (P8.2). */
+async function hashOne(file: File, salts: readonly Hex[]): Promise<Result<HashedFile, string>> {
+  const bytes = await readFileBytes(file);
+  if (!bytes.ok) {
+    return bytes;
+  }
+  const plain = await sha256Hex(bytes.value);
+  if (!plain.ok) {
+    return plain;
+  }
+  const salted: SaltedDigest[] = [];
+  for (const salt of salts) {
+    const commitment = await saltedSha256Hex(salt, bytes.value);
+    if (commitment.ok) {
+      salted.push({ salt, commitment: commitment.value });
+    }
+  }
+  const hashed: Result<HashedFile, string> = ok({ name: file.name, sha256: plain.value, salted });
+  return hashed;
+}
+
 // Files are read and hashed here with WebCrypto; nothing about them is sent anywhere.
-async function hashFiles(files: readonly File[]): Promise<Result<HashedFile[], string>> {
-  const hashed = await Promise.all(files.map(async (file) => ({ name: file.name, digest: await hashFile(file) })));
+async function hashFiles(files: readonly File[], salts: readonly Hex[]): Promise<Result<HashedFile[], string>> {
+  const hashed = await Promise.all(files.map(async (file) => ({ name: file.name, digest: await hashOne(file, salts) })));
   const hashes: HashedFile[] = [];
   let failure: string | undefined;
   for (const { name, digest } of hashed) {
     if (digest.ok) {
-      hashes.push({ name, sha256: digest.value });
+      hashes.push(digest.value);
     } else {
       failure ??= `“${name}” could not be checked: ${digest.error}`;
     }
@@ -74,7 +98,7 @@ function evaluate(
   if (mode === 'files' && verified !== undefined) {
     outcome = { kind: 'files', bundle, checks: checkFilesAgainstManifest(verified, hashed.value) };
   } else {
-    const check = checkBundle(hashed.value, bundle.root);
+    const check = checkBundle(hashed.value, bundle.root, verified?.manifest);
     outcome = check.ok ? { kind: 'bundle', bundle, check: check.value } : { kind: 'error', message: merkleErrorMessage(check.error) };
   }
   return outcome;
@@ -122,7 +146,8 @@ export function useEvidenceVerifier(claim: ClaimView, published: ReadonlyMap<num
       return;
     }
     setBusy(true);
-    setOutcome(evaluate(await hashFiles(files), mode, verified, bundle));
+    const salts = verified === undefined ? [] : publicSalts(verified.manifest);
+    setOutcome(evaluate(await hashFiles(files, salts), mode, verified, bundle));
     setBusy(false);
   };
 
