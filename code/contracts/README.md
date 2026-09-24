@@ -44,9 +44,10 @@ P2 implements both frozen interfaces without changing their public API:
 
 Tests cover every valid transition, every invalid transition (the full action × status matrix),
 role-admin isolation, revoked wallets, separation of duties (including role-switch regressions),
-event payloads, stored roots, fuzzed callers and inputs, and invariants over random call
-sequences (`[invariant]` in `foundry.toml`). The deployment/demo scripts use seven test-only
-wallets and produce:
+revoked organizations (never `Verified` again: every action × status × actor × decision, and an
+invariant counting transitions into `Verified`), event payloads, stored roots, fuzzed callers and
+inputs, and invariants over random call sequences (`[invariant]` in `foundry.toml`). The
+deployment/demo scripts use seven test-only wallets and produce:
 
 ```text
 .env.example                          # variable names only
@@ -69,8 +70,17 @@ Implementation choices the interfaces left open:
   Nobody holds `DEFAULT_ADMIN_ROLE`.
 - Revoking an organization leaves its verifiers linked but inactive (`organizationOf` returns
   `address(0)`, `activeVerifierCount` returns 0), so its open claims can no longer be attested.
-- Guard order in every `ClaimRegistry` action: claim exists → status → caller → non-zero hashes.
-  The action-specific event is emitted before `StatusChanged`.
+- **A revoked organization's claim can be rejected, but never (re)verified.** When
+  `isOrganization(claim.organization)` is false, `attestFinal(…, approve = true, …)`,
+  `requestProof` (the organization could never answer; the auditor rejects instead) and
+  `resolveDispute(…, upheld = false, …)` revert with `NotActiveOrganization(claim.organization)`.
+  `attestFinal` reject, `resolveDispute` upheld, `openDispute`, `assignAuditor` and the views are
+  unchanged. Otherwise the assigned auditor could still verify, or the Authority keep verified, a
+  claim of an organization revoked for fraud. A claim already in `ProofRequested` or
+  `ProofSubmitted` when its organization is revoked stays there: nobody can move it on.
+- Guard order in every `ClaimRegistry` action: claim exists → status → caller → claim's
+  organization still active (only where the action can lead to `Verified`, plus `requestProof`)
+  → non-zero hashes. The action-specific event is emitted before `StatusChanged`.
 
 ## Deploy & demo
 

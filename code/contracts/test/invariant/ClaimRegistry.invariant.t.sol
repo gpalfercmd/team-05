@@ -25,13 +25,14 @@ uint8 constant ORGANIZATION_BIT = 1;
 uint8 constant VERIFIER_BIT = 2;
 uint8 constant AUDITOR_BIT = 4;
 
-/// @notice Drives a small, fixed set of claims through three entry points: `advance` takes the
+/// @notice Drives a small, fixed set of claims through four entry points: `advance` takes the
 ///         next valid step with a caller picked from the live registry (so campaigns reach deep
-///         states), `chaos` tries any action with any wallet and raw inputs (mostly invalid), and
+///         states), `chaos` tries any action with any wallet and raw inputs (mostly invalid),
 ///         `churn` revokes participants and tries to register any wallet in any role, including
-///         the role switches that permanent identity must block. All wallets come from one pool
-///         (the fixture cast plus fresh wallets for replacements). Reverts are swallowed; ghosts
-///         record only what succeeded or was observed.
+///         the role switches that permanent identity must block, and `revokeDecidingOrganization`
+///         revokes a claim's organization right before its final decision. All wallets come
+///         from one pool (the fixture cast plus fresh wallets for replacements). Reverts are
+///         swallowed; ghosts record only what succeeded or was observed.
 contract ClaimRegistryHandler is CommonBase {
     uint256 internal constant CLAIM_COUNT = 3;
     uint256 internal constant FRESH_WALLETS = 8;
@@ -58,6 +59,9 @@ contract ClaimRegistryHandler is CommonBase {
     mapping(IClaimRegistry.ClaimStatus status => uint256 count) public ghostReached;
     /// @dev Bitmask of every participant role each pool wallet was ever seen holding.
     mapping(address account => uint8 roles) public ghostLifetimeRoles;
+    /// @dev Transitions into Verified (attestFinal approve, dispute dismissed) of a claim whose
+    ///      organization was already revoked when the call was made. Must stay 0.
+    uint256 public ghostRevokedOrganizationVerifications;
 
     constructor(
         ClaimRegistry claims_,
@@ -102,6 +106,7 @@ contract ClaimRegistryHandler is CommonBase {
         address candidate = _anyWallet(seed >> 24);
         uint256 action = seed % 9;
         IClaimRegistry.ClaimStatus before = claims.statusOf(claimId);
+        bool organizationActive = _organizationActive(claimId);
         vm.prank(caller);
         if (action == 0) {
             try claims.anchorClaim(claimId, value, value) {
@@ -126,7 +131,7 @@ contract ClaimRegistryHandler is CommonBase {
         } else {
             try claims.resolveDispute(claimId, flag, value) {} catch {}
         }
-        _record(claimId, before);
+        _record(claimId, before, organizationActive);
     }
 
     /// @notice Revokes a participant (one call in eight) or tries to give a random pool wallet a
@@ -156,6 +161,19 @@ contract ClaimRegistryHandler is CommonBase {
         _observe(wallet);
     }
 
+    /// @notice One call in four: revokes the organization of a claim that is waiting for a
+    ///         decision that could verify it (InternallyVerified or Disputed), so campaigns often
+    ///         try to approve or dismiss for a revoked organization. `churn` alone rarely hits
+    ///         the claim's organization at that moment.
+    function revokeDecidingOrganization(uint256 seed) external {
+        IClaimRegistry.Claim memory claim = claims.getClaim(_claim(seed >> 8));
+        bool deciding = claim.status == IClaimRegistry.ClaimStatus.InternallyVerified
+            || claim.status == IClaimRegistry.ClaimStatus.Disputed;
+        if (seed % 4 != 0 || !deciding || !participants.isOrganization(claim.organization)) return;
+        vm.prank(registryAdmin);
+        participants.revokeOrganization(claim.organization);
+    }
+
     // ------------------------------------------------------------------ views
 
     function claimIdAt(uint256 index) external view returns (bytes32) {
@@ -182,6 +200,7 @@ contract ClaimRegistryHandler is CommonBase {
         IClaimRegistry.Claim memory claim = claims.getClaim(claimId);
         bytes32 hash = keccak256(abi.encode("advance", r));
         IClaimRegistry.ClaimStatus status = claim.status;
+        bool organizationActive = _organizationActive(claimId);
         if (status == IClaimRegistry.ClaimStatus.None) {
             address organization = _pick(r >> 8, Kind.Organization, address(0), address(0));
             bytes32 metadata = keccak256(abi.encode(hash));
@@ -209,7 +228,7 @@ contract ClaimRegistryHandler is CommonBase {
             vm.prank(authority);
             try claims.resolveDispute(claimId, (r >> 16) % 2 == 0, hash) {} catch {}
         }
-        _record(claimId, status);
+        _record(claimId, status, organizationActive);
     }
 
     /// @dev InternallyVerified: (re)assign an auditor, or let the assigned one request proof or decide.
@@ -280,12 +299,21 @@ contract ClaimRegistryHandler is CommonBase {
         return pool[seed % pool.length];
     }
 
-    /// @dev Counts any status change outside the declared transition table.
-    function _record(bytes32 claimId, IClaimRegistry.ClaimStatus before) internal {
+    /// @dev Whether the claim's organization is active; read before the call is made.
+    function _organizationActive(bytes32 claimId) internal view returns (bool) {
+        return participants.isOrganization(claims.getClaim(claimId).organization);
+    }
+
+    /// @dev Counts any status change outside the declared transition table, and any transition
+    ///      into Verified of a claim whose organization was revoked before the call.
+    function _record(bytes32 claimId, IClaimRegistry.ClaimStatus before, bool organizationActive) internal {
         IClaimRegistry.ClaimStatus afterCall = claims.statusOf(claimId);
         if (afterCall != before) {
             ghostReached[afterCall] += 1;
             if (!_isDeclared(before, afterCall)) ghostUndeclaredTransitions += 1;
+            if (!organizationActive && afterCall == IClaimRegistry.ClaimStatus.Verified) {
+                ghostRevokedOrganizationVerifications += 1;
+            }
         }
     }
 
@@ -363,6 +391,12 @@ contract ClaimRegistryInvariantTest is ProofOfAidFixture {
             assertEq(roots.length, handler.ghostRootCount(claimId));
             if (roots.length > 0) assertEq(roots[0], handler.ghostOriginalRoot(claimId));
         }
+    }
+
+    /// @dev A claim whose organization is revoked never transitions into Verified: it can be
+    ///      rejected (or a dispute upheld) but never approved or have a dispute dismissed.
+    function invariant_RevokedOrganizationNeverBecomesVerified() public view {
+        assertEq(handler.ghostRevokedOrganizationVerifications(), 0);
     }
 
     /// @dev The anchoring organization and metadata of a claim never change.

@@ -14,8 +14,10 @@ import {IParticipantRegistry} from "./interfaces/IParticipantRegistry.sol";
 /// @notice Anchors each claim's evidence root and enforces the two-stage verification
 ///         lifecycle declared in `IClaimRegistry` (spec F4, F5a, F5b, F7).
 /// @dev    Every action checks, in this order: the claim exists → its status allows the
-///         action → the caller is authorized → hash inputs are non-zero. Rights are read from
-///         the ParticipantRegistry at call time, so revocations take effect immediately.
+///         action → the caller is authorized → the claim's organization is still active (only
+///         on paths into Verified, and `requestProof`) → hash inputs are non-zero. Rights are read
+///         from the ParticipantRegistry at call time, so revocations take effect immediately:
+///         a revoked organization's claim can still be rejected, but never (re)verified.
 ///         Effects come next, then the action-specific event and finally `StatusChanged`.
 ///         The only external calls are view calls to the trusted ParticipantRegistry.
 contract ClaimRegistry is IClaimRegistry {
@@ -102,10 +104,13 @@ contract ClaimRegistry is IClaimRegistry {
     // ---------------------------------------------------------- auditor actions
 
     /// @inheritdoc IClaimRegistry
+    /// @dev A revoked organization can never answer (`submitProof` needs an active one), so the
+    ///      request would only park the claim; the auditor must reject it with `attestFinal`.
     function requestProof(bytes32 claimId, bytes32 requestHash) external {
         Claim storage claim = _loadExisting(claimId);
         _requireStatus(claimId, claim, ClaimStatus.InternallyVerified);
         _requireAssignedAuditor(claim);
+        _requireActiveOrganization(claim);
         _requireNonZero(requestHash);
 
         emit ProofRequested(claimId, msg.sender, requestHash);
@@ -113,10 +118,13 @@ contract ClaimRegistry is IClaimRegistry {
     }
 
     /// @inheritdoc IClaimRegistry
+    /// @dev Approval needs the claim's organization to be active: once the Registry Admin revokes
+    ///      it (e.g. for fraud), its pending claims can only be rejected, never verified.
     function attestFinal(bytes32 claimId, bool approve, bytes32 justificationHash) external {
         Claim storage claim = _loadExisting(claimId);
         _requireStatus(claimId, claim, ClaimStatus.InternallyVerified);
         _requireAssignedAuditor(claim);
+        if (approve) _requireActiveOrganization(claim);
         _requireNonZero(justificationHash);
 
         emit FinalAttestation(claimId, msg.sender, approve, justificationHash);
@@ -144,10 +152,13 @@ contract ClaimRegistry is IClaimRegistry {
     }
 
     /// @inheritdoc IClaimRegistry
+    /// @dev Dismissing returns the claim to Verified, so it needs the claim's organization to be
+    ///      active; a dispute against a revoked organization's claim can only be upheld.
     function resolveDispute(bytes32 claimId, bool upheld, bytes32 justificationHash) external {
         Claim storage claim = _loadExisting(claimId);
         _requireStatus(claimId, claim, ClaimStatus.Disputed);
         _requireAuthority();
+        if (!upheld) _requireActiveOrganization(claim);
         _requireNonZero(justificationHash);
 
         emit DisputeResolved(claimId, msg.sender, upheld, justificationHash);
@@ -215,6 +226,13 @@ contract ClaimRegistry is IClaimRegistry {
     function _requireAssignedAuditor(Claim storage claim) private view {
         if (msg.sender != claim.auditor) revert NotAssignedAuditor(msg.sender);
         if (!_participants.isAuditor(msg.sender)) revert NotActiveAuditor(msg.sender);
+    }
+
+    /// @dev Guards every path into Verified (and the proof request only the organization could
+    ///      answer). Revocation is final, so a revoked organization's claim can be rejected but
+    ///      never (re)verified. Anchoring and `submitProof` check the caller instead.
+    function _requireActiveOrganization(Claim storage claim) private view {
+        if (!_participants.isOrganization(claim.organization)) revert NotActiveOrganization(claim.organization);
     }
 
     function _requireAuthority() private view {

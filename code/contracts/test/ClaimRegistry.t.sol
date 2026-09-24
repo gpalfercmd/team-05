@@ -277,6 +277,15 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         assertEq(claim.auditor, disputant);
     }
 
+    /// @dev Revoking the organization does not block reassignment: the new auditor must still
+    ///      be able to reject the claim.
+    function test_AssignAuditor_StillWorksForRevokedOrganization() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+        _assign(CLAIM_ID, disputant);
+        assertEq(claims.getClaim(CLAIM_ID).auditor, disputant);
+    }
+
     // --------------------------------------------------------------- requestProof
 
     function test_RequestProof_MovesToProofRequested() public {
@@ -320,6 +329,30 @@ contract ClaimRegistryTest is ProofOfAidFixture {
     function test_RequestProof_RevertsOnZeroRequestHash() public {
         _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
+        vm.prank(auditor);
+        claims.requestProof(CLAIM_ID, bytes32(0));
+    }
+
+    /// @dev The organization could never answer, so the auditor must reject instead.
+    function test_RequestProof_RevokedOrganizationCannotBeAskedForProof() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        _requestProof(CLAIM_ID);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.InternallyVerified));
+    }
+
+    /// @dev Guard order: caller → organization active → non-zero inputs.
+    function test_RequestProof_GuardOrderForRevokedOrganization() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAssignedAuditor.selector, outsider));
+        vm.prank(outsider);
+        claims.requestProof(CLAIM_ID, bytes32(0));
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
         vm.prank(auditor);
         claims.requestProof(CLAIM_ID, bytes32(0));
     }
@@ -448,6 +481,14 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         claims.confirmProof(CLAIM_ID, true, bytes32(0));
     }
 
+    function test_ConfirmProof_VerifierOfRevokedOrganizationCannotConfirm() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.ProofSubmitted);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotOrganizationVerifier.selector, verifier2));
+        _confirmProof(CLAIM_ID, true);
+    }
+
     // ---------------------------------------------------------------- attestFinal
 
     function test_AttestFinal_ApproveMovesToVerified() public {
@@ -507,6 +548,56 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         claims.attestFinal(CLAIM_ID, true, bytes32(0));
     }
 
+    function test_AttestFinal_RevokedOrganizationCannotBeVerified() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        _attestFinal(CLAIM_ID, true);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.InternallyVerified));
+    }
+
+    function test_AttestFinal_RevokedOrganizationCanStillBeRejected() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+
+        vm.expectEmit(address(claims));
+        emit IClaimRegistry.FinalAttestation(CLAIM_ID, auditor, false, JUSTIFICATION);
+        vm.expectEmit(address(claims));
+        emit IClaimRegistry.StatusChanged(
+            CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified, IClaimRegistry.ClaimStatus.Rejected
+        );
+        _attestFinal(CLAIM_ID, false);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Rejected));
+    }
+
+    /// @dev Guard order: caller → organization active (approve only) → non-zero inputs.
+    function test_AttestFinal_GuardOrderForRevokedOrganization() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAssignedAuditor.selector, outsider));
+        vm.prank(outsider);
+        claims.attestFinal(CLAIM_ID, true, bytes32(0));
+
+        vm.startPrank(auditor);
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        claims.attestFinal(CLAIM_ID, true, bytes32(0));
+        vm.expectRevert(IClaimRegistry.ZeroValue.selector);
+        claims.attestFinal(CLAIM_ID, false, bytes32(0));
+        vm.stopPrank();
+    }
+
+    /// @dev Only the claim's own organization matters: revoking another one changes nothing.
+    function test_AttestFinal_OtherOrganizationRevokedDoesNotBlock() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
+        vm.prank(registryAdmin);
+        participants.revokeOrganization(org2);
+
+        _attestFinal(CLAIM_ID, true);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Verified));
+    }
+
     // ---------------------------------------------------------------- openDispute
 
     function test_OpenDispute_AnyAccreditedParticipant() public {
@@ -561,6 +652,15 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         claims.openDispute(CLAIM_ID, bytes32(0));
     }
 
+    /// @dev A Verified claim whose organization is revoked can still be disputed (and then upheld).
+    function test_OpenDispute_StillWorksForRevokedOrganization() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.Verified);
+        _revokeOrg();
+
+        _openDispute(CLAIM_ID);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Disputed));
+    }
+
     // ------------------------------------------------------------- resolveDispute
 
     function test_ResolveDispute_UpheldMovesToRejected() public {
@@ -606,6 +706,46 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
         vm.prank(authority);
         claims.resolveDispute(CLAIM_ID, true, bytes32(0));
+    }
+
+    function test_ResolveDispute_RevokedOrganizationCannotBeDismissed() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.Disputed);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        _resolveDispute(CLAIM_ID, false);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Disputed));
+    }
+
+    function test_ResolveDispute_RevokedOrganizationCanStillBeUpheld() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.Disputed);
+        _revokeOrg();
+
+        vm.expectEmit(address(claims));
+        emit IClaimRegistry.DisputeResolved(CLAIM_ID, authority, true, JUSTIFICATION);
+        vm.expectEmit(address(claims));
+        emit IClaimRegistry.StatusChanged(
+            CLAIM_ID, IClaimRegistry.ClaimStatus.Disputed, IClaimRegistry.ClaimStatus.Rejected
+        );
+        _resolveDispute(CLAIM_ID, true);
+        assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Rejected));
+    }
+
+    /// @dev Guard order: caller → organization active (dismiss only) → non-zero inputs.
+    function test_ResolveDispute_GuardOrderForRevokedOrganization() public {
+        _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.Disputed);
+        _revokeOrg();
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAccreditationAuthority.selector, outsider));
+        vm.prank(outsider);
+        claims.resolveDispute(CLAIM_ID, false, bytes32(0));
+
+        vm.startPrank(authority);
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        claims.resolveDispute(CLAIM_ID, false, bytes32(0));
+        vm.expectRevert(IClaimRegistry.ZeroValue.selector);
+        claims.resolveDispute(CLAIM_ID, true, bytes32(0));
+        vm.stopPrank();
     }
 
     // ----------------------------------------- separation of duties: role switching
@@ -667,6 +807,25 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotOrganizationVerifier.selector, auditor));
         vm.prank(auditor);
         claims.confirmProof(CLAIM_ID, true, JUSTIFICATION);
+    }
+
+    /// @dev Regression: the assigned auditor used to be able to verify a claim of an organization
+    ///      the Registry Admin had already revoked (e.g. for fraud), because only the auditor was
+    ///      checked. The claim can now only be rejected.
+    function test_Regression_RevokedOrganizationCanNeverBeVerified() public {
+        _anchor(CLAIM_ID);
+        _attestInternal(CLAIM_ID, true);
+        _assign(CLAIM_ID, auditor);
+        vm.prank(registryAdmin);
+        participants.revokeOrganization(org);
+
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
+        _attestFinal(CLAIM_ID, true);
+
+        _attestFinal(CLAIM_ID, false);
+        IClaimRegistry.Claim memory claim = claims.getClaim(CLAIM_ID);
+        assertEq(uint8(claim.status), uint8(IClaimRegistry.ClaimStatus.Rejected));
+        assertEq(claim.auditor, auditor);
     }
 
     // ------------------------------------------------ transition table, exhaustively
@@ -889,7 +1048,65 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Verified));
     }
 
+    /// @dev Exhaustive: once the claim's organization is revoked, no action by any known actor,
+    ///      in any status, with either decision (approve / accept / upheld), moves the claim into
+    ///      Verified; a call that reverts leaves the status unchanged.
+    function test_RevokedOrganizationClaimNeverBecomesVerified_AllActionsActorsAndDecisions() public {
+        address[11] memory actors = _actors();
+        uint256 checked;
+        for (uint8 s = 1; s <= LAST_STATUS; s++) {
+            IClaimRegistry.ClaimStatus status = IClaimRegistry.ClaimStatus(s);
+            bytes32 claimId = keccak256(abi.encode("revoked-org", s));
+            uint256 fresh = vm.snapshotState();
+            _driveTo(claimId, status);
+            _revokeOrg();
+            for (uint8 a = 0; a < ACTION_COUNT; a++) {
+                for (uint256 i = 0; i < actors.length; i++) {
+                    for (uint256 d = 0; d < 2; d++) {
+                        uint256 snapshot = vm.snapshotState();
+                        vm.prank(actors[i]);
+                        (bool ok,) = address(claims).call(_decisionCalldata(Action(a), claimId, d == 1));
+                        IClaimRegistry.ClaimStatus afterCall = claims.statusOf(claimId);
+                        if (status != IClaimRegistry.ClaimStatus.Verified) {
+                            assertTrue(afterCall != IClaimRegistry.ClaimStatus.Verified, "revoked org verified");
+                        }
+                        if (!ok) assertEq(uint8(afterCall), uint8(status), "revert changed status");
+                        vm.revertToStateAndDelete(snapshot);
+                        checked++;
+                    }
+                }
+            }
+            // Revocation is final, so each status starts again from the unrevoked fixture.
+            vm.revertToStateAndDelete(fresh);
+        }
+        assertEq(checked, uint256(LAST_STATUS) * ACTION_COUNT * actors.length * 2);
+    }
+
     // ----------------------------------------------------------------- helpers
+
+    function _revokeOrg() internal {
+        vm.prank(registryAdmin);
+        participants.revokeOrganization(org);
+    }
+
+    /// @dev `_calldata` with the action's boolean (approve / accept / upheld) set to `decision`.
+    function _decisionCalldata(Action action, bytes32 claimId, bool decision)
+        internal
+        view
+        returns (bytes memory data)
+    {
+        if (action == Action.AttestInternal) {
+            data = abi.encodeCall(IClaimRegistry.attestInternal, (claimId, decision, JUSTIFICATION));
+        } else if (action == Action.ConfirmProof) {
+            data = abi.encodeCall(IClaimRegistry.confirmProof, (claimId, decision, JUSTIFICATION));
+        } else if (action == Action.AttestFinal) {
+            data = abi.encodeCall(IClaimRegistry.attestFinal, (claimId, decision, JUSTIFICATION));
+        } else if (action == Action.ResolveDispute) {
+            data = abi.encodeCall(IClaimRegistry.resolveDispute, (claimId, decision, JUSTIFICATION));
+        } else {
+            data = _calldata(action, claimId);
+        }
+    }
 
     function _firstValidStatus(Action action) internal pure returns (IClaimRegistry.ClaimStatus status) {
         for (uint8 s = LAST_STATUS; s >= 1; s--) {
