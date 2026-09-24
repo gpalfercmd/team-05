@@ -9,7 +9,7 @@
 
 ## 🎯 Active Context — Proof of Aid Team 05
 - **Focus:** Trust, Evidence & Privacy. Plan approved 2026-09-24; build order contracts → backend → frontend.
-- **State (2026-09-24):** interfaces frozen in P1; next are P2 (contract logic), P3 (evidence pipeline) and P5 (frontend), which can run in parallel. Work on `develop`; `main` only receives merges decided by the team.
+- **State (2026-09-25, final):** all layers built and tested (contracts with P9 deposits live on Arbitrum Sepolia, backend + indexer, public page); RUNBOOK dry-run from a fresh clone; P5.3 role screens cut. Work is on `main`; pushing and the final form are team actions. Exact status and next step: `task.md` Context Snapshot.
 
 ## 🏗️ Decisions (Team 05)
 - **2026-09-24 - Contracts first, DESIGN.md deferred:** The contract state machine is the dependency of every other layer and the hardest to change once deployed, so it is built and frozen first. `DESIGN.md` (required by MASTER_PROMPT in `/spec` for UI projects) is written at the start of the frontend task (P5.1) instead. Conscious deviation, approved by the team.
@@ -41,9 +41,9 @@
 - `code/shared/abi/` — exported ABIs + `claim-status.json` (enum names). Backend and frontend import these, never the Solidity source.
 - `code/shared/poa_shared/` — Python Merkle reference + `Result` type (Ok/Err); the backend installs it as an editable dependency.
 - `code/shared/merkle-vectors.json` — cross-language test vectors, checked by `code/contracts/test/MerkleVectors.t.sol` and `code/shared/tests/`.
-- `code/frontend/src/data/` — claim data sources (`ChainClaimSource` via viem, `MockClaimSource`, P4 API slot); `src/evidence/` — manifest schema (zod) + pure verification; `src/utils/merkle.ts` — browser Merkle (third implementation of the recipe).
+- `code/frontend/src/data/` — claim data sources (`ChainClaimSource` via viem, `MockClaimSource`, `ApiClaimSource` for the P4 API); `src/evidence/` — manifest schema (zod) + pure verification; `src/utils/merkle.ts` — browser Merkle (third implementation of the recipe).
 - `code/shared/manifest.schema.json` — per-bundle file list format shared with the backend.
-- Planned: `code/backend/` (FastAPI: evidence pipeline P3 + indexer/public API P4), `code/shared/deployments/` (addresses per network, P2).
+- `code/backend/` — FastAPI evidence pipeline (P3) + `app/indexer/` chain indexer and `app/api/public.py` public API (P4); `code/shared/deployments/` — addresses and deploy block per network (P2), read by backend and frontend.
 
 ---
 
