@@ -160,7 +160,7 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 
 - [ ] **P8 — Security fixes from the logic review (2026-09-24 evening)**
   - [ ] P8.1 Revoked organization can no longer end `Verified`: `attestFinal(approve)`, `requestProof` and `resolveDispute(dismiss)` revert `NotActiveOrganization` when the claim's organization is revoked; reject, dispute and uphold stay allowed. Contract change ⇒ **Sepolia redeploy + new addresses** in `arbitrum-sepolia.json`, `.env.sepolia`, `.claude/launch.json`, SUBMISSION links. *Route: delegated (Opus).*
-  - [ ] P8.2 Private files use salted commitments `sha256(salt ‖ file)` as leaf input (salt 32 random bytes, encrypted at rest, only for authorized viewers), so nobody can confirm a guessed private file from its public fingerprint. Merkle recipe, vectors and contracts unchanged; manifest marks private entries as salted. *Route: delegated (Opus).*
+  - [ ] ~~P8.2~~ *Skipped (team decision, token budget): documented as a limitation instead.* Private files use salted commitments `sha256(salt ‖ file)` as leaf input (salt 32 random bytes, encrypted at rest, only for authorized viewers), so nobody can confirm a guessed private file from its public fingerprint. Merkle recipe, vectors and contracts unchanged; manifest marks private entries as salted. *Route: delegated (Opus).*
   - Documented as limitations (not fixed): identity/Sybil of attesters (motivates auditor-less beneficiary confirmation, Semaphore plan), claim-ID squatting, Authority as single point of trust, repeat disputes, metadata hash not checked publicly.
 
 - [ ] **P6 — Prove it works (S3)**
