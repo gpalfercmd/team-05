@@ -113,6 +113,10 @@ export function useEvidenceVerifier(claim: ClaimView, published: ReadonlyMap<num
     setOutcome(undefined);
   };
 
+  const clearOutcome = () => {
+    setOutcome(undefined);
+  };
+
   const checkFiles = async (files: readonly File[]) => {
     if (bundle === undefined || files.length === 0) {
       return;
@@ -140,5 +144,5 @@ export function useEvidenceVerifier(claim: ClaimView, published: ReadonlyMap<num
     setOutcome(undefined);
   };
 
-  return { bundle, rootIndex, mode, verified, loadedManifest, outcome, busy, selectBundle, selectMode, checkFiles, loadManifest };
+  return { bundle, rootIndex, mode, verified, loadedManifest, outcome, busy, selectBundle, selectMode, clearOutcome, checkFiles, loadManifest };
 }

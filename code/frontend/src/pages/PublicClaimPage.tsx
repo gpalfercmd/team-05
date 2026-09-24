@@ -115,9 +115,13 @@ export function PublicClaimPage() {
       break;
     case 'loading':
       content = (
-        <p className="card" role="status">
-          Reading this claim…
-        </p>
+        <div className="card skeleton" role="status" aria-busy="true" aria-label="Reading this claim">
+          <p className="skeleton__text">Reading this claim…</p>
+          <div className="skeleton__block skeleton__block--title" aria-hidden="true" />
+          <div className="skeleton__block" aria-hidden="true" />
+          <div className="skeleton__block" aria-hidden="true" />
+          <div className="skeleton__block skeleton__block--short" aria-hidden="true" />
+        </div>
       );
       break;
     case 'not-found':

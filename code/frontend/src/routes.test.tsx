@@ -47,11 +47,11 @@ function renderRoute(path: string, env: AppEnv = testEnv()) {
 describe('routes', () => {
   it('renders the dashboard with the shell, the demo notice and sample claims', async () => {
     renderRoute('/');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check aid claims without exposing people' })).toBeInTheDocument();
     expect(screen.getByText('Public visitor')).toBeInTheDocument();
     expect(screen.getByText('Demo data')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect wallet' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /^Claim / })).toHaveLength(MOCK_CLAIMS.length);
+    expect(screen.getAllByRole('link', { name: 'Open and verify' })).toHaveLength(MOCK_CLAIMS.length);
   });
 
   it('shows a demo claim on its public page with its status and fingerprints', async () => {
@@ -76,7 +76,7 @@ describe('routes', () => {
 
   it('hides the demo notice and demo claims once contract addresses are configured', async () => {
     renderRoute('/', chainEnv);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check aid claims without exposing people' })).toBeInTheDocument();
     expect(screen.queryByText('Demo data')).not.toBeInTheDocument();
     expect(screen.queryByText('Sample claims')).not.toBeInTheDocument();
   });

@@ -102,14 +102,17 @@ export function VerificationSummary({ claim }: VerificationSummaryProps) {
   return (
     <section className="card" aria-labelledby="summary-heading">
       <h2 id="summary-heading">Verification checks</h2>
-      <dl className="summary-grid">
-        {items.map((item) => (
-          <div key={item.term} className="summary-grid__item">
-            <dt>{item.term}</dt>
-            <dd>{item.description}</dd>
-          </div>
+      <ol className="steps steps--summary">
+        {items.map((item, index) => (
+          <li key={item.term} className="steps__item">
+            <span className="steps__number" aria-hidden="true">
+              {index + 1}
+            </span>
+            <p className="steps__title">{item.term}</p>
+            <p className="steps__text">{item.description}</p>
+          </li>
         ))}
-      </dl>
+      </ol>
     </section>
   );
 }

@@ -96,11 +96,11 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
       value: 'files',
       label:
         verified === undefined
-          ? 'Single files, using a file list (none that matches the blockchain is available for this bundle yet)'
-          : 'Single files, using the file list that matches the blockchain',
+          ? 'Single files (needs a file list — none that matches the blockchain is available for this bundle yet)'
+          : 'Single files (with matching file list)',
       disabled: verified === undefined,
     },
-    { value: 'bundle', label: 'A complete bundle: add every one of its files', disabled: false },
+    { value: 'bundle', label: 'A complete bundle (all files together)', disabled: false },
   ];
 
   return (
@@ -161,7 +161,20 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
       />
 
       <div className="verifier__results" aria-live="polite">
-        {busy ? <p>Computing fingerprints…</p> : verifier.outcome !== undefined && <OutcomeView outcome={verifier.outcome} />}
+        {busy ? (
+          <p role="status">
+            <span className="spinner" aria-hidden="true" /> Computing fingerprints…
+          </p>
+        ) : (
+          verifier.outcome !== undefined && (
+            <>
+              <OutcomeView outcome={verifier.outcome} />
+              <button type="button" className="btn btn-secondary" onClick={verifier.clearOutcome}>
+                Clear results
+              </button>
+            </>
+          )
+        )}
       </div>
 
       <details className="verifier__manifest">
