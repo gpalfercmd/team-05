@@ -74,7 +74,8 @@ contract MerkleVectorsTest is Test {
         bytes32 root;
         for (uint256 i = 0; i < caseCount; i++) {
             string memory casePath = string.concat(".cases[", vm.toString(i), "]");
-            if (keccak256(bytes(vm.parseJsonString(json, string.concat(casePath, ".name")))) == keccak256(bytes(name))) {
+            if (keccak256(bytes(vm.parseJsonString(json, string.concat(casePath, ".name")))) == keccak256(bytes(name)))
+            {
                 root = vm.parseJsonBytes32(json, string.concat(casePath, ".root"));
             }
         }

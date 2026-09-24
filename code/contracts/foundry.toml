@@ -24,6 +24,21 @@ remappings = [
 [fuzz]
 runs = 512
 
+[invariant]
+# 128 campaigns of 64 random handler calls each; reverts are expected (invalid actions).
+runs = 128
+depth = 64
+fail_on_revert = false
+
+# `--rpc-url arbitrum_sepolia` / `--rpc-url anvil`. Values come from `.env` (see `.env.example`).
+[rpc_endpoints]
+arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+anvil = "http://127.0.0.1:8545"
+
+# Optional source verification (`--verify`) with an Etherscan API v2 key.
+[etherscan]
+arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}", chain = 421614 }
+
 [soldeer]
 # Keep the stable remappings above instead of regenerating versioned ones.
 remappings_generate = false

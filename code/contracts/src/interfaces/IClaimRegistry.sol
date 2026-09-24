@@ -66,24 +66,16 @@ interface IClaimRegistry {
     event InternalAttestation(
         bytes32 indexed claimId, address indexed verifier, bool approved, bytes32 justificationHash
     );
-    event AuditorAssigned(
-        bytes32 indexed claimId, address indexed auditor, address indexed previousAuditor
-    );
+    event AuditorAssigned(bytes32 indexed claimId, address indexed auditor, address indexed previousAuditor);
     event ProofRequested(bytes32 indexed claimId, address indexed auditor, bytes32 requestHash);
     /// @param rootIndex Position of `supplementaryRoot` in `evidenceRoots(claimId)` (0 is the original).
     event ProofSubmitted(
         bytes32 indexed claimId, address indexed organization, bytes32 supplementaryRoot, uint256 rootIndex
     );
-    event ProofReviewed(
-        bytes32 indexed claimId, address indexed verifier, bool accepted, bytes32 justificationHash
-    );
-    event FinalAttestation(
-        bytes32 indexed claimId, address indexed auditor, bool approved, bytes32 justificationHash
-    );
+    event ProofReviewed(bytes32 indexed claimId, address indexed verifier, bool accepted, bytes32 justificationHash);
+    event FinalAttestation(bytes32 indexed claimId, address indexed auditor, bool approved, bytes32 justificationHash);
     event DisputeOpened(bytes32 indexed claimId, address indexed disputant, bytes32 counterEvidenceHash);
-    event DisputeResolved(
-        bytes32 indexed claimId, address indexed authority, bool upheld, bytes32 justificationHash
-    );
+    event DisputeResolved(bytes32 indexed claimId, address indexed authority, bool upheld, bytes32 justificationHash);
 
     // ---------------------------------------------------------------- errors
 

@@ -8,7 +8,7 @@
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
 * **Branching (updated 2026-09-24)**: Guillermo merged `develop` into `main` (`19b877f`) to keep one line of work; work now continues on `main`. Pushing stays a team decision; evaluation reads `main`, so every pushed commit on `main` is a candidate for the final SHA.
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: lane A → P2 contracts; lane B → P3 backend (must produce manifests per `code/shared/manifest.schema.json`); lane C (Guillermo) → verify P5.4 against P2 on anvil once P2 lands, then P5.3 role screens.
+* **Next step**: P2 done locally (`anvil.json`). A person with a funded **test-only** wallet runs the Arbitrum Sepolia deploy (`code/contracts/README.md`) and commits `arbitrum-sepolia.json`; lane B → P3 backend (manifests per `code/shared/manifest.schema.json`); lane C (Guillermo) → verify P5.4 against P2 on anvil (`VITE_*` from `anvil.json`), then P5.3 role screens.
 * **Frontend known gaps (for P5.3)**: role detection is a placeholder; no wrong-network warning; wagmi v3 renamed `useAccount` → `useConnection`; P4 `ApiClaimSource` is only a slot in `src/data/createClaimSource.ts`.
 * **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
 
@@ -104,26 +104,26 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
   - [x] P1.2 `IParticipantRegistry` / `IClaimRegistry`: roles, `ClaimStatus` enum (`Anchored, InternallyVerified, ProofRequested, ProofSubmitted, Verified, Rejected, Disputed`), function signatures and **all events**. Exported ABI = contract between lanes (`code/shared/abi/`, regenerate with `code/contracts/script/export-abi.sh`; enum names in `claim-status.json`). *Route: inline (carries the design decisions from this session).*
   - [x] P1.3 Merkle spec + shared test vectors (`code/shared/merkle-vectors.json`): fileHash = SHA-256(bytes); leaf = keccak256(fileHash); sorted leaves; sorted-pair keccak256 nodes; odd node promoted. Python reference `code/shared/poa_shared/merkle.py` (Result pattern) reused by the backend. *Route: delegated (writer trigger: 5+ non-trivial files).* Evidence: `uv run pytest -q` 14 passed; `forge test` 3 passed (every proof verifies with OZ `MerkleProof`, tamper case rejected; negative control confirmed the test can fail).
 
-- [ ] **P2 — Smart contracts (S2, Blockchain)** — F1, F4, F5a, F5b, F7
-  - [ ] P2.1 `ParticipantRegistry`: `ORGANIZATION`, `INTERNAL_VERIFIER`(→org), `AUDITOR`; Registry Admin vs Accreditation Authority as separate role admins; revocation.
-    - [ ] Enforce one participant role per wallet; reject zero addresses, duplicate accreditation, inactive organizations, and revoked participants.
-    - [ ] Track each verifier's organization and active verifier counts; `organizationOf()` returns zero for revoked verifiers.
-    - [ ] Configure OpenZeppelin `AccessControl` so Registry Admin cannot grant/revoke auditor roles and Accreditation Authority cannot manage organizations/verifiers.
-  - [ ] P2.2 `ClaimRegistry` state machine: anchor (org must have ≥2 active internal verifiers), internal attest, auditor assignment/reassignment by Authority, proof request, supplementary anchor, 2nd-verifier confirm/return, final attest, dispute (one open at a time), resolve.
-    - [ ] Store one immutable original evidence root plus append-only supplementary roots; never overwrite an existing root or claim.
-    - [ ] Enforce the exact transitions from `IClaimRegistry.ClaimStatus`; every other transition reverts with `InvalidStatus`.
-    - [ ] Enforce separation of duties: the checkpoint-1 verifier, supplementary-proof verifier, organization submitter, and assigned auditor must satisfy the interface rules.
-    - [ ] Require the auditor to be active and assigned for proof requests and final attestations; allow Authority reassignment only in the three permitted pre-final states.
-    - [ ] Allow at most one open dispute through the `Verified → Disputed` status; only the Accreditation Authority resolves it.
-    - [ ] Emit `StatusChanged` on every transition and the action-specific event for every state-changing action.
-  - [ ] P2.3 Foundry tests: every valid transition, every invalid one reverts, separation-of-duties checks, revoked wallets, role-admin isolation, fuzz on transition function.
-    - [ ] Cover both approval and rejection branches, proof acceptance and return, auditor reassignment, and dispute dismissal and upholding.
-    - [ ] Cover zero hashes, unknown/duplicate claims, wrong organization, wrong verifier, wrong auditor, revoked wallets, unauthorized administrators, and calls in invalid states.
-    - [ ] Assert custom errors, emitted events, stored claims, root indexes, timestamps, and the complete status sequence.
-  - [ ] P2.4 `script/Deploy.s.sol` + `script/DemoLifecycle.s.sol` (full lifecycle with 7 test wallets); deploy to Arbitrum Sepolia; record addresses + tx hashes.
-    - [ ] Add `.env.example` for RPC/deployer configuration and keep private keys, mnemonics, and API keys local only.
-    - [ ] Write `code/shared/deployments/arbitrum-sepolia.json` with chain ID, both addresses, deploy block, and lifecycle transaction hashes.
-    - [ ] Use test-only wallets for Registry Admin, Accreditation Authority, Organization, two Internal Verifiers, Auditor, and Disputant; document the demo's initial state and reset path.
+- [ ] **P2 — Smart contracts (S2, Blockchain)** — F1, F4, F5a, F5b, F7 · *code + tests + local demo done; only the Arbitrum Sepolia deploy is pending (needs a funded test wallet, run by a person)*
+  - [x] P2.1 `ParticipantRegistry`: `ORGANIZATION`, `INTERNAL_VERIFIER`(→org), `AUDITOR`; Registry Admin vs Accreditation Authority as separate role admins; revocation.
+    - [x] Enforce one participant role per wallet; reject zero addresses, duplicate accreditation, inactive organizations, and revoked participants.
+    - [x] Track each verifier's organization and active verifier counts; `organizationOf()` returns zero for revoked verifiers.
+    - [x] Configure OpenZeppelin `AccessControl` so Registry Admin cannot grant/revoke auditor roles and Accreditation Authority cannot manage organizations/verifiers.
+  - [x] P2.2 `ClaimRegistry` state machine: anchor (org must have ≥2 active internal verifiers), internal attest, auditor assignment/reassignment by Authority, proof request, supplementary anchor, 2nd-verifier confirm/return, final attest, dispute (one open at a time), resolve.
+    - [x] Store one immutable original evidence root plus append-only supplementary roots; never overwrite an existing root or claim.
+    - [x] Enforce the exact transitions from `IClaimRegistry.ClaimStatus`; every other transition reverts with `InvalidStatus`.
+    - [x] Enforce separation of duties: the checkpoint-1 verifier, supplementary-proof verifier, organization submitter, and assigned auditor must satisfy the interface rules.
+    - [x] Require the auditor to be active and assigned for proof requests and final attestations; allow Authority reassignment only in the three permitted pre-final states.
+    - [x] Allow at most one open dispute through the `Verified → Disputed` status; only the Accreditation Authority resolves it.
+    - [x] Emit `StatusChanged` on every transition and the action-specific event for every state-changing action.
+  - [x] P2.3 Foundry tests: every valid transition, every invalid one reverts, separation-of-duties checks, revoked wallets, role-admin isolation, fuzz on transition function. *Route: delegated (writer trigger).* Evidence (re-run by the orchestrator): `forge test` **117 passed** (MerkleVectors 3, ParticipantRegistry 45, ClaimRegistry 68, 6 invariants × 8,192 random calls); `forge coverage` **100% lines/branches/functions** on both contracts; `forge fmt --check` clean; mutation spot-checks (removing the four-eyes check or the permanent-identity rule) make tests fail.
+    - [x] Cover both approval and rejection branches, proof acceptance and return, auditor reassignment, and dispute dismissal and upholding.
+    - [x] Cover zero hashes, unknown/duplicate claims, wrong organization, wrong verifier, wrong auditor, revoked wallets, unauthorized administrators, and calls in invalid states.
+    - [x] Assert custom errors, emitted events, stored claims, root indexes, timestamps, and the complete status sequence.
+  - [ ] P2.4 `script/Deploy.s.sol` + `script/DemoLifecycle.s.sol` (full lifecycle with 7 test wallets); deploy to Arbitrum Sepolia; record addresses + tx hashes. **Anvil: done** — Deploy → DemoLifecycle → `record_transactions.py` ends with `statusOf` = 5 (Verified) and `evidenceRoots` = the frontend demo files' real roots; `code/shared/deployments/anvil.json` holds addresses, deploy block and 16 tx hashes. **Pending: Arbitrum Sepolia run** (commands in `code/contracts/README.md`).
+    - [x] Add `.env.example` for RPC/deployer configuration and keep private keys, mnemonics, and API keys local only.
+    - [ ] Write `code/shared/deployments/arbitrum-sepolia.json` with chain ID, both addresses, deploy block, and lifecycle transaction hashes. *(format done and proven with `anvil.json`; needs the Sepolia run)*
+    - [x] Use test-only wallets for Registry Admin, Accreditation Authority, Organization, two Internal Verifiers, Auditor, and Disputant; document the demo's initial state and reset path.
 
 - [ ] **P3 — Evidence pipeline (S2, Real-world connection)** — F2, F3
   - [ ] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
