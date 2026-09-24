@@ -1,0 +1,250 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Base typography, layout primitives, buttons and focus ring
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line-height);
+  color: var(--color-on-surface);
+  background: var(--color-neutral);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-heading-size);
+  font-weight: var(--text-heading-weight);
+  line-height: var(--text-heading-line-height);
+  letter-spacing: var(--text-heading-tracking);
+  color: var(--color-primary);
+}
+
+h2 {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  line-height: var(--text-subheading-line-height);
+}
+
+p {
+  margin: 0 0 var(--space-md);
+}
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 2px;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  font-weight: var(--text-mono-weight);
+}
+
+/* Multi-line messages (e.g. config errors) wrap rather than widen the page on mobile. */
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* One visible focus ring for every interactive element (DESIGN.md accessibility). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 10;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.container {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding-inline: var(--layout-gutter-mobile);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding-inline: var(--space-lg);
+  }
+}
+
+.app-main {
+  padding-block: var(--space-lg) var(--space-xl);
+}
+
+.page {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.page__lead {
+  margin: 0;
+  color: var(--color-on-neutral);
+}
+
+.card {
+  min-width: 0;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.muted {
+  color: var(--color-on-neutral);
+}
+
+.caption {
+  font-size: var(--text-caption-size);
+  font-weight: var(--text-caption-weight);
+  color: var(--color-on-neutral);
+}
+
+/* Label above value, one column: reads like an audit record on any width. */
+.detail-list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.detail-list dt {
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+  color: var(--color-on-neutral);
+}
+
+.detail-list dd {
+  min-width: 0;
+  margin: var(--space-xs) 0 0;
+}
+
+.plain-list {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 20px;
+  font: inherit;
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+  line-height: 1.2;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 85%, var(--color-on-surface));
+}
+
+.btn-secondary {
+  color: var(--color-accent);
+  background: transparent;
+  border-color: var(--color-accent);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* Icon-only buttons: same accent language, sized for touch. */
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: var(--space-xs);
+  color: var(--color-accent);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.icon-button:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* Motion only confirms state changes; honour the user's request for none at all. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,85 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Header, role banner and wallet controls
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.site-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  padding-block: var(--space-md);
+}
+
+/* Primary is reserved for brand and navigation (DESIGN.md). */
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.site-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.demo-notice {
+  padding: 2px 10px;
+  font-size: var(--text-caption-size);
+  font-weight: var(--text-label-weight);
+  color: var(--color-warning);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+}
+
+.connect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.connect__address {
+  color: var(--color-on-neutral);
+  white-space: nowrap;
+}
+
+.connect__error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-error);
+}
+
+.role-banner {
+  font-size: var(--text-label-size);
+  color: var(--color-on-neutral);
+  background: var(--color-neutral);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.role-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-md);
+  padding-block: var(--space-sm);
+}
+
+.role-banner strong {
+  font-weight: var(--text-label-weight);
+  color: var(--color-on-surface);
+}

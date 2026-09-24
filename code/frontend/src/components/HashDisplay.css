@@ -1,0 +1,23 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — HashDisplay styles (DESIGN.md `hash` component)
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.hash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+/* Never wrap mid-value: characters must line up for visual comparison, so a value that does not
+   fit scrolls inside its own box instead of pushing the page sideways. */
+.hash__value {
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--color-on-neutral);
+}

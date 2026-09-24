@@ -1,0 +1,60 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — StatusBadge styles (DESIGN.md `status-badge` + `status` tokens)
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--badge-fg);
+  background: var(--badge-bg);
+  border-radius: var(--radius-full);
+}
+
+.status-badge svg {
+  flex: none;
+}
+
+.status-badge[data-status='Anchored'] {
+  --badge-bg: var(--status-anchored-bg);
+  --badge-fg: var(--status-anchored-fg);
+}
+
+.status-badge[data-status='InternallyVerified'] {
+  --badge-bg: var(--status-internally-verified-bg);
+  --badge-fg: var(--status-internally-verified-fg);
+}
+
+.status-badge[data-status='ProofRequested'] {
+  --badge-bg: var(--status-proof-requested-bg);
+  --badge-fg: var(--status-proof-requested-fg);
+}
+
+.status-badge[data-status='ProofSubmitted'] {
+  --badge-bg: var(--status-proof-submitted-bg);
+  --badge-fg: var(--status-proof-submitted-fg);
+}
+
+.status-badge[data-status='Verified'] {
+  --badge-bg: var(--status-verified-bg);
+  --badge-fg: var(--status-verified-fg);
+}
+
+.status-badge[data-status='Rejected'] {
+  --badge-bg: var(--status-rejected-bg);
+  --badge-fg: var(--status-rejected-fg);
+}
+
+.status-badge[data-status='Disputed'] {
+  --badge-bg: var(--status-disputed-bg);
+  --badge-fg: var(--status-disputed-fg);
+}

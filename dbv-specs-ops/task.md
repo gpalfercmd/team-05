@@ -8,7 +8,8 @@
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
 * **Branching**: all work happens on `develop`; nothing is merged or pushed to `main` until the team decides. Evaluation only reads `main`, so `develop` must be merged into `main` before the checkpoint/final SHA is submitted (team decision, not automatic).
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: lane A → P2 contracts; lane B → P3 backend; lane C (Guillermo) → P5.2 scaffold `code/frontend/` (React + Vite + wagmi/viem) following `DESIGN.md`.
+* **Next step**: lane A → P2 contracts; lane B → P3 backend; lane C (Guillermo) → P5.4 public claim page first (jury-facing, only needs P2), then P5.3 role screens.
+* **Frontend known gaps (for P5.3/P5.4)**: role detection is a placeholder; no wrong-network warning; contract reads stubbed (return `unknown`, validate with zod); wagmi v3 renamed `useAccount` → `useConnection`.
 * **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
 
 ## Team Setup — what each phase needs
@@ -115,7 +116,7 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 
 - [ ] **P5 — Frontend (S2, UX)** · *owner: Guillermo*
   - [x] P5.1 Create `dbv-specs-ops/docs/DESIGN.md` (tokens, typography, components; status colours per `ClaimStatus`). Evidence: every text colour pair checked ≥ 4.5:1 (WCAG AA), light and dark. *Route: inline (single file).*
-  - [ ] P5.2 `code/frontend/` React + Vite + TS + wagmi/viem, modular (`components/ hooks/ context/ utils/`).
+  - [x] P5.2 `code/frontend/` React + Vite + TS + wagmi/viem, modular (`components/ hooks/ context/ utils/`). React 19.3, wagmi 3.7 + viem 2.56, react-router 7.18, zod 4, Vite 8, TypeScript 6 (strict flags), Vitest, oxlint. Mock mode when contract addresses are empty; ABIs imported from `code/shared/abi`; DESIGN.md tokens as CSS variables; StatusBadge + HashDisplay; contract error → plain-English map covering every ABI error. *Route: delegated (writer trigger).* Evidence: typecheck 0 errors, `npm test` 67 passed, oxlint 0 findings, `npm run build` OK (~200 kB gzip total).
   - [ ] P5.3 Views: organization (create claim, upload, anchor, answer proof requests), internal verifier (attest / confirm proof), auditor (review, request proof, final attest), authority (accredit, assign, resolve disputes), admin (register org + verifiers).
   - [ ] P5.4 Public claim page (no wallet): timeline read **directly from the contract** via viem (P4 API optional), attestations, **browser-side** re-hash of a public file / bundle vs onchain root → match / mismatch.
 

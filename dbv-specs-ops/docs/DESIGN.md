@@ -86,7 +86,7 @@ layout:
 components:
   button-primary:   { backgroundColor: "{colors.accent}", textColor: "{colors.on-primary}", typography: "{typography.label}", rounded: "{rounded.md}", padding: "10px 20px" }
   button-secondary: { backgroundColor: "transparent", textColor: "{colors.accent}", border: "1.5px solid {colors.accent}", rounded: "{rounded.md}", padding: "10px 20px" }
-  button-danger:    { backgroundColor: "{colors.error}", textColor: "#FFFFFF", rounded: "{rounded.md}", padding: "10px 20px" }
+  button-danger:    { backgroundColor: "{colors.error}", textColor: "{colors.on-primary}", rounded: "{rounded.md}", padding: "10px 20px" }
   card:             { backgroundColor: "{colors.surface}", rounded: "{rounded.lg}", padding: "{spacing.lg}", shadow: "{shadow.card}" }
   input:            { backgroundColor: "{colors.surface}", textColor: "{colors.on-surface}", border: "1px solid {colors.border}", rounded: "{rounded.md}", padding: "10px 12px" }
   input-focus:      { border: "2px solid {colors.accent}" }
@@ -176,6 +176,7 @@ Cards: surface, radius lg, soft shadow, padding lg. Forms: one column, label abo
 ## Design Decisions
 
 - **2026-09-24 — Audit-record look, not crypto look:** the audience (donors, auditors, NGOs) must trust the page without web3 knowledge; hence plain language first, technical values second.
+- **2026-09-24 — Danger button text uses `on-primary`:** white on the light error red (6.6:1) but dark text on the brighter dark-mode red (6.5:1); white on `#F97066` fails WCAG AA.
 - **2026-09-24 — Private files are shown, not hidden:** the public page lists private files with a lock and their fingerprint, so visitors see that evidence exists even when they cannot see it.
 
 ---
