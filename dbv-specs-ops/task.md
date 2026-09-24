@@ -8,7 +8,7 @@
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
 * **Branching**: all work happens on `develop`; nothing is merged or pushed to `main` until the team decides. Evaluation only reads `main`, so `develop` must be merged into `main` before the checkpoint/final SHA is submitted (team decision, not automatic).
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: P1 done (interfaces frozen). `/build` P2 — implement `ParticipantRegistry` + `ClaimRegistry` against the frozen interfaces.
+* **Next step**: lane A → P2 contracts; lane B → P3 backend; lane C (Guillermo) → P5.2 scaffold `code/frontend/` (React + Vite + wagmi/viem) following `DESIGN.md`.
 * **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
 
 ## Team Setup — what each phase needs
@@ -53,14 +53,22 @@
 | Contract addresses | From `code/shared/deployments/*.json` (P2 output) + the deploy block to start indexing from. |
 | Env | `RPC_URL`, `CLAIM_REGISTRY_ADDRESS`, `PARTICIPANT_REGISTRY_ADDRESS`, `START_BLOCK`. |
 | Checks | `uv run pytest` against anvil: every event stored exactly once (idempotent on tx hash + log index), survives restart; public endpoints return timeline without login. |
-| Depends on | P2 contracts compiled (for anvil tests) and deployed (for the real demo). |
+| Depends on | **P3 finished** (same app, claims table, file metadata) and P2 contracts (anvil tests + real deploy). Done jointly by all three. |
 
 ### Suggested split for 3 people
 | Lane | Phases | Starts |
 | --- | --- | --- |
-| A — Blockchain | P2 → deploy → help P4 | now |
-| B — Backend | P3 → P4 | now (uses `code/shared`) |
-| C — Frontend + docs | P5 (`DESIGN.md` first, UI against `code/shared/abi/`), then P6 RUNBOOK | now with mocked data; wire to real contracts after P2 deploy |
+Agreed 2026-09-24:
+
+| Lane | Owner | Phases | Starts |
+| --- | --- | --- | --- |
+| A — Blockchain | teammate | P2 → deploy + demo script (P2.4) | now |
+| B — Backend | teammate | P3 | now (uses `code/shared`) |
+| C — Frontend | **Guillermo** | P5 (`DESIGN.md` first, UI against `code/shared/abi/`) | now, with mock data / local anvil; wired to real contracts after P2 deploy |
+| Joint | all three | P4, **after P3 is finished** (shares the P3 backend app) | after P3 |
+| Docs | first person free | P6 RUNBOOK + P7 SUBMISSION | when a lane finishes |
+
+**Timing rule (deadline Friday 14:00):** the public page (P5.4) must work **without P4**: it reads the timeline directly from the contract with viem (`getLogs` + `statusOf` + `evidenceRoots`). The P4 API is an optional speed-up, switched on only if it lands in time. Keep joint P4 minimal: indexer + timeline endpoints + public file proofs.
 
 ## Task Checklist
 
@@ -100,16 +108,16 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
   - [ ] P3.4 Wallet login (EIP-191 signed nonce → session) and role-based decryption: org, its internal verifiers, and the claim's assigned auditor only.
   - [ ] P3.5 pytest: EXIF removed, ciphertext unreadable without key, hash = sanitized bytes, access matrix, Merkle vectors.
 
-- [ ] **P4 — Indexer + public API (S2)** — F6
+- [ ] **P4 — Indexer + public API (S2)** — F6 · *joint task, starts after P3; optional for the demo (see timing rule)*
   - [ ] P4.1 web3.py event indexer (poll from deploy block) → `claim_events` table; idempotent on (tx hash, log index).
   - [ ] P4.2 Public endpoints: claim, timeline, attestations, public files, Merkle proof per file. Status is also read live from the contract.
   - [ ] P4.3 pytest against Anvil for the indexer.
 
-- [ ] **P5 — Frontend (S2, UX)**
-  - [ ] P5.1 Create `dbv-specs-ops/docs/DESIGN.md` (tokens, typography, components; status colours per `ClaimStatus`).
+- [ ] **P5 — Frontend (S2, UX)** · *owner: Guillermo*
+  - [x] P5.1 Create `dbv-specs-ops/docs/DESIGN.md` (tokens, typography, components; status colours per `ClaimStatus`). Evidence: every text colour pair checked ≥ 4.5:1 (WCAG AA), light and dark. *Route: inline (single file).*
   - [ ] P5.2 `code/frontend/` React + Vite + TS + wagmi/viem, modular (`components/ hooks/ context/ utils/`).
   - [ ] P5.3 Views: organization (create claim, upload, anchor, answer proof requests), internal verifier (attest / confirm proof), auditor (review, request proof, final attest), authority (accredit, assign, resolve disputes), admin (register org + verifiers).
-  - [ ] P5.4 Public claim page (no wallet): timeline, attestations, **browser-side** re-hash of a public file / bundle vs onchain root → match / mismatch.
+  - [ ] P5.4 Public claim page (no wallet): timeline read **directly from the contract** via viem (P4 API optional), attestations, **browser-side** re-hash of a public file / bundle vs onchain root → match / mismatch.
 
 - [ ] **P6 — Prove it works (S3)**
   - [ ] P6.1 Seed script (7 test wallets, 1 org with 2 internal verifiers, 1 auditor, sample claim with EXIF-laden demo photo — no real personal data).
