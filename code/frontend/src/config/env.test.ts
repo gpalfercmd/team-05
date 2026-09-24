@@ -17,7 +17,14 @@ describe('parseEnv', () => {
   it('uses demo data on anvil when nothing is configured', () => {
     expect(parseEnv({})).toEqual({
       ok: true,
-      value: { chainKey: 'anvil', chain: anvil, rpcUrl: undefined, apiUrl: undefined, contracts: { mode: 'mock' } },
+      value: {
+        chainKey: 'anvil',
+        chain: anvil,
+        rpcUrl: undefined,
+        apiUrl: undefined,
+        logChunkSize: 50_000n,
+        contracts: { mode: 'mock' },
+      },
     });
   });
 
@@ -47,7 +54,13 @@ describe('parseEnv', () => {
         chain: arbitrumSepolia,
         rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
         apiUrl: 'http://localhost:8000',
-        contracts: { mode: 'chain', claimRegistry: CLAIM_REGISTRY, participantRegistry: PARTICIPANT_REGISTRY },
+        logChunkSize: 50_000n,
+        contracts: {
+          mode: 'chain',
+          claimRegistry: CLAIM_REGISTRY,
+          participantRegistry: PARTICIPANT_REGISTRY,
+          deployBlock: 0n,
+        },
       },
     });
   });
@@ -94,6 +107,28 @@ describe('parseEnv', () => {
     expect(parseEnv({ VITE_API_URL: 'not a url' })).toMatchObject({
       ok: false,
       error: expect.stringContaining('VITE_API_URL'),
+    });
+  });
+
+  it('reads the deploy block and the log chunk size used for the claim history', () => {
+    const result = parseEnv({
+      VITE_CLAIM_REGISTRY_ADDRESS: CLAIM_REGISTRY,
+      VITE_PARTICIPANT_REGISTRY_ADDRESS: PARTICIPANT_REGISTRY,
+      VITE_DEPLOY_BLOCK: ' 187654321 ',
+      VITE_LOG_CHUNK_SIZE: '10000',
+    });
+    expect(result).toMatchObject({ ok: true, value: { logChunkSize: 10_000n, contracts: { deployBlock: 187_654_321n } } });
+  });
+
+  it('rejects a deploy block or chunk size that is not a whole number of blocks', () => {
+    expect(parseEnv({ VITE_DEPLOY_BLOCK: '-1' })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('VITE_DEPLOY_BLOCK'),
+    });
+    expect(parseEnv({ VITE_DEPLOY_BLOCK: '12.5' }).ok).toBe(false);
+    expect(parseEnv({ VITE_LOG_CHUNK_SIZE: '0' })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('VITE_LOG_CHUNK_SIZE'),
     });
   });
 

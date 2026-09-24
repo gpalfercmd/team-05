@@ -1,0 +1,32 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Verification summary styles: one tile per check, reflowing to one column
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.summary-grid__item {
+  min-width: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.summary-grid__item dt {
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+  color: var(--color-on-neutral);
+}
+
+.summary-grid__item dd {
+  margin: var(--space-xs) 0 0;
+  overflow-wrap: anywhere;
+}

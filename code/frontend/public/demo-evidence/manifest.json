@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28",
+  "rootIndex": 0,
+  "files": [
+    {
+      "sha256": "0xffbce320bdf4a4da57257e33b2cca258a0913db00739bcf5483ff7fec1cfe4ae",
+      "public": true,
+      "name": "receipt-001.txt"
+    },
+    {
+      "sha256": "0x023aa03b9371b1bd2dc8ccfc566cf2e3172b02c41e8277086999e4dc8cf64b7b",
+      "public": true,
+      "name": "invoice-7781.txt"
+    },
+    {
+      "sha256": "0xc03c502b806a9e54b6fdcc794c77ad179886e6f03fb149a3818d9a1e0171161f",
+      "public": false
+    }
+  ]
+}

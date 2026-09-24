@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28",
+  "rootIndex": 1,
+  "files": [
+    {
+      "sha256": "0xfd3b79d09baf0274ad626c572f8203e7078996e0061acf5fdcb4aed9f81f75e5",
+      "public": true,
+      "name": "delivery-summary.csv"
+    },
+    {
+      "sha256": "0x852db872441d6066d358db8b22ee64901be1145af6196d4e68dff68755dc05e3",
+      "public": true,
+      "name": "stock-count.txt"
+    }
+  ]
+}

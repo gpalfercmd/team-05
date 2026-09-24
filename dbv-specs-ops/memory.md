@@ -23,6 +23,8 @@
 - **2026-09-24 - Python environments:** each Python package (`code/shared`, `code/backend`) has its own uv-managed `.venv/` + `uv.lock`, instead of MASTER_PROMPT's single root `venv/` (implementation lives under `code/`).
 - **2026-09-24 - Lanes and P4 timing:** Guillermo owns the frontend (P5); P4 is done jointly after P3, since it shares the P3 backend app. Because P4 may land late (deadline Friday 14:00), the public page reads events and status directly from the contract with viem; the indexer API is an optional speed-up. The integrity proof shown to the jury must not depend on the backend DB.
 - **2026-09-24 - pnpm for the frontend:** team preference. Pinned via `packageManager: pnpm@12.6.0` so Corepack gives everyone the same version; `pnpm-lock.yaml` is the only lockfile. pnpm's strict `node_modules` also catches imports of undeclared packages that npm would silently allow.
+- **2026-09-24 - Evidence manifest (P5.4, shared contract with P3/P4):** the chain stores only one Merkle root per bundle, so checking a single file needs the bundle's list of file fingerprints. That list (`code/shared/manifest.schema.json`: `version`, `claimId`, `rootIndex`, `files[{sha256, public, name?}]`) is **untrusted**: the page recomputes its root and accepts it only if it equals `evidenceRoots(claimId)[rootIndex]` onchain. Private entries carry no `name` (file names can contain personal data); duplicate `sha256` values are forbidden (enforced in code, not expressible in JSON Schema). The backend must emit manifests in exactly this format.
+- **2026-09-24 - Public page reads the chain itself:** timeline = raw `eth_getLogs` filtered by `topics [null, claimId]` (every IClaimRegistry event has `claimId` as its first indexed topic), from `VITE_DEPLOY_BLOCK`, chunked with automatic halving on RPC range errors; status and roots always from contract views, never from logs alone. A typed viem ABI subset has a drift test against `code/shared/abi/IClaimRegistry.json`.
 - **2026-09-24 - Accepted risk: dispute spam.** Only accredited wallets can dispute, and a claim holds at most one open dispute. No stake/bond mechanism in the prototype.
 
 ## 🗺️ Code Map (Team 05)
@@ -30,7 +32,9 @@
 - `code/shared/abi/` — exported ABIs + `claim-status.json` (enum names). Backend and frontend import these, never the Solidity source.
 - `code/shared/poa_shared/` — Python Merkle reference + `Result` type (Ok/Err); the backend installs it as an editable dependency.
 - `code/shared/merkle-vectors.json` — cross-language test vectors, checked by `code/contracts/test/MerkleVectors.t.sol` and `code/shared/tests/`.
-- Planned: `code/backend/` (FastAPI: evidence pipeline P3 + indexer/public API P4), `code/frontend/` (React + Vite, P5), `code/shared/deployments/` (addresses per network, P2).
+- `code/frontend/src/data/` — claim data sources (`ChainClaimSource` via viem, `MockClaimSource`, P4 API slot); `src/evidence/` — manifest schema (zod) + pure verification; `src/utils/merkle.ts` — browser Merkle (third implementation of the recipe).
+- `code/shared/manifest.schema.json` — per-bundle file list format shared with the backend.
+- Planned: `code/backend/` (FastAPI: evidence pipeline P3 + indexer/public API P4), `code/shared/deployments/` (addresses per network, P2).
 
 ---
 

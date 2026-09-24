@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:proof-of-aid:evidence-manifest:v1",
+  "title": "Proof of Aid evidence manifest (version 1)",
+  "description": "File list of ONE evidence bundle of a claim: the SHA-256 fingerprint of every file whose Merkle root was anchored onchain as evidenceRoots(claimId)[rootIndex]. The manifest is untrusted: a verifier recomputes the Merkle root from the sha256 values (recipe in code/shared/merkle-vectors.json) and accepts the list only if it equals the onchain root. Privacy rule: a file name is allowed ONLY when public is true, because names of private files can contain personal data (for example a beneficiary's name); private files are listed by fingerprint alone. Two entries with the same sha256 are invalid (the Merkle recipe rejects duplicate files); JSON Schema cannot express that uniqueness, so validators must also check it in code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "claimId", "rootIndex", "files"],
+  "properties": {
+    "version": {
+      "description": "Format version of this manifest. Only 1 exists.",
+      "const": 1
+    },
+    "claimId": {
+      "description": "Onchain claim ID (bytes32, keccak256 of the backend's claim UUID) this bundle belongs to.",
+      "$ref": "#/$defs/bytes32"
+    },
+    "rootIndex": {
+      "description": "Position of this bundle in evidenceRoots(claimId): 0 is the original evidence, n is supplementary proof bundle n.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "files": {
+      "description": "Every file of the bundle, in any order (the Merkle recipe sorts leaves). Must not be empty; sha256 values must be unique.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [{ "$ref": "#/$defs/publicFile" }, { "$ref": "#/$defs/privateFile" }]
+      }
+    }
+  },
+  "$defs": {
+    "bytes32": {
+      "description": "32 bytes as a 0x-prefixed hex string (64 hex digits).",
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "publicFile": {
+      "description": "A file anyone may download and check. It may carry its file name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "public"],
+      "properties": {
+        "sha256": {
+          "description": "SHA-256 of the file's exact (sanitized) bytes.",
+          "$ref": "#/$defs/bytes32"
+        },
+        "public": { "const": true },
+        "name": {
+          "description": "File name shown to visitors. A plain name, without folders.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^/\\\\]+$"
+        }
+      }
+    },
+    "privateFile": {
+      "description": "A file that stays private to protect beneficiaries. Only its fingerprint is published: no name, no other field.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "public"],
+      "properties": {
+        "sha256": {
+          "description": "SHA-256 of the file's exact (sanitized) bytes.",
+          "$ref": "#/$defs/bytes32"
+        },
+        "public": { "const": false }
+      }
+    }
+  }
+}

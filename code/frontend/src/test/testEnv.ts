@@ -17,6 +17,7 @@ export function testEnv(overrides: Partial<AppEnv> = {}): AppEnv {
     chain: anvil,
     rpcUrl: undefined,
     apiUrl: undefined,
+    logChunkSize: 50_000n,
     contracts: { mode: 'mock' },
     ...overrides,
   };

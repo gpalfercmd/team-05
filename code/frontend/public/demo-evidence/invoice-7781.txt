@@ -1,0 +1,5 @@
+DEMO INVOICE 7781 - made-up data for the Proof of Aid demo
+Issuer: Example Logistics Ltd
+Service: transport of 500 food kits from warehouse A to district X
+Amount: 1,200.00 EUR
+Date: 2026-09-11

@@ -1,0 +1,72 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Timeline styles (DESIGN.md "Timeline"): vertical, oldest first
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.timeline {
+  display: grid;
+  gap: var(--space-lg);
+  margin: var(--space-md) 0;
+  padding: 0 0 0 var(--space-lg);
+  list-style: none;
+  border-left: 2px solid var(--color-border);
+}
+
+.timeline__entry {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-xs);
+  min-width: 0;
+  animation: timeline-appear var(--duration-panel) var(--ease-standard);
+}
+
+/* Marker on the line; decorative, the order of the list carries the meaning. */
+.timeline__entry::before {
+  content: '';
+  position: absolute;
+  top: 0.45em;
+  left: calc(-1 * var(--space-lg) - 7px);
+  width: 12px;
+  height: 12px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-secondary);
+  border-radius: var(--radius-full);
+}
+
+.timeline__sentence {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.timeline__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-xs);
+  margin: 0;
+}
+
+.timeline__tx {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.source-note {
+  margin: 0;
+}
+
+@keyframes timeline-appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

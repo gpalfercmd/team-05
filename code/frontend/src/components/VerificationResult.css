@@ -1,0 +1,101 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — VerificationResult styles (DESIGN.md "VerificationResult")
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+/* The state colour tints the panel, its border and its icon; all text stays in on-surface, so
+   every state keeps AA contrast in light and dark mode without new colour pairs. */
+.verification-result {
+  --result-color: var(--color-secondary);
+  display: grid;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-md);
+  background: color-mix(in srgb, var(--result-color) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--result-color) 40%, var(--color-surface));
+  border-left: 6px solid var(--result-color);
+  border-radius: var(--radius-md);
+  animation: verification-reveal var(--duration-panel) var(--ease-standard);
+}
+
+.verification-result[data-state='match'] {
+  --result-color: var(--color-success);
+}
+
+.verification-result[data-state='mismatch'] {
+  --result-color: var(--color-error);
+}
+
+.verification-result[data-state='manifest-mismatch'] {
+  --result-color: var(--color-warning);
+}
+
+.verification-result__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.verification-result__icon {
+  flex: none;
+  color: var(--result-color);
+}
+
+.verification-result__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-sm);
+  min-width: 0;
+  margin: 0;
+}
+
+.verification-result__label {
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-heading-weight);
+}
+
+.verification-result__subject {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-on-neutral);
+}
+
+.verification-result__headline {
+  margin: 0;
+  font-weight: var(--text-subheading-weight);
+}
+
+.verification-result__detail {
+  margin: 0;
+}
+
+.verification-result__hashes {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+.verification-result__hashes dt {
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+}
+
+.verification-result__hashes dd {
+  min-width: 0;
+  margin: 0;
+}
+
+@keyframes verification-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -27,6 +27,7 @@ const chainEnv = testEnv({
     mode: 'chain',
     claimRegistry: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
     participantRegistry: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+    deployBlock: 0n,
   },
 });
 
@@ -56,9 +57,11 @@ describe('routes', () => {
   it('shows a demo claim on its public page with its status and fingerprints', async () => {
     renderRoute(`/claims/${verifiedClaim.claimId}`);
     expect(await screen.findByRole('heading', { level: 1, name: 'Claim record' })).toBeInTheDocument();
-    expect(screen.getByText('Verified')).toBeInTheDocument();
+    // The claim loads through the data source (react-query), so wait for it.
+    const status = await screen.findByRole('heading', { level: 2, name: 'Current status' });
+    expect(status.closest('section')).toHaveTextContent('Verified');
     expect(screen.getByTitle(verifiedClaim.claimId)).toBeInTheDocument();
-    expect(screen.getByText('Original evidence')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Original evidence' })).toBeInTheDocument();
   });
 
   it('explains a malformed claim ID instead of looking it up', async () => {

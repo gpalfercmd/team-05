@@ -1,0 +1,5 @@
+DEMO WAREHOUSE STOCK COUNT - made-up data for the Proof of Aid demo
+Warehouse A, counted on 2026-09-13
+Food kits before distribution: 520
+Food kits after distribution: 20
+Difference: 500 (matches delivery-summary.csv)

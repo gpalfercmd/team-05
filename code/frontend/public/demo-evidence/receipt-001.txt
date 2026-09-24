@@ -1,0 +1,6 @@
+DEMO RECEIPT 001 - made-up data for the Proof of Aid demo
+Supplier: Example Foods Co-op
+Items: 500 food kits (rice, lentils, cooking oil)
+Total: 7,500.00 EUR
+Delivered to: District X distribution point
+Date: 2026-09-10

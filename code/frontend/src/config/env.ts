@@ -13,7 +13,13 @@ import { CHAIN_KEYS, SUPPORTED_CHAINS, type ChainKey } from './chains';
 /** Without contract addresses the app runs on demo data, so the UI can be built before P2 deploys. */
 export type ContractsConfig =
   | { mode: 'mock' }
-  | { mode: 'chain'; claimRegistry: Address; participantRegistry: Address };
+  | {
+      mode: 'chain';
+      claimRegistry: Address;
+      participantRegistry: Address;
+      /** Block the registry was deployed in: the public page reads its events from here on. */
+      deployBlock: bigint;
+    };
 
 export type AppEnv = {
   chainKey: ChainKey;
@@ -22,6 +28,8 @@ export type AppEnv = {
   rpcUrl: string | undefined;
   /** Optional P4 indexer API; the public page must work without it. */
   apiUrl: string | undefined;
+  /** Blocks per eth_getLogs call; the page halves it on its own when the RPC refuses a range. */
+  logChunkSize: bigint;
   contracts: ContractsConfig;
 };
 
@@ -42,12 +50,28 @@ const addressSchema = z.preprocess(
     .optional(),
 );
 
+/** Whole numbers only: a block number or count written in the .env file. */
+const blockCountSchema = (minimum: bigint, fallback: bigint) =>
+  z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .trim()
+      .regex(/^\d+$/, 'Expected a whole number of blocks')
+      .transform((value) => BigInt(value))
+      .refine((value) => value >= minimum, { message: `Expected at least ${minimum}` })
+      .default(fallback),
+  );
+
 const rawEnvSchema = z.object({
   VITE_CHAIN: z.preprocess(emptyToUndefined, z.enum(CHAIN_KEYS).default('anvil')),
   VITE_RPC_URL: httpUrlSchema,
   VITE_CLAIM_REGISTRY_ADDRESS: addressSchema,
   VITE_PARTICIPANT_REGISTRY_ADDRESS: addressSchema,
   VITE_API_URL: httpUrlSchema,
+  // P2's deployment JSON records `deployBlock`; 0 works everywhere but scans the whole chain.
+  VITE_DEPLOY_BLOCK: blockCountSchema(0n, 0n),
+  VITE_LOG_CHUNK_SIZE: blockCountSchema(1n, 50_000n),
 });
 
 /** Validates raw environment values; pure so tests can feed it any object. */
@@ -66,13 +90,14 @@ export function parseEnv(raw: unknown): Result<AppEnv, string> {
   }
   const contracts: ContractsConfig =
     claimRegistry !== undefined && participantRegistry !== undefined
-      ? { mode: 'chain', claimRegistry, participantRegistry }
+      ? { mode: 'chain', claimRegistry, participantRegistry, deployBlock: parsed.data.VITE_DEPLOY_BLOCK }
       : { mode: 'mock' };
   const result = ok({
     chainKey: parsed.data.VITE_CHAIN,
     chain: SUPPORTED_CHAINS[parsed.data.VITE_CHAIN],
     rpcUrl: parsed.data.VITE_RPC_URL,
     apiUrl: parsed.data.VITE_API_URL,
+    logChunkSize: parsed.data.VITE_LOG_CHUNK_SIZE,
     contracts,
   });
   return result;

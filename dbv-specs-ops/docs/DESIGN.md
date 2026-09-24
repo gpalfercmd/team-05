@@ -178,6 +178,10 @@ Cards: surface, radius lg, soft shadow, padding lg. Forms: one column, label abo
 - **2026-09-24 — Audit-record look, not crypto look:** the audience (donors, auditors, NGOs) must trust the page without web3 knowledge; hence plain language first, technical values second.
 - **2026-09-24 — Danger button text uses `on-primary`:** white on the light error red (6.6:1) but dark text on the brighter dark-mode red (6.5:1); white on `#F97066` fails WCAG AA.
 - **2026-09-24 — Private files are shown, not hidden:** the public page lists private files with a lock and their fingerprint, so visitors see that evidence exists even when they cannot see it.
+- **2026-09-24 — FileDropZone (P5.4):** drag-and-drop area that is also a real file input (keyboard reachable, 2px accent focus ring). Copy states that files never leave the browser, because that is what makes a donor willing to drop evidence in.
+- **2026-09-24 — Verification summary tiles (P5.4):** checkpoint 1, assigned auditor, final attestation and dispute as four small cards above the timeline, so the answer to "who checked this?" is visible before reading the story.
+- **2026-09-24 — "File list altered" state (P5.4):** a fourth VerificationResult state in warning colours (`alert-triangle`) when a manifest's recomputed root differs from the onchain root. It is distinct from a file mismatch: the list, not the file, was tampered with.
+- **2026-09-24 — Notices (P5.4):** "Read directly from the blockchain" / "Demo data" notes use caption text on the neutral surface with an icon; explorer links are hidden in demo mode because demo transaction hashes are not real.
 
 ---
 
