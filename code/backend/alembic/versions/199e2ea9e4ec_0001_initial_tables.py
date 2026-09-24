@@ -48,7 +48,7 @@ def upgrade() -> None:
     sa.Column('metadata_hash_hex', sa.String(length=66), nullable=False),
     sa.Column('created_by', sa.String(length=42), nullable=False),
     sa.Column('auditor_address', sa.String(length=42), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_claims_claim_id_hex'), 'claims', ['claim_id_hex'], unique=True)
@@ -71,7 +71,7 @@ def upgrade() -> None:
     sa.Column('size_bytes', sa.Integer(), nullable=False),
     sa.Column('is_public', sa.Boolean(), nullable=False),
     sa.Column('uploaded_by', sa.String(length=42), nullable=False),
-    sa.Column('uploaded_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('uploaded_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.ForeignKeyConstraint(['claim_id'], ['claims.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('claim_id', 'sha256_hex', name='uq_file_per_claim')

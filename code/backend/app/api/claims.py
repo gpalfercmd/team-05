@@ -191,6 +191,10 @@ async def upload_evidence(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "only the owning organization uploads here")
     if not files:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "at least one file is required")
+    # Lock the claim row first so two concurrent uploads cannot both read the same
+    # highest bundle and both pass the seal/gap check; the lock is released at
+    # commit. (SQLite ignores FOR UPDATE but serializes writers, so tests still pass.)
+    db.execute(select(Claim).where(Claim.id == claim.id).with_for_update())
     # Checked before any processing: a sealed or gapped bundle fails fast and
     # writes nothing to storage.
     target = check_bundle_target(highest_root_index(_files_of(db, claim)), root_index)
