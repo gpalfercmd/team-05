@@ -1,0 +1,4 @@
+{
+  "_comment": "IClaimRegistry.ClaimStatus enum order (the ABI encodes it as uint8). Frozen in P1; must match src/interfaces/IClaimRegistry.sol.",
+  "values": ["None", "Anchored", "InternallyVerified", "ProofRequested", "ProofSubmitted", "Verified", "Rejected", "Disputed"]
+}

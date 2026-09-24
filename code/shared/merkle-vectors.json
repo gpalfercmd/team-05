@@ -1,0 +1,272 @@
+{
+  "spec": {
+    "file_hash": "SHA-256 over the raw file bytes (32 bytes).",
+    "leaf": "keccak256(file_hash) over the 32 raw bytes (Ethereum keccak256, not NIST SHA3-256).",
+    "node": "keccak256(min(a, b) || max(a, b)): sorted-pair (commutative) hashing of a 64-byte input.",
+    "ordering": "Leaves sorted ascending as raw bytes before building; input order never changes the root.",
+    "odd": "An odd last node at any level is promoted unchanged; its proof gets no sibling at that level.",
+    "single": "The root of a single leaf is that leaf and its proof is empty.",
+    "invalid": "Empty input, duplicate files and hashes that are not 32 bytes are rejected.",
+    "proof": "Sibling hashes bottom-up; verifies with OpenZeppelin MerkleProof.verify(proof, root, leaf).",
+    "encoding": "Byte values are lowercase 0x-prefixed hex strings.",
+    "shape": "case_count and cases[i].file_count are helper counts for Foundry's JSON parser; cases[i].files keep the input order (unsorted); tamper reuses the proof and root of tamper.case for a file with one flipped byte and must not verify."
+  },
+  "case_count": 6,
+  "cases": [
+    {
+      "name": "one_file",
+      "root": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+      "file_count": 1,
+      "files": [
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": []
+        }
+      ]
+    },
+    {
+      "name": "two_files",
+      "root": "0xc1722427593475141e1fe58935d776bd944f4d41178ee128d6d6d006b5aae5ca",
+      "file_count": 2,
+      "files": [
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": [
+            "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4"
+          ]
+        },
+        {
+          "name": "invoice-7781.txt",
+          "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+          "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+          "leaf": "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+          "proof": [
+            "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "three_files",
+      "root": "0x782bc26076a2f963b32bee26ce28a35afbd0df9cf8e1cc4c7f60afc1b8d3423d",
+      "file_count": 3,
+      "files": [
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": [
+            "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+            "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7"
+          ]
+        },
+        {
+          "name": "invoice-7781.txt",
+          "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+          "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+          "leaf": "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+          "proof": [
+            "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+            "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7"
+          ]
+        },
+        {
+          "name": "photo-warehouse.jpg",
+          "content_hex": "0xffd8ffe000104a46494600000102030405060708090a0b0c0d0e0fffd9",
+          "sha256": "0x496b38252e1d328c325cbfde329732b1ed6226cbf353afb75e027b172b16f99d",
+          "leaf": "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+          "proof": [
+            "0xc1722427593475141e1fe58935d776bd944f4d41178ee128d6d6d006b5aae5ca"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "four_files",
+      "root": "0xbdcadd9a1d14f5df7fdb4742efe3c31c34bebe42941c32a7b31829d6985303db",
+      "file_count": 4,
+      "files": [
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": [
+            "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+            "0x4482c81713c1b62f583a116053940cacdf1a43f388fdc8e4e425cf57b88203fa"
+          ]
+        },
+        {
+          "name": "invoice-7781.txt",
+          "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+          "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+          "leaf": "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+          "proof": [
+            "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+            "0x4482c81713c1b62f583a116053940cacdf1a43f388fdc8e4e425cf57b88203fa"
+          ]
+        },
+        {
+          "name": "photo-warehouse.jpg",
+          "content_hex": "0xffd8ffe000104a46494600000102030405060708090a0b0c0d0e0fffd9",
+          "sha256": "0x496b38252e1d328c325cbfde329732b1ed6226cbf353afb75e027b172b16f99d",
+          "leaf": "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+          "proof": [
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77",
+            "0xc1722427593475141e1fe58935d776bd944f4d41178ee128d6d6d006b5aae5ca"
+          ]
+        },
+        {
+          "name": "delivery-note-12.txt",
+          "content_hex": "0x64656c69766572792d6e6f74652d31323a2034302077617465722074616e6b732c2063616d702042",
+          "sha256": "0x59de1ae63583a38a989e2f753897d1c245fe18771d1aa63ddcfa1634b8e76535",
+          "leaf": "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77",
+          "proof": [
+            "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+            "0xc1722427593475141e1fe58935d776bd944f4d41178ee128d6d6d006b5aae5ca"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "five_files",
+      "root": "0xf2bf3ec68fde99f13efb099a114a713168e215790bab171cac9a44f691dea24e",
+      "file_count": 5,
+      "files": [
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": [
+            "0x9a5ed9514065885db8eeb30aa36d2379e3b904430c3fbc8bd96aeaf414b049b3",
+            "0xa9a9236f4879132fe166aa003808b30f6bf8284940de4f110e15d6dc698ae657",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "invoice-7781.txt",
+          "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+          "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+          "leaf": "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+          "proof": [
+            "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+            "0xcb467a215bbc0ca6f1cf1baa4618ab04d1d9b534899c4e1d65c1a33ab287b09a",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "photo-warehouse.jpg",
+          "content_hex": "0xffd8ffe000104a46494600000102030405060708090a0b0c0d0e0fffd9",
+          "sha256": "0x496b38252e1d328c325cbfde329732b1ed6226cbf353afb75e027b172b16f99d",
+          "leaf": "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+          "proof": [
+            "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+            "0xcb467a215bbc0ca6f1cf1baa4618ab04d1d9b534899c4e1d65c1a33ab287b09a",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "delivery-note-12.txt",
+          "content_hex": "0x64656c69766572792d6e6f74652d31323a2034302077617465722074616e6b732c2063616d702042",
+          "sha256": "0x59de1ae63583a38a989e2f753897d1c245fe18771d1aa63ddcfa1634b8e76535",
+          "leaf": "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77",
+          "proof": [
+            "0xb6357720ae78a35526b5c6b76c91243d10ff437e79e525ee5291100f1ef13548"
+          ]
+        },
+        {
+          "name": "stock-report-q3.csv",
+          "content_hex": "0x6974656d2c7174790a626c616e6b6574732c313230300a68796769656e65206b6974732c3335300a",
+          "sha256": "0x07dfffd049f9d667e754be71263b2ef360f9f9269f30708b272e4406cec8e17d",
+          "leaf": "0x9a5ed9514065885db8eeb30aa36d2379e3b904430c3fbc8bd96aeaf414b049b3",
+          "proof": [
+            "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+            "0xa9a9236f4879132fe166aa003808b30f6bf8284940de4f110e15d6dc698ae657",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "order_independence",
+      "root": "0xf2bf3ec68fde99f13efb099a114a713168e215790bab171cac9a44f691dea24e",
+      "file_count": 5,
+      "files": [
+        {
+          "name": "stock-report-q3.csv",
+          "content_hex": "0x6974656d2c7174790a626c616e6b6574732c313230300a68796769656e65206b6974732c3335300a",
+          "sha256": "0x07dfffd049f9d667e754be71263b2ef360f9f9269f30708b272e4406cec8e17d",
+          "leaf": "0x9a5ed9514065885db8eeb30aa36d2379e3b904430c3fbc8bd96aeaf414b049b3",
+          "proof": [
+            "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+            "0xa9a9236f4879132fe166aa003808b30f6bf8284940de4f110e15d6dc698ae657",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "photo-warehouse.jpg",
+          "content_hex": "0xffd8ffe000104a46494600000102030405060708090a0b0c0d0e0fffd9",
+          "sha256": "0x496b38252e1d328c325cbfde329732b1ed6226cbf353afb75e027b172b16f99d",
+          "leaf": "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+          "proof": [
+            "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+            "0xcb467a215bbc0ca6f1cf1baa4618ab04d1d9b534899c4e1d65c1a33ab287b09a",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "receipt-001.txt",
+          "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+          "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+          "leaf": "0xac3dea141d02b3dfef34d36fd7a06bdbc11718fa6d4b61611a2781f9f5fab7ae",
+          "proof": [
+            "0x9a5ed9514065885db8eeb30aa36d2379e3b904430c3fbc8bd96aeaf414b049b3",
+            "0xa9a9236f4879132fe166aa003808b30f6bf8284940de4f110e15d6dc698ae657",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        },
+        {
+          "name": "delivery-note-12.txt",
+          "content_hex": "0x64656c69766572792d6e6f74652d31323a2034302077617465722074616e6b732c2063616d702042",
+          "sha256": "0x59de1ae63583a38a989e2f753897d1c245fe18771d1aa63ddcfa1634b8e76535",
+          "leaf": "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77",
+          "proof": [
+            "0xb6357720ae78a35526b5c6b76c91243d10ff437e79e525ee5291100f1ef13548"
+          ]
+        },
+        {
+          "name": "invoice-7781.txt",
+          "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+          "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+          "leaf": "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+          "proof": [
+            "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7",
+            "0xcb467a215bbc0ca6f1cf1baa4618ab04d1d9b534899c4e1d65c1a33ab287b09a",
+            "0xf5d1f3432ea3dd495407e4cc0618e616e2aabdbe082917482bf4bb028bc5fa77"
+          ]
+        }
+      ]
+    }
+  ],
+  "tamper": {
+    "case": "three_files",
+    "file_index": 0,
+    "tampered_content_hex": "0x736563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+    "tampered_sha256": "0xc6149acaad3c47097a28b3944b7439a721a5ed54db76389e726de1f5019df9b1",
+    "tampered_leaf": "0x00aec9a60aca883896cedd5447628597396262900037e341eb0d713e098815c0",
+    "proof": [
+      "0xbea9062b21a0699d4d98f7caba1319ed8dbba07ff60c46a588ccccee1eb4d8d4",
+      "0xd76d90768f524a9953bea817d8623d89bd7d8e3096fe987b32181b59cc8d48d7"
+    ],
+    "root": "0x782bc26076a2f963b32bee26ce28a35afbd0df9cf8e1cc4c7f60afc1b8d3423d",
+    "must_verify": false
+  }
+}

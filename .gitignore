@@ -31,3 +31,6 @@ code/contracts/broadcast/**/dry-run/
 
 # Evidence storage (encrypted demo files, never committed)
 code/backend/storage/
+
+# Soldeer downloads (restored with `forge soldeer install` from soldeer.lock)
+code/contracts/dependencies/

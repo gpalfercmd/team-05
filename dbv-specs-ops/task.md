@@ -8,7 +8,8 @@
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
 * **Branching**: all work happens on `develop`; nothing is merged or pushed to `main` until the team decides. Evaluation only reads `main`, so `develop` must be merged into `main` before the checkpoint/final SHA is submitted (team decision, not automatic).
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: continue on `develop` with `/build` P1 (freeze the contract interface) → P2.
+* **Next step**: P1 done (interfaces frozen). `/build` P2 — implement `ParticipantRegistry` + `ClaimRegistry` against the frozen interfaces.
+* **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
 
 ## Task Checklist
 
@@ -31,9 +32,9 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
   - [ ] P0.4b **Team decision:** merge `develop` into `main`, push, and send Team ID + SHA through the checkpoint form.
 
 - [ ] **P1 — Contract interface freeze (S2, blocks every other lane)**
-  - [ ] P1.1 `code/contracts/` Foundry project with OpenZeppelin (pinned version).
-  - [ ] P1.2 `IParticipantRegistry` / `IClaimRegistry`: roles, `ClaimStatus` enum (`Anchored, InternallyVerified, ProofRequested, ProofSubmitted, Verified, Rejected, Disputed`), function signatures and **all events**. Exported ABI = contract between lanes.
-  - [ ] P1.3 Merkle spec + shared test vectors (`code/shared/merkle-vectors.json`): leaf = SHA-256(file bytes); tree = OpenZeppelin standard (keccak256, sorted pairs); odd leaf promoted.
+  - [x] P1.1 `code/contracts/` Foundry project (solc 0.8.30, EVM cancun); OpenZeppelin 5.7.0 + forge-std 1.16.2 via Soldeer, pinned in `soldeer.lock`. *Route: inline.*
+  - [x] P1.2 `IParticipantRegistry` / `IClaimRegistry`: roles, `ClaimStatus` enum (`Anchored, InternallyVerified, ProofRequested, ProofSubmitted, Verified, Rejected, Disputed`), function signatures and **all events**. Exported ABI = contract between lanes (`code/shared/abi/`, regenerate with `code/contracts/script/export-abi.sh`; enum names in `claim-status.json`). *Route: inline (carries the design decisions from this session).*
+  - [x] P1.3 Merkle spec + shared test vectors (`code/shared/merkle-vectors.json`): fileHash = SHA-256(bytes); leaf = keccak256(fileHash); sorted leaves; sorted-pair keccak256 nodes; odd node promoted. Python reference `code/shared/poa_shared/merkle.py` (Result pattern) reused by the backend. *Route: delegated (writer trigger: 5+ non-trivial files).* Evidence: `uv run pytest -q` 14 passed; `forge test` 3 passed (every proof verifies with OZ `MerkleProof`, tamper case rejected; negative control confirmed the test can fail).
 
 - [ ] **P2 — Smart contracts (S2, Blockchain)** — F1, F4, F5a, F5b, F7
   - [ ] P2.1 `ParticipantRegistry`: `ORGANIZATION`, `INTERNAL_VERIFIER`(→org), `AUDITOR`; Registry Admin vs Accreditation Authority as separate role admins; revocation.
