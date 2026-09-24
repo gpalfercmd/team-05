@@ -10,8 +10,8 @@
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
 * **Plan for Friday 25 Sep (final deadline 14:00)**, in this order:
   1. **P6 RUNBOOK first** (`docs/RUNBOOK.md` is still the template): requirements, setup per layer (contracts / backend + Postgres + `alembic upgrade head` + indexer / frontend with pnpm), `.env` files, run + validate commands (`forge test`, `uv run pytest`, `pnpm test`), demo table on the **live Sepolia deployment** (public page → ✅ match → edit one byte → ❌ mismatch → onchain timeline), Real/Mock/Simulated dependency table, reset steps. Then **dry-run it from a fresh clone** (P6.3). Target: done by ~11:00.
-  2. Run `alembic upgrade head` once against the Docker Postgres (P4 migration only tested on SQLite so far).
-  3. Screenshots of the live public page (match / mismatch) → SUBMISSION validation evidence.
+  2. ~~Postgres migration check~~ **done Thu evening**: migrations 0001–0003 on Docker Postgres 16, indexer against Sepolia (22 events, idempotent), public API OK. Machines with a local Postgres on 5432: set `POSTGRES_PORT=5433` and `:5433` in `DATABASE_URL`.
+  3. ~~Live public page check~~ **done Thu evening** against the Sepolia contract (bundle match, one-bit mismatch, single file with manifest; results in SUBMISSION). Still to add: 2 screenshots in `docs/evidence/`. Known gap: in chain mode the page says "no file list has been published"; manifests only via the upload box (P4.4 could serve them).
   4. P7: re-measure effort split, AI-usage table, README "Before submitting" checklist, secret scan, push `main`, send Team ID + SHA through the final form **before 14:00**.
   5. Only if time remains: P4.4 `ApiClaimSource`, then a thin P5.3 role screen. Both are optional (cut line).
 * **Frontend known gaps (for P5.3)**: role detection is a placeholder; no wrong-network warning; wagmi v3 renamed `useAccount` → `useConnection`; P4 `ApiClaimSource` is only a slot in `src/data/createClaimSource.ts`.
