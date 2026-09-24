@@ -20,11 +20,12 @@ Expected events: the demo sends 16 registry transactions (2 contract
 creations + 14 lifecycle calls). The creations emit no interface event (only
 OpenZeppelin bookkeeping). The 5 accreditation calls emit one interface event
 each; `assignAuditor` emits one and the other 8 claim actions emit two (the
-action event + `StatusChanged`): 5 + 1 + 16 = 22 interface events. The raw
-logs of both contracts are 34: those 22 plus 12 OpenZeppelin `AccessControl`
-logs (5 `RoleAdminChanged` + 2 `RoleGranted` in the ParticipantRegistry
+action event + `StatusChanged`): 5 + 1 + 16 = 22 interface events, plus the P9
+escrow events (3 `DepositLocked`, 2 `Credited`): 27. The raw logs of both
+contracts are 39: those 27 plus 12 OpenZeppelin `AccessControl` logs
+(5 `RoleAdminChanged` + 2 `RoleGranted` in the ParticipantRegistry
 constructor, 5 `RoleGranted` for the accredited participants). The indexer
-requests only the 16 interface topics, so those 12 never reach it.
+requests only the 20 interface topics, so those 12 never reach it.
 
 Skipped automatically when `anvil`/`forge` are not on PATH or the Soldeer
 dependencies are not installed.
@@ -71,7 +72,11 @@ CAST: Final[dict[str, str]] = {
     "auditor": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
     "disputant": "0x976ea74026e726554db657fa54763abd0c3a0aa9",
 }
-INTERFACE_EVENTS: Final[int] = 22
+# 17 claim events (9 story steps) + 5 participant events, plus the P9 escrow events of the
+# story: 3 DepositLocked (anchor, approval, dispute bond) and 2 Credited (the dismissal's split).
+MONEY_EVENTS: Final[dict[str, int]] = {"DepositLocked": 3, "Credited": 2}
+CLAIM_TIMELINE_EVENTS: Final[int] = 17 + sum(MONEY_EVENTS.values())
+INTERFACE_EVENTS: Final[int] = CLAIM_TIMELINE_EVENTS + 5
 # OpenZeppelin AccessControl logs that are not part of the frozen interface.
 ACCESS_CONTROL_LOGS: Final[dict[str, int]] = {
     "RoleAdminChanged(bytes32,bytes32,bytes32)": 5,
@@ -179,6 +184,8 @@ def test_indexer_against_anvil_demo(anvil_url: str, tmp_path: Path) -> None:
 
     assert _scalar(database, "SELECT count(*) FROM chain_events") == INTERFACE_EVENTS
     assert _scalar(database, "SELECT count(*) FROM chain_events WHERE claim_id_hex IS NULL") == 5
+    for name, expected in MONEY_EVENTS.items():
+        assert _scalar(database, f"SELECT count(*) FROM chain_events WHERE event_name = '{name}'") == expected
     status, roots, auditor, verifier, organization = sqlite3.connect(database).execute(
         "SELECT status, evidence_roots, auditor, internal_verifier, organization "
         "FROM chain_claims WHERE claim_id_hex = ?",
@@ -239,8 +246,12 @@ def test_indexer_against_anvil_demo(anvil_url: str, tmp_path: Path) -> None:
         status_body = client.get("/public/indexer/status").json()
     finally:
         engine.dispose()
-    assert len(timeline["events"]) == 17
+    assert len(timeline["events"]) == CLAIM_TIMELINE_EVENTS
     assert timeline["events"][-1]["args"]["to"] == "Verified"
+    # Wei amounts are not on the public whitelist: money events publish only who and which claim.
+    credited = [event for event in timeline["events"] if event["event"] == "Credited"]
+    assert {event["args"]["account"] for event in credited} == {CAST["organization"], CAST["auditor"]}
+    assert all("amount" not in event["args"] for event in credited)
     assert status_body["lag"] == 0
 
     assert (DEPLOYMENTS_DIR / "anvil.json").read_bytes() == anvil_before

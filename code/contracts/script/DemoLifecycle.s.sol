@@ -20,6 +20,11 @@ import {IParticipantRegistry} from "../src/interfaces/IParticipantRegistry.sol";
 ///           anchor → attestInternal(approve) → assignAuditor → requestProof → submitProof
 ///           → confirmProof(accept, verifier 2) → attestFinal(approve) → openDispute
 ///           → resolveDispute(dismissed). The claim ends Verified.
+///         Deposits (P9, read from the deployed registry): the organization sends
+///         `anchorDeposit()`, the auditor `auditorDeposit()` with its approval and the disputant
+///         `disputeBond()`. The dismissal credits half the bond to the organization and half to
+///         the auditor (withdrawable with `withdraw()`); the rest stays escrowed until the claim
+///         is settled, 60 days later.
 ///         The claim anchors the frontend's real demo evidence, so the public claim page shows a
 ///         genuine match when it recomputes the Merkle roots of the demo files.
 ///         Env: `MNEMONIC` (required); `USE_EXISTING=true` reuses
@@ -34,9 +39,9 @@ contract DemoLifecycle is DeploymentFile {
     ///      also the `claimId` inside `code/frontend/public/demo-evidence/manifest*.json`.
     bytes32 internal constant DEFAULT_CLAIM_ID = 0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28;
 
-    /// @dev Actors below this balance get a top-up from the deployer (6 × 0.002 ETH at most).
-    uint256 internal constant MIN_ACTOR_BALANCE = 0.001 ether;
-    uint256 internal constant ACTOR_TOP_UP = 0.002 ether;
+    /// @dev Gas allowance per actor. An actor below its deposit plus this allowance gets a
+    ///      top-up of its deposit plus twice the allowance from the deployer.
+    uint256 internal constant GAS_ALLOWANCE = 0.001 ether;
 
     uint256 internal constant ACTOR_COUNT = 7;
     uint256 internal constant DEPLOYER = 0;
@@ -72,9 +77,9 @@ contract DemoLifecycle is DeploymentFile {
 
     function run() external {
         _loadActors();
-        _fundActors();
         Deployment memory deployment = vm.envOr("USE_EXISTING", false) ? _existingDeployment() : _deployFresh();
         _logDeployment(deployment);
+        _fundActors(IClaimRegistry(deployment.claimRegistry));
 
         _accreditCast(IParticipantRegistry(deployment.participantRegistry));
         bytes32 claimId = _claimId();
@@ -95,15 +100,24 @@ contract DemoLifecycle is DeploymentFile {
         }
     }
 
-    function _fundActors() internal {
+    /// @dev Funds every actor for its gas and the deposit its story step locks.
+    function _fundActors(IClaimRegistry claims) internal {
         for (uint256 i = 1; i < ACTOR_COUNT; i++) {
-            if (wallets[i].balance < MIN_ACTOR_BALANCE) {
+            uint256 deposit = _depositOf(claims, i);
+            if (wallets[i].balance < deposit + GAS_ALLOWANCE) {
                 vm.broadcast(keys[DEPLOYER]);
-                (bool sent,) = payable(wallets[i]).call{value: ACTOR_TOP_UP}("");
+                (bool sent,) = payable(wallets[i]).call{value: deposit + 2 * GAS_ALLOWANCE}("");
                 require(sent, "top-up failed");
                 console2.log("funded actor", i, wallets[i]);
             }
         }
+    }
+
+    /// @dev Wei actor `index` locks in the story (0 for actors that only sign).
+    function _depositOf(IClaimRegistry claims, uint256 index) internal view returns (uint256 deposit) {
+        if (index == ORGANIZATION) deposit = claims.anchorDeposit();
+        else if (index == AUDITOR) deposit = claims.auditorDeposit();
+        else if (index == DISPUTANT) deposit = claims.disputeBond();
     }
 
     function _deployFresh() internal returns (Deployment memory deployment) {
@@ -157,8 +171,13 @@ contract DemoLifecycle is DeploymentFile {
     // ------------------------------------------------------------------ story
 
     function _runStory(IClaimRegistry claims, bytes32 claimId) internal {
+        // Read before broadcasting, so no view call sits between `vm.broadcast` and its call.
+        uint256 anchorDeposit = claims.anchorDeposit();
+        uint256 auditorDeposit = claims.auditorDeposit();
+        uint256 disputeBond = claims.disputeBond();
+
         vm.broadcast(keys[ORGANIZATION]);
-        claims.anchorClaim(claimId, EVIDENCE_ROOT, METADATA_HASH);
+        claims.anchorClaim{value: anchorDeposit}(claimId, EVIDENCE_ROOT, METADATA_HASH);
         _logStep("1. organization anchors the evidence root", claims, claimId);
 
         vm.broadcast(keys[VERIFIER_1]);
@@ -182,11 +201,11 @@ contract DemoLifecycle is DeploymentFile {
         _logStep("6. verifier 2 confirms the proof (four eyes)", claims, claimId);
 
         vm.broadcast(keys[AUDITOR]);
-        claims.attestFinal(claimId, true, FINAL_JUSTIFICATION);
+        claims.attestFinal{value: auditorDeposit}(claimId, true, FINAL_JUSTIFICATION);
         _logStep("7. auditor approves (checkpoint 2, final)", claims, claimId);
 
         vm.broadcast(keys[DISPUTANT]);
-        claims.openDispute(claimId, COUNTER_EVIDENCE);
+        claims.openDispute{value: disputeBond}(claimId, COUNTER_EVIDENCE);
         _logStep("8. disputant opens a dispute", claims, claimId);
 
         vm.broadcast(keys[AUTHORITY]);
@@ -195,6 +214,8 @@ contract DemoLifecycle is DeploymentFile {
 
         require(claims.statusOf(claimId) == IClaimRegistry.ClaimStatus.Verified, "demo claim did not end Verified");
         console2.log("evidence roots onchain:", claims.evidenceRoots(claimId).length);
+        console2.log("escrow locked (wei):", claims.lockedOf(claimId));
+        console2.log("dispute window closes at:", claims.disputeWindowClosesAt(claimId));
     }
 
     function _logStep(string memory step, IClaimRegistry claims, bytes32 claimId) internal view {

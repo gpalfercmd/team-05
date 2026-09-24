@@ -153,9 +153,10 @@ def test_catalog_topics_cover_exactly_the_interface_events() -> None:
     names = {spec.name for spec in events.participant_events.values()} | {
         spec.name for spec in events.claim_events.values()
     }
-    assert len(events.topics) == 16
+    assert len(events.topics) == 20
     assert "RoleGranted" not in names
     assert {"StatusChanged", "ClaimAnchored", "AuditorRevoked"} <= names
+    assert {"DepositLocked", "Credited", "Withdrawn", "ClaimSettled"} <= names
 
 
 def test_deployment_file_parsing(tmp_path: Path) -> None:
@@ -232,6 +233,29 @@ def test_revocation_and_reassignment_update_projections(engine: Engine) -> None:
         assert auditor is not None and auditor.active is False and auditor.role == "auditor"
         assert verifier is not None and verifier.active is False
         assert verifier.organization == CAST["org"]
+
+
+def test_escrow_events_are_stored_without_touching_projections(engine: Engine) -> None:
+    """P9 money events are timeline-only; `Withdrawn` belongs to no claim."""
+    chain = _story_chain()
+    _sync(engine, chain)
+    amount = 10**16 + 10**14  # above 2**53: must survive the JSON column exactly
+    chain.tx(
+        claim_event("ClaimSettled", claimId=CLAIM_ID, settler=CAST["outsider"]),
+        claim_event("Credited", claimId=CLAIM_ID, account=CAST["org"], amount=amount),
+        claim_event("DepositLocked", claimId=CLAIM_ID, depositor=CAST["auditor"], amount=1),
+        claim_event("Withdrawn", account=CAST["org"], amount=amount),
+    )
+    report = _sync(engine, chain)
+    assert report.stored == 4
+    assert report.projection_warnings == []
+    with Session(engine) as db:
+        claim = db.get(ChainClaim, (CHAIN_ID, CLAIM_ID))
+        assert claim is not None and claim.status == "Verified"
+        rows = {row.event_name: row for row in db.scalars(select(ChainEvent))}
+        assert rows["Withdrawn"].claim_id_hex is None
+        assert rows["Credited"].claim_id_hex == CLAIM_ID
+        assert rows["Credited"].args["amount"] == amount
 
 
 def test_event_for_unanchored_claim_is_stored_but_reported(engine: Engine) -> None:

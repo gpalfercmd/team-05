@@ -15,7 +15,7 @@
     {
       "contract": "ClaimRegistry",
       "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-      "txHash": "0x4a4184914f11852bdc7ea21f45de6da546ec901ccc662ad73ea895fa8afa50d4",
+      "txHash": "0xc4b401c9206ea1f2a65941b796884d391f3db67b043c96859fe9cb072d1fc16d",
       "blockNumber": 1
     }
   ],
@@ -52,63 +52,63 @@
     },
     {
       "step": "anchorClaim",
-      "txHash": "0x0ea1edc100fbc62ba7e3d9bb3146dcf07a5f6d1c0bffb7fff6c90b2cad94e6d0",
+      "txHash": "0x4f71083dadd73ecd09d887a9ff5849f3ab2f4ce562adfb5b2e389d8aed08cadd",
       "blockNumber": 7,
       "from": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "attestInternal",
-      "txHash": "0x094b0f084a87f6047ddc77c638d567aecd3215ffcf5ce475dfbac241e9e53d7b",
+      "txHash": "0x70ac10b6b363de5d369517fc8a1a1d17fad0d249909a7b971f047f9de8aadc6a",
       "blockNumber": 8,
       "from": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "assignAuditor",
-      "txHash": "0x8a3ec59bea7a25c2f8d72a230a7c60a2e2764f929536866d003ad8b3579df5a0",
+      "txHash": "0x648e2ec7847ee86d80dd7be17fdf6f84cdd8b0e7c200a1cb7c7c1e91212bd17e",
       "blockNumber": 9,
       "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "requestProof",
-      "txHash": "0x8e60cb9dfffe019abaeae609dbd8a515b17a5d7d55f8b8bdb685bec659541cbb",
+      "txHash": "0x37591f5c67274367e0bc1dddc6964904ce54a2d067cd112210fe50dc935344a9",
       "blockNumber": 10,
       "from": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "submitProof",
-      "txHash": "0xba3079a4173465229c787361297c62b84cdbb0d638806106ff860a392285d874",
+      "txHash": "0xdb281b53b4bab24e3dffc3c5d84175dd90da1e6149c1833c4f2de5f54792c7b0",
       "blockNumber": 11,
       "from": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "confirmProof",
-      "txHash": "0x9d1635d1de4e78075c7ba49b42a590ba1316da3d69c2ceb8444457449fb7abcf",
+      "txHash": "0xccb2c48a41007bfa7dc00bf06122122b51cc59a857c79647f7a11d6c26c6ec3c",
       "blockNumber": 12,
       "from": "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "attestFinal",
-      "txHash": "0xbfc55c268e9fce1711586bbbff3e516bddc221345872b4c6b31646a361d60cda",
+      "txHash": "0x27a2d51983134ecc572652c8d671a0482d9a7c6003d4acb2f5bbb42621ebc686",
       "blockNumber": 13,
       "from": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "openDispute",
-      "txHash": "0xdaa607cbbced3a6787df89d2d94fadcb48655478b95bd50be88f2cd14b43ac6e",
+      "txHash": "0x504af678e9c7cbca9a656d3b753bb3a81e7f596563eec5db32fe54d65eea95de",
       "blockNumber": 14,
       "from": "0x976ea74026e726554db657fa54763abd0c3a0aa9",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
     },
     {
       "step": "resolveDispute",
-      "txHash": "0xfac6750bf2f79c1066eea1c035a264589dbbdbf7386fd93dcd227d8820d68f12",
+      "txHash": "0x35d558ff77ff5456e4354b148f0aab2231ac07f9f96231ffac306d94281ce2c0",
       "blockNumber": 15,
       "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
       "claimId": "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
