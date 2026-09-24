@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { getAddress, keccak256, slice, stringToHex, zeroAddress, type Address, type Hex } from 'viem';
+import { DEMO_EVIDENCE_PATH, type DemoManifestFile } from '../config/demoEvidence';
 import type { ClaimSnapshot, PublishedEvidence } from '../data/assembleClaimView';
 import type { ClaimEventLog, DecodedClaimEvent } from '../data/timeline';
 import { statusIndexFromName, type ClaimStatusName } from '../utils/claimStatus';
@@ -28,16 +29,16 @@ const AUDITOR = demoWallet('auditor');
 const AUTHORITY = demoWallet('accreditation authority');
 const DISPUTANT = demoWallet('disputing auditor');
 
-/** Files under public/demo-evidence/: the jury downloads, edits and re-checks them. */
-const DEMO_EVIDENCE_PATH = `${import.meta.env.BASE_URL}demo-evidence/`;
-
 export const FULL_STORY_CLAIM_ID: Hex = '0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28';
 
 // Real Merkle roots of the demo bundles (a test recomputes them from the files on disk).
 export const DEMO_ORIGINAL_ROOT: Hex = '0x515344752095a24904ad32a660a1d15ddbf9c49e90f43d58323d76e398548707';
 export const DEMO_PROOF_ROOT: Hex = '0x8e94bc6a483ea396391f77e88e9359003f723d74463a8afef5279ab397612370';
 
-/** Copies of public/demo-evidence/manifest*.json (a test keeps them identical). */
+/**
+ * Copies of public/demo-evidence/manifest*.json (a test keeps them identical); the jury downloads,
+ * edits and re-checks the files they list.
+ */
 export const DEMO_MANIFESTS = {
   'manifest.json': {
     version: 1,
@@ -59,7 +60,7 @@ export const DEMO_MANIFESTS = {
       { sha256: '0x852db872441d6066d358db8b22ee64901be1145af6196d4e68dff68755dc05e3', public: true, name: 'stock-count.txt' },
     ],
   },
-} as const;
+} as const satisfies Record<DemoManifestFile, unknown>;
 
 const demoFiles = (manifestFile: keyof typeof DEMO_MANIFESTS, files: readonly string[]): PublishedEvidence => ({
   manifest: DEMO_MANIFESTS[manifestFile],

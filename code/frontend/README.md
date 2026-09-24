@@ -45,10 +45,11 @@ secrets in `.env`.
 
 ## Public claim page (`/claims/:claimId`)
 
-No wallet, no login, no backend. The page reads everything it shows from the contract (or from the
-demo data), and lets a visitor check evidence files against the fingerprint recorded onchain.
+No wallet, no login, no backend needed. The page reads everything it shows from the contract (or
+from the demo data), and lets a visitor check evidence files against the fingerprint recorded
+onchain. The optional P4 indexer API only speeds up the history (see *P4 API mode* below).
 
-- **Data sources** (`src/data/`): `ClaimDataSource` has two implementations behind the same
+- **Data sources** (`src/data/`): `ClaimDataSource` has three implementations behind the same
   `ClaimView` shape. `ChainClaimSource` uses a viem public client built from the app config:
   status and evidence roots always come from the views `statusOf`, `getClaim` and
   `evidenceRoots`, never from logs. The history comes from raw `eth_getLogs` filtered by the
@@ -56,8 +57,15 @@ demo data), and lets a visitor check evidence files against the fingerprint reco
   indexed parameter), from `VITE_DEPLOY_BLOCK` to the latest block in chunks of
   `VITE_LOG_CHUNK_SIZE` blocks; when the RPC refuses a range the chunk is halved (up to 6 times)
   before a clear error is shown. `MockClaimSource` serves the demo claims through the same
-  timeline code. A future P4 `ApiClaimSource` (`VITE_API_URL`) plugs in at
-  `src/data/createClaimSource.ts`; it must still read status and roots from the contract.
+  timeline code. `ApiClaimSource` (P4, selected when `VITE_API_URL` is set) is described below.
+- **Published file lists** (`src/data/publishedManifests.ts`): for each onchain root, the chain
+  sources look for the bundle's file list first at the API
+  (`GET /claims/{id}/bundles/{n}/manifest`, when `VITE_API_URL` is set), then among the static
+  lists served with the app (`public/demo-evidence/manifest*.json`, see
+  `src/config/demoEvidence.ts`). A list is kept only if it passes the zod schema and its Merkle root
+  equals the onchain root of that bundle; a 404, a network error or a mismatch just means "no file
+  list". So on the live deployment the demo claim shows its file lists and download links, and a
+  single file such as `receipt-001.txt` can be checked without uploading a manifest.
 - **Typed ABI subset** (`src/data/claimRegistryAbi.ts`): the three views and all ten events as
   human-readable signatures, so decoded values arrive typed. A test fails if any of them drifts from
   `code/shared/abi/IClaimRegistry.json` (names, types, indexed flags, selectors).
@@ -75,6 +83,33 @@ demo data), and lets a visitor check evidence files against the fingerprint reco
   Private entries carry no name. Visitors can check single files against a verified list, or a
   complete bundle without any list. Files are hashed locally and never sent anywhere.
 
+### P4 API mode (`VITE_API_URL`)
+
+With `VITE_API_URL` set (and contract addresses configured), `ApiClaimSource` takes the claim's
+history from the indexer (`GET /public/claims/{id}/timeline`, validated with zod and mapped to the
+same decoded events the chain source produces, so the page renders identically). Status, the
+claim record and the evidence roots are **always** read from the contract views; the API's own
+`status` / `evidenceRoots` projection is ignored. The history note on the page says which part came
+from where.
+
+Staleness rule: the API history is used only if it indexes the configured chain and registry, has
+an `indexedToBlock`, ends in the contract's current status and roots, **and** one `eth_getLogs`
+over the blocks after `indexedToBlock` finds no event of this claim (every state change emits an
+event, so that proves nothing is missing). Otherwise — API unreachable, non-2xx, malformed or
+behind — the page reads the whole history from the chain exactly as without the API.
+
+```bash
+# backend (code/backend): allow the frontend origin, the API listens on port 8000
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174 uv run uvicorn app.main:create_app --factory --port 8000
+# frontend
+VITE_API_URL=http://localhost:8000 pnpm dev:sepolia
+```
+
+The backend's `CORS_ORIGINS` must list the exact origin the page is served from
+(`http://localhost:5173` for `pnpm dev`, `http://localhost:5174` for the `frontend-sepolia` launch
+configuration, or whatever `--port` you pass). Without it the browser blocks the API answers and the
+page silently falls back to the chain. Public reads are sent without cookies.
+
 ### Demo flow for the jury
 
 In demo mode, open the first sample claim from the dashboard (full lifecycle, including a proof
@@ -91,9 +126,11 @@ drift: if you edit a demo file, update its manifest and the roots in `src/mocks/
 src/
   main.tsx, App.tsx   entry point (env validation) and providers + router
   routes.tsx          route table: /, /claims/:claimId, *
-  config/             chains, env (zod), wagmi, contracts (ABIs from ../shared/abi via @shared)
+  config/             chains, env (zod), wagmi, contracts (ABIs from ../shared/abi via @shared),
+                      demo evidence location
   context/            AppConfigContext (validated env)
-  data/               claim sources (chain, demo), typed ABI subset, events → timeline, summary
+  data/               claim sources (chain, API, demo), published file lists, typed ABI subset,
+                      events → timeline, indexer timeline parser, summary
   evidence/           manifest schema (zod), verification logic, plain-language labels
   hooks/              useAppConfig, useClaim, useEvidenceVerifier, useRole (stub until P5.3), useTheme
   components/         Header, RoleBanner, ConnectButton, ThemeToggle, StatusBadge, HashDisplay,
@@ -106,7 +143,7 @@ src/
                       timelineText
   styles/             tokens.css (DESIGN.md tokens, light + dark), global.css
   test/               Vitest setup and helpers
-public/demo-evidence/ made-up evidence files and their manifests (demo mode)
+public/demo-evidence/ made-up evidence files and their manifests (demo mode, and the live demo claim)
 ```
 
 The ABIs and the `ClaimStatus` enum order come from `code/shared/abi/`, never from the Solidity

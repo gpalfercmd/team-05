@@ -119,7 +119,7 @@ function PublishedFiles({ bundle, state }: { bundle: EvidenceBundle; state: Mani
 }
 
 export function EvidenceSection({ claim, manifests }: EvidenceSectionProps) {
-  const txExplorer = claim.source === 'chain' ? 'tx' : undefined;
+  const txExplorer = claim.source === 'demo' ? undefined : 'tx';
   return (
     <section className="card" aria-labelledby="evidence-heading">
       <h2 id="evidence-heading">Evidence</h2>

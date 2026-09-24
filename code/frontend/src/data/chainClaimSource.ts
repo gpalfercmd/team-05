@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Reads a claim straight from ClaimRegistry with viem (no wallet, no API)
+// Proof of Aid — Team 05 — Reads a claim straight from ClaimRegistry with viem (no wallet, no backend)
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -20,8 +20,9 @@ import { z } from 'zod';
 import type { ClaimView } from '../types/claim';
 import { isRecordedStatus, statusNameFromIndex, type RecordedClaimStatus } from '../utils/claimStatus';
 import { err, ok, type Result } from '../utils/result';
-import { assembleClaimView, type ClaimRecord } from './assembleClaimView';
+import { assembleClaimView, type ClaimRecord, type PublishedEvidence } from './assembleClaimView';
 import { CLAIM_EVENT_SELECTORS, claimRegistryReadAbi } from './claimRegistryAbi';
+import type { ManifestResolver } from './publishedManifests';
 import type { ClaimDataSource, DataError } from './source';
 import type { ClaimEventLog, DecodedClaimEvent } from './timeline';
 
@@ -36,6 +37,15 @@ export type ChainClaimSourceOptions = {
   chunkSize?: bigint | undefined;
   /** How many times a refused range is halved before giving up. */
   maxHalvings?: number | undefined;
+  /** Where published file lists are looked up; without it every bundle shows "no file list". */
+  manifests?: ManifestResolver | undefined;
+};
+
+/** What the contract's views say about a claim right now; the page trusts nothing else for these. */
+export type ContractState = {
+  status: RecordedClaimStatus;
+  record: ClaimRecord;
+  evidenceRoots: readonly Hex[];
 };
 
 export const DEFAULT_LOG_CHUNK_SIZE = 50_000n;
@@ -124,6 +134,7 @@ export class ChainClaimSource implements ClaimDataSource {
   readonly #fromBlock: bigint;
   readonly #chunkSize: bigint;
   readonly #maxHalvings: number;
+  readonly #manifests: ManifestResolver | undefined;
 
   constructor(client: ChainReadClient, options: ChainClaimSourceOptions) {
     this.#client = client;
@@ -131,6 +142,7 @@ export class ChainClaimSource implements ClaimDataSource {
     this.#fromBlock = options.fromBlock;
     this.#chunkSize = options.chunkSize ?? DEFAULT_LOG_CHUNK_SIZE;
     this.#maxHalvings = options.maxHalvings ?? DEFAULT_MAX_HALVINGS;
+    this.#manifests = options.manifests;
   }
 
   async getClaim(claimId: Hex): Promise<Result<ClaimView, DataError>> {
@@ -138,32 +150,59 @@ export class ChainClaimSource implements ClaimDataSource {
     if (!status.ok) {
       return status;
     }
-    const [record, roots, logs] = await Promise.all([
-      this.#readRecord(claimId),
-      this.#readRoots(claimId),
-      this.#readHistory(claimId),
-    ]);
-    if (!record.ok) {
-      return record;
-    }
-    if (!roots.ok) {
-      return roots;
+    const [state, logs] = await Promise.all([this.#readViews(claimId, status.value), this.readHistory(claimId)]);
+    if (!state.ok) {
+      return state;
     }
     if (!logs.ok) {
       return logs;
     }
-    const view = assembleClaimView(
-      {
-        claimId,
-        status: status.value,
-        record: record.value,
-        evidenceRoots: roots.value,
-        logs: logs.value,
-        published: new Map(),
-      },
-      'chain',
-    );
+    const published = await this.publishedFor(claimId, state.value.evidenceRoots);
+    const view = assembleClaimView({ claimId, ...state.value, logs: logs.value, published }, 'chain');
     return view;
+  }
+
+  /** Status, record and evidence roots from the contract views (`not-found` when never anchored). */
+  async readState(claimId: Hex): Promise<Result<ContractState, DataError>> {
+    const status = await this.#readStatus(claimId);
+    const state = status.ok ? await this.#readViews(claimId, status.value) : status;
+    return state;
+  }
+
+  /** The claim's decoded events from `fromBlock` (default: the deploy block) to the latest block. */
+  async readHistory(claimId: Hex, fromBlock: bigint = this.#fromBlock): Promise<Result<ClaimEventLog[], DataError>> {
+    const latest = await attempt(() => this.#client.getBlockNumber({ cacheTime: 0 }));
+    if (!latest.ok) {
+      return err(unavailable(latest.error));
+    }
+    const from = fromBlock > this.#fromBlock ? fromBlock : this.#fromBlock;
+    const raw = await this.#fetchLogs(claimId, from, latest.value);
+    if (!raw.ok) {
+      return raw;
+    }
+    const decoded = this.#decodeClaimLogs(claimId, raw.value);
+    const history = decoded.ok ? await this.#withTimestamps(decoded.value) : decoded;
+    return history;
+  }
+
+  /** File lists published for these roots, each already proven against its root. */
+  async publishedFor(claimId: Hex, evidenceRoots: readonly Hex[]): Promise<ReadonlyMap<number, PublishedEvidence>> {
+    const published =
+      this.#manifests === undefined
+        ? new Map<number, PublishedEvidence>()
+        : await this.#manifests.resolve(claimId, evidenceRoots);
+    return published;
+  }
+
+  async #readViews(claimId: Hex, status: RecordedClaimStatus): Promise<Result<ContractState, DataError>> {
+    const [record, roots] = await Promise.all([this.#readRecord(claimId), this.#readRoots(claimId)]);
+    if (!record.ok) {
+      return record;
+    }
+    const state: Result<ContractState, DataError> = roots.ok
+      ? ok({ status, record: record.value, evidenceRoots: roots.value })
+      : roots;
+    return state;
   }
 
   /** `statusOf` decides existence: `None` means no claim, whatever the logs say. */
@@ -199,28 +238,14 @@ export class ChainClaimSource implements ClaimDataSource {
     return roots;
   }
 
-  async #readHistory(claimId: Hex): Promise<Result<ClaimEventLog[], DataError>> {
-    const latest = await attempt(() => this.#client.getBlockNumber({ cacheTime: 0 }));
-    if (!latest.ok) {
-      return err(unavailable(latest.error));
-    }
-    const raw = await this.#fetchLogs(claimId, latest.value);
-    if (!raw.ok) {
-      return raw;
-    }
-    const decoded = this.#decodeClaimLogs(claimId, raw.value);
-    const history = decoded.ok ? await this.#withTimestamps(decoded.value) : decoded;
-    return history;
-  }
-
   /**
    * Every IClaimRegistry event has `claimId` as its first indexed parameter, so one topic filter
    * (`[any event, claimId]`) returns the whole story. Ranges are chunked and a refused range is
    * halved and retried, up to `maxHalvings` times.
    */
-  async #fetchLogs(claimId: Hex, toBlock: bigint): Promise<Result<RpcClaimLog[], DataError>> {
+  async #fetchLogs(claimId: Hex, fromBlock: bigint, toBlock: bigint): Promise<Result<RpcClaimLog[], DataError>> {
     const logs: RpcClaimLog[] = [];
-    let from = this.#fromBlock;
+    let from = fromBlock;
     let chunk = this.#chunkSize;
     let halvings = 0;
     let failure: DataError | undefined;

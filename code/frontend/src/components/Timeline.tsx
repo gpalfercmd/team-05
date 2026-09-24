@@ -40,9 +40,14 @@ export function SourceNote({ source }: { source: ClaimSource }) {
   } else {
     const href = explorerUrl(chain, 'address', contracts.claimRegistry);
     const explorerName = chain.blockExplorers?.default.name ?? 'block explorer';
+    // Honest about the one part a server provided: with the indexer, only the history did.
+    const origin =
+      source === 'indexer'
+        ? `History from the indexer API; status and evidence fingerprints read directly from the blockchain (${chain.name}).`
+        : `Read directly from the blockchain (${chain.name}), without any server in between.`;
     note = (
       <>
-        Read directly from the blockchain ({chain.name}), without any server in between.{' '}
+        {origin}{' '}
         {href === undefined ? (
           <>
             Contract <HashDisplay value={contracts.claimRegistry} label="contract address" />
@@ -59,7 +64,7 @@ export function SourceNote({ source }: { source: ClaimSource }) {
 }
 
 export function Timeline({ entries, source }: TimelineProps) {
-  const txExplorer = source === 'chain' ? 'tx' : undefined;
+  const txExplorer = source === 'demo' ? undefined : 'tx';
   return (
     <section className="card" aria-labelledby="timeline-heading">
       <h2 id="timeline-heading">History</h2>

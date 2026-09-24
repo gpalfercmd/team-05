@@ -30,7 +30,8 @@ type Located<T> = T & { log: ClaimEventLog };
 const unlessZero = (address: Address): Address | undefined =>
   isAddressEqual(address, zeroAddress) ? undefined : address;
 
-const byChainPosition = (a: ClaimEventLog, b: ClaimEventLog): number =>
+/** Oldest first: by block, then by position inside the block. */
+export const byChainPosition = (a: ClaimEventLog, b: ClaimEventLog): number =>
   a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1;
 
 function statusChange(index: number): Result<MappedEvent, string> {

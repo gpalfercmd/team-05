@@ -53,7 +53,13 @@ export type EvidenceBundle = {
   downloads: readonly PublicFileLink[];
 };
 
-export type ClaimSource = 'chain' | 'demo';
+/**
+ * Where the page read a claim from:
+ * - `chain`: everything from the contract (views for status and roots, event logs for the history).
+ * - `indexer`: status, record and roots from the contract views, the history from the P4 indexer API.
+ * - `demo`: built-in sample data.
+ */
+export type ClaimSource = 'chain' | 'indexer' | 'demo';
 
 /** Only public, onchain values (plus public demo files): no personal data ever reaches this type. */
 export type ClaimView = {

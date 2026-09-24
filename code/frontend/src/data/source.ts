@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Claim data source seam: one interface, chain / demo (/ API) behind it
+// Proof of Aid — Team 05 — Claim data source seam: one interface, chain / API / demo behind it
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -24,9 +24,10 @@ export type DataError =
  * Where the public page reads a claim from. Implementations:
  * - `ChainClaimSource`: the contract itself through a viem public client (no wallet, no backend).
  * - `MockClaimSource`: demo data, until P2 deploys and for the offline demo.
- * - Future `ApiClaimSource` (P4, `VITE_API_URL`): may serve the timeline and the published file
- *   lists from the indexer as a speed-up, but must still read status and evidence roots from the
- *   contract, because the integrity proof shown to visitors must never depend on the backend.
+ * - `ApiClaimSource` (P4, `VITE_API_URL`): takes the timeline and the published file lists from the
+ *   indexer as a speed-up, but still reads status and evidence roots from the contract, because the
+ *   integrity proof shown to visitors must never depend on the backend. It falls back to the chain
+ *   history whenever the API is unreachable, invalid or behind.
  */
 export type ClaimDataSource = {
   readonly kind: ClaimSource;

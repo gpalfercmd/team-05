@@ -21,7 +21,7 @@ import { formatTimestamp } from '../utils/format';
 
 function ClaimRecord({ claim }: { claim: ClaimView }) {
   const { chain } = useAppConfig();
-  const onChain = claim.source === 'chain';
+  const onChain = claim.source !== 'demo';
   const anchorTx = claim.evidence[0]?.txHash;
   return (
     <section className="card" aria-labelledby="claim-heading">

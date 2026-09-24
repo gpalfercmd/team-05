@@ -9,7 +9,9 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Hex } from 'viem';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MockClaimSource } from '../data/mockClaimSource';
 import type { DataError } from '../data/source';
+import { FULL_STORY_CLAIM_ID } from '../mocks/claims';
 import { renderRoute } from '../test/renderRoute';
 import { testEnv } from '../test/testEnv';
 import type { ClaimView } from '../types/claim';
@@ -62,6 +64,16 @@ describe('PublicClaimPage states', () => {
     getClaim.mockResolvedValue(err({ kind: 'history-too-large', detail: 'query returned more than 10000 results' }));
     renderRoute(`/claims/${CLAIM_ID}`, chainEnv);
     expect(await screen.findByRole('alert')).toHaveTextContent(/refused to return this claim’s history/);
+  });
+
+  it('says honestly which part came from the indexer API and which from the blockchain', async () => {
+    const demo = await new MockClaimSource().getClaim(FULL_STORY_CLAIM_ID);
+    getClaim.mockResolvedValue(demo.ok ? { ok: true, value: { ...demo.value, source: 'indexer' } } : demo);
+    renderRoute(`/claims/${FULL_STORY_CLAIM_ID}`, chainEnv);
+    expect(
+      await screen.findByText(/History from the indexer API; status and evidence fingerprints read directly from the blockchain/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/without any server in between/)).not.toBeInTheDocument();
   });
 
   it('does not query anything for a malformed claim ID', async () => {
