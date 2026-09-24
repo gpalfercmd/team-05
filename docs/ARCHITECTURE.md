@@ -42,7 +42,7 @@ How the design answers the area's questions:
 | --- | --- |
 | **Who verifies claims?** | An internal verifier of the organization (fast first checkpoint, never the submitter), then an external auditor accredited **and assigned** by an independent Accreditation Authority (final say). Supplementary proof is confirmed by a second internal verifier. |
 | **How is evidence checked?** | Each file is fingerprinted after metadata stripping as a salted commitment SHA-256(salt ‖ bytes); the bundle's Merkle root is anchored onchain before review. Verifiers, auditors and the public recompute hashes and compare against the onchain root; any change after anchoring is a mismatch. |
-| **How is it disputed?** | Any accredited participant can dispute a `Verified` claim with a counter-evidence hash; the Accreditation Authority resolves it; the whole history stays public and append-only. |
+| **How is it disputed?** | Any accredited participant other than the claim's own organization and approving auditor can dispute a `Verified` claim within 60 days, posting a bond and a counter-evidence hash; the Accreditation Authority resolves it; the whole history stays public and append-only. Deposits make fraud and frivolous disputes cost money (see *Incentives*). |
 | **How is it kept private?** | Files stay offchain, encrypted at rest, decryptable only by the organization, its internal verifiers and the assigned auditor. EXIF/GPS is stripped. Nothing personal (not even hashes of names or IDs) goes onchain; the organization may publish individual non-personal files. |
 
 The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **not implemented**.
@@ -57,7 +57,7 @@ The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **
 4. **Evidence anchoring** — The organization's wallet signs a transaction that records onchain: claim ID, evidence bundle root (Merkle root of file hashes) and metadata hash (keccak256 of the claim's title, description, region, date and ID, see *Claim metadata check* below). A `ClaimAnchored` event is emitted.
 5. **Internal verification (checkpoint 1)** — An internal verifier of the same organization reviews the evidence, checks it against the onchain root and signs an attestation (`approve` / `reject` + justification hash). On approval the claim becomes `InternallyVerified`.
 6. **External audit (checkpoint 2)** — The Accreditation Authority assigns an accredited external auditor to the claim; only that auditor can act on it. The auditor reviews the private evidence (role-checked). If it is insufficient, the auditor opens an onchain **proof request** (hash of the request text) and the claim becomes `ProofRequested`. The organization anchors supplementary evidence (`ProofSubmitted`); a second internal verifier of the organization, different from the checkpoint-1 verifier, confirms it (back to audit) or sends it back (`ProofRequested`). The auditor then signs the final attestation: `approve` → `Verified`, `reject` → `Rejected`.
-7. **Dispute** — An accredited participant opens a dispute with a hash of counter-evidence; the claim becomes `Disputed` until resolved by the Accreditation Authority (`upheld` → `Rejected`, `dismissed` → `Verified`).
+7. **Dispute** — Within 60 days of the approval, an accredited participant (not the claim's organization or its approving auditor) posts a dispute bond and a hash of counter-evidence; the claim becomes `Disputed` until resolved by the Accreditation Authority (`upheld` → `Rejected`, `dismissed` → `Verified`). After the window anyone can settle the claim, which releases the deposits; a settled claim can never be disputed.
 8. *Funding (design only)* — Donations are escrowed and released per milestone once the related claim is `Verified`.
 9. *Delivery & Impact (future)* — Beneficiary confirmation of receipt (e.g. signed acknowledgement or one-time code) is added as an additional attestation type.
 10. **Public verification & history** — The public claim page reads status, evidence roots and the full event history **directly from `ClaimRegistry`** (no server in between), and lets anyone re-hash files in the browser against the onchain roots. Per-bundle file lists (manifests) come from the backend and are accepted only if their recomputed root matches the chain. An event indexer into PostgreSQL is an optional speed-up for search and dashboards, never the source of truth.
@@ -79,6 +79,44 @@ stateDiagram-v2
   Disputed --> Verified: Dismissed
   Disputed --> Rejected: Upheld
 ```
+
+### Incentives: deposits, rewards and penalties (P9)
+
+Fraud has to cost more than it pays, and a dispute must not be free. `ClaimRegistry` therefore holds
+native ETH in escrow per claim. The two internal verifiers stay out of it: checkpoint 1 involves no
+money. Payouts are pull-only: the contract credits an address and the owner calls `withdraw()`.
+
+| Moment | Who pays in | Amount (reference / demo at 1/100) |
+| --- | --- | --- |
+| `anchorClaim` | Organization | penalty + auditor reward: 1.01 ETH / 0.0101 ETH |
+| `attestFinal` approve | Auditor | auditor deposit: 0.1 ETH / 0.001 ETH (reject: nothing) |
+| `openDispute` (only before `verifiedAt + 60 days`) | Disputant | dispute bond: 0.1 ETH / 0.001 ETH |
+
+| Outcome | Organization gets | Auditor gets | Disputant gets |
+| --- | --- | --- | --- |
+| Rejected at checkpoint 1 or by the auditor | its whole deposit back | — (put nothing in) | — |
+| Dispute dismissed (claim back to `Verified`) | half the bond (plus the odd wei) | half the bond | nothing (loses the bond) |
+| Dispute upheld (claim `Rejected`) | nothing | nothing | bond + penalty + auditor deposit + reward |
+| `settle` after the window, no open dispute (anyone may call) | its penalty back | its deposit + the reward | — |
+
+Rationale and rules:
+
+- The organization prepays the auditor's reward, so an honest approval is always paid. If the claim
+  turns out fraudulent, that reward goes to the disputant rather than back to the organization: the
+  organization committed the fraud, and the auditor who approved it loses its deposit too.
+- The window starts once, at the approval (`verifiedAt`); a dismissed dispute does not restart it,
+  so repeat disputes cost a bond each and end after 60 days. At most one dispute is open at a time,
+  and one opened in time can be resolved after the window (settlement waits for it).
+- The claim's organization and its approving auditor cannot dispute their own claim: an upheld
+  self-dispute would pay the forfeited deposits back to the wrongdoers.
+- Amounts are immutable constructor parameters. The testnet deployment uses 1/100 of the reference
+  values (0.0001 / 0.001 / 0.01 / 0.001 ETH) and the real 60-day window.
+- `withdraw` is the only function that sends ETH (checks-effects-interactions plus OpenZeppelin
+  `ReentrancyGuard`); no function loops over claims.
+- Known edge case, documented not fixed: a claim parked in `ProofRequested`/`ProofSubmitted` when its
+  organization is revoked can never move on (P8.1), so its deposit stays locked.
+- The Accreditation Authority remains the judge; replacing it with decentralized arbitration (Kleros)
+  is the designed next step (see `SUBMISSION.md`).
 
 ## System diagram
 
@@ -170,7 +208,8 @@ Green components form the prototype's contribution (evidence anchoring, two-stag
 | Evidence bundles and manifests | Each proof request adds a new bundle with its own root (`evidenceRoots` is append-only). Single-file checks use a manifest that anyone may serve, because the verifier recomputes its root and compares it with the chain. Private entries carry only fingerprints, never names. | One extra transaction per bundle; file names of private evidence are never published, even though they would help auditors. |
 | Public verification without a backend | The public page reads contract views and events itself and re-hashes files in the browser; the backend and indexer only add convenience. | Slower history loading (chunked `eth_getLogs` from the deployment block) versus trusting a database that could be tampered with. |
 | Claim metadata check (P8.4) | The title and description live only in the backend; the contract keeps `metadataHash = keccak256(utf8(title ⏎ description ⏎ location_region ⏎ claim_date ⏎ claim_id_hex))` (fields joined by a line feed, exactly as the API serves them, date `YYYY-MM-DD`, claim ID as 64 lowercase hex characters without `0x`). The recipe lives in `poa_shared.metadata`, frozen by `code/shared/metadata-vectors.json` and reproduced in the browser (`src/utils/metadata.ts`). When the page has an API, it reads the public claim view, recomputes the hash over the claim ID read from the chain and shows the text only on a match ("Title and description match the blockchain record"); on a mismatch it hides the text and warns; without an API (chain-only mode) or when the server has no text, it says there is nothing to check. Only the description may span lines: the API rejects line breaks in the title and region, so text cannot move between fields without changing the hash. | The text itself stays offchain (and editable only by breaking the match); a visitor without the API sees only the fingerprint. The Arbitrum Sepolia demo claim anchored a stand-in hash and has no backend record, so it shows "nothing to check". |
-| Disputes | Any accredited participant (organization, internal verifier, auditor) can dispute a `Verified` claim with a counter-evidence hash; append-only dispute events; resolved by the Accreditation Authority. | Centralized arbitration; alternatives: verifier panel vote, Kleros-style arbitration. |
+| Disputes | Any accredited participant except the claim's own organization and approving auditor can dispute a `Verified` claim with a counter-evidence hash and a bond, within 60 days of the approval; append-only dispute events; resolved by the Accreditation Authority. | Centralized arbitration; alternatives: verifier panel vote, Kleros arbitration (designed next step). |
+| Economic incentives (P9) | Per-claim ETH escrow: organization deposit (penalty + prepaid auditor reward), auditor deposit on approval, dispute bond; pull payments; settlement after the window. | Participants need ETH up front; amounts are fixed at deployment; the Authority's ruling now moves money, which raises the stakes of trusting it. |
 | Right to erasure (GDPR) | Deleting an offchain file leaves only an unlinkable hash onchain. | The onchain proof becomes unverifiable for that file after deletion. |
 | Network | Arbitrum Sepolia testnet. Deployment block and transaction hashes are taken from receipts, because inside the Arbitrum EVM `block.number` returns the L1 block, not the L2 block that logs and explorers use. | No real value at stake; mainnet deployment would need audit and gas budgeting. |
 

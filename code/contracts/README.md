@@ -6,7 +6,7 @@ verification state machine, deployed to Arbitrum Sepolia.
 | Path | Purpose |
 | --- | --- |
 | `src/interfaces/IParticipantRegistry.sol` | Accreditation: Registry Admin registers organizations and internal verifiers; the Accreditation Authority accredits auditors. **Frozen in P1.** |
-| `src/interfaces/IClaimRegistry.sol` | Claim lifecycle: anchoring, checkpoint 1, auditor assignment, proof requests, final attestation, disputes. **Frozen in P1.** |
+| `src/interfaces/IClaimRegistry.sol` | Claim lifecycle: anchoring, checkpoint 1, auditor assignment, proof requests, final attestation, disputes. **Frozen in P1; extended in P9** with the payable deposits, `settle`, `withdraw` and escrow views (team decision). |
 | `src/ParticipantRegistry.sol` | P2 implementation of `IParticipantRegistry` (OpenZeppelin `AccessControl`). |
 | `src/ClaimRegistry.sol` | P2 implementation of `IClaimRegistry` (the state machine). |
 | `test/` | Foundry unit, fuzz and invariant tests (`test/invariant/`), shared fixture in `test/helpers/`; Merkle vectors shared with the backend and frontend in `../shared/`. |
@@ -37,7 +37,7 @@ P2 implements both frozen interfaces without changing their public API:
 1. Only active organizations with at least two active internal verifiers can anchor claims.
 2. The checkpoint-1 verifier and supplementary-proof verifier are different wallets, and neither is the organization submitter.
 3. Only the Accreditation Authority can assign or reassign an active auditor, and only the assigned auditor can request proof or give the final attestation.
-4. Only active accredited participants can open a dispute; the `Verified` to `Disputed` status permits at most one open dispute.
+4. Only active accredited participants can open a dispute, never the claim's own organization or approving auditor, and only within the dispute window; the `Verified` to `Disputed` status permits at most one open dispute.
 5. Only the Accreditation Authority can resolve a dispute. Any other call or invalid status transition reverts with the interface's custom errors.
 
 ### P2 validation and deployment artifacts
@@ -82,6 +82,52 @@ Implementation choices the interfaces left open:
   organization still active (only where the action can lead to `Verified`, plus `requestProof`)
   → non-zero hashes. The action-specific event is emitted before `StatusChanged`.
 
+## Incentives (P9)
+
+`ClaimRegistry` escrows native ETH per claim so that fraud and frivolous disputes cost money. The
+amounts are `immutable` constructor parameters (all must be non-zero, `ZeroValue` otherwise), with
+getters of the same name:
+
+| Parameter | Reference value | Deploy scripts (1/100, testnet) |
+| --- | --- | --- |
+| `auditorReward` | 0.01 ETH | 0.0001 ETH |
+| `auditorDeposit` | 0.1 ETH | 0.001 ETH |
+| `organizationPenalty` | 1 ETH | 0.01 ETH |
+| `disputeBond` | 0.1 ETH | 0.001 ETH |
+| `disputeWindow` | 60 days | 60 days |
+
+Rules (the exact `msg.value` is checked last in each payable action, `WrongDepositAmount(expected, sent)`):
+
+- `anchorClaim` is payable: `msg.value == anchorDeposit() == organizationPenalty + auditorReward`
+  (the organization prepays the auditor's reward). Emits `DepositLocked`.
+- `attestFinal` is payable: approve needs `msg.value == auditorDeposit` and records `verifiedAt`
+  (once; never reset); reject needs `msg.value == 0`. Every other action is non-payable and reverts
+  on value; the contract has no `receive`.
+- Rejected at checkpoint 1 or by the auditor → the organization is credited its whole deposit.
+- `openDispute` is payable (`msg.value == disputeBond`) and needs `block.timestamp < verifiedAt +
+  disputeWindow` (`DisputeWindowClosed`). The claim's organization and approving auditor get
+  `CannotDisputeOwnClaim`.
+- Dismissed → the bond is credited half to the approving auditor and the rest (with the odd wei) to
+  the organization; the claim is `Verified` again, with the same window.
+- Upheld → the disputant is credited bond + organizationPenalty + auditorDeposit + auditorReward
+  (the fraudulent organization's prepaid reward goes to whoever exposed it).
+- `settle(claimId)`: anyone, once the window closed (`DisputeWindowOpen` before), for a `Verified`
+  claim not yet settled (`AlreadySettled`); an open dispute blocks it (`InvalidStatus`). Credits the
+  organization its penalty and the auditor its deposit + reward, emits `ClaimSettled`; the status
+  stays `Verified` and the claim can never be disputed again.
+- `withdraw()` pays the caller all of its `credits` (`NothingToWithdraw` when zero, `WithdrawFailed`
+  if the transfer fails): checks-effects-interactions plus OpenZeppelin `ReentrancyGuard`. It is the
+  only function that sends ETH; nothing loops over claims.
+- Views: `credits(account)`, `verifiedAt(claimId)`, `disputeWindowClosesAt(claimId)` (0 if never
+  verified), `settled(claimId)`, `lockedOf(claimId)` (escrow still held for the claim).
+- Events: `DepositLocked`, `Credited`, `Withdrawn` (the only event without `claimId`), `ClaimSettled`.
+- Known edge case, not fixed: a claim left in `ProofRequested`/`ProofSubmitted` when its organization
+  is revoked can never move on (see above), so its deposit stays locked.
+
+Tests: `test/ClaimRegistryIncentives.t.sol` (every path above, window boundary with `vm.warp`, odd
+bond, reentrant and rejecting receivers) and the invariant
+`balance == Σ credits + Σ escrow still locked == Σ accepted − Σ withdrawn`, tracked by the handler.
+
 ## Deploy & demo
 
 The deployment file is how the backend and the frontend find the contracts:
@@ -108,11 +154,15 @@ Wallet top-ups are not lifecycle steps and are skipped.
 
 `DemoLifecycle.s.sol` derives seven **test-only** wallets from `MNEMONIC` (index 0 deployer and
 Registry Admin, 1 Accreditation Authority, 2 Organization, 3–4 Internal Verifiers, 5 Auditor,
-6 Disputant, a second accredited auditor), tops up any wallet below 0.001 ETH from the deployer,
+6 Disputant, a second accredited auditor), tops up each wallet from the deployer when it holds
+less than its deposit (organization `anchorDeposit`, auditor `auditorDeposit`, disputant
+`disputeBond`, others nothing) plus 0.001 ETH for gas (top-up: deposit + 0.002 ETH),
 deploys (or reuses the deployment file with `USE_EXISTING=true`), accredits the cast (skipping
 wallets already accredited) and runs: anchor → attestInternal → assignAuditor → requestProof →
-submitProof → confirmProof (verifier 2) → attestFinal → openDispute → resolveDispute (dismissed).
-The claim ends `Verified`.
+submitProof → confirmProof (verifier 2) → attestFinal → openDispute → resolveDispute (dismissed),
+sending the exact deposits read from the deployed registry. The claim ends `Verified`, with
+`anchorDeposit + auditorDeposit` still locked until it is settled 60 days later, and the bond
+credited half to the organization and half to the auditor.
 
 The demo claim is the frontend's demo claim, so the public page shows a genuine match:
 claimId `0xfedebf75…a79b28` (`FULL_STORY_CLAIM_ID`), original root `0x51534475…548707` (Merkle root
@@ -146,7 +196,9 @@ cast call 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 "statusOf(bytes32)(uint8)" 
   0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28 --rpc-url anvil   # 5 = Verified
 ```
 
-Arbitrum Sepolia (run it yourself; needs a funded **test-only** deployer, about 0.05 ETH):
+Arbitrum Sepolia (run it yourself; needs a funded **test-only** deployer, about 0.05 ETH: the
+top-ups at 1/100 scale are 0.0121 ETH for the organization, 0.003 ETH each for the auditor and the
+disputant, and 0.002 ETH each for the authority and the two verifiers):
 
 ```bash
 cp .env.example .env   # fill ARBITRUM_SEPOLIA_RPC_URL and a fresh test-only MNEMONIC

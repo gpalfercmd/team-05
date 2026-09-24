@@ -31,7 +31,8 @@
 2. **Verification state machine (`ClaimRegistry`).** `Anchored → InternallyVerified → (ProofRequested ⇄ ProofSubmitted) → Verified | Rejected`, then `Verified → Disputed → Verified | Rejected`. The contract enforces separation of duties (submitter ≠ checkpoint-1 verifier ≠ proof confirmer), that only the auditor assigned by the Authority can act, that organizations need two active verifiers, and that each proof request adds a new, append-only evidence root. Every step emits an event.
 3. **Evidence pipeline (FastAPI backend).** Uploads have EXIF/GPS stripped, are fingerprinted **after** cleaning with a salted commitment SHA-256(salt ‖ bytes) (random 32-byte salt, encrypted at rest; public files publish it), so nobody can confirm a guessed private file from its public fingerprint, grouped into bundles (original evidence, then one per proof request) and encrypted with AES-GCM using a per-claim key. Only the organization, its internal verifiers and the assigned auditor can download private files; everyone else sees private files as fingerprints only (no name, type or size). Each bundle's Merkle root equals the root anchored onchain, and a public manifest endpoint lists the fingerprints of a bundle.
 4. **Public verification (React page, no wallet, no login).** The page reads the claim's status, evidence roots and full history **directly from the contract** (event logs filtered by claim ID), with no server in between. A visitor drops a file: the browser computes its fingerprint and checks it against the onchain root, either through the bundle's manifest (itself accepted only if its root matches the chain) or by dropping the whole bundle. Files never leave the browser.
-5. **One recipe, three implementations.** The Merkle recipe (SHA-256 leaves hashed with keccak256, sorted pairs) is implemented in Solidity, Python and TypeScript, and all three pass the same shared test vectors byte for byte.
+5. **Fraud costs money (P9).** `ClaimRegistry` escrows ETH per claim: the organization deposits a penalty plus the auditor's reward when anchoring, the auditor deposits when approving, and a disputant posts a bond. A dismissed dispute pays the bond to the organization and the auditor; an upheld one pays the disputant everything at stake; after a 60-day window anyone settles the claim and the honest parties get their money back plus the reward. See *Incentives* below.
+6. **One recipe, three implementations.** The Merkle recipe (SHA-256 leaves hashed with keccak256, sorted pairs) is implemented in Solidity, Python and TypeScript, and all three pass the same shared test vectors byte for byte.
 
 ### Implementation boundary
 
@@ -45,7 +46,8 @@
 | Participant accreditation (org, internal verifiers, auditors) | Implemented | `ParticipantRegistry` on Arbitrum Sepolia: separate Registry Admin and Accreditation Authority, one lifetime role per wallet (revocation is permanent) |
 | Evidence anchoring (Merkle root onchain) | Implemented | `ClaimRegistry.anchorClaim` + append-only supplementary roots |
 | Two-stage verification + proof requests | Implemented | Onchain state machine: checkpoint 1, Authority-assigned auditor, proof loop with four-eyes confirmation, final attestation; full lifecycle executed on Arbitrum Sepolia |
-| Disputes | Implemented | Any accredited wallet disputes a `Verified` claim; the Authority upholds or dismisses it onchain (demo: dismissed) |
+| Disputes | Implemented | Any accredited wallet except the claim's own organization and approving auditor disputes a `Verified` claim within 60 days; the Authority upholds or dismisses it onchain (demo: dismissed) |
+| Deposits, rewards, penalties, settlement (P9) | Implemented | Per-claim ETH escrow in `ClaimRegistry`, pull payments, 60-day dispute window; tested and run end to end on a local anvil chain. *(Arbitrum Sepolia redeploy pending: the live addresses below are the pre-P9 contracts.)* |
 | Privacy pipeline (EXIF strip, hashing, encryption, role-based access) | Implemented | FastAPI evidence service; private files exposed to outsiders as fingerprints only |
 | Evidence bundles and manifests | Implemented | Per-bundle roots matching `evidenceRoots[i]`; manifest endpoint in the shared JSON Schema |
 | Public verification page | Implemented | Reads the deployed contract directly; single-file and whole-bundle checks in the browser; the claim's title and description from the API are shown only after their hash is recomputed in the browser and matches the onchain `metadataHash` (otherwise hidden with a warning) |
@@ -57,7 +59,8 @@
 | Event indexer for search and dashboards | Designed only | Not needed by the public page, which reads the chain directly |
 | Funding escrow released on `Verified` | Designed only | [ARCHITECTURE.md](ARCHITECTURE.md#components) |
 | Beneficiary confirmation of receipt | Designed only | [ARCHITECTURE.md](ARCHITECTURE.md#components) |
-| KYC / verifiable credentials, decentralized arbitration, mainnet | Out of scope | — |
+| Decentralized arbitration (Kleros) | Designed only | Section 4, *Next step* |
+| KYC / verifiable credentials, mainnet | Out of scope | — |
 
 ### Effort split
 
@@ -69,6 +72,22 @@
 | Real-world connection | 30% | Evidence privacy pipeline (EXIF strip, hashing of cleaned files, encryption, access control), bundles and manifests, accreditation of real-world entities |
 | Blockchain | 40% | Accreditation registry, claim state machine, disputes, events, 100%-coverage test suite with invariants, deployment and full lifecycle on Arbitrum Sepolia |
 
+### Incentives: who pays whom
+
+Amounts: reference values, and in brackets the 1/100 values of the testnet deployment. The dispute window is 60 days in both.
+
+| Moment | Organization | Auditor | Disputant |
+| --- | --- | --- | --- |
+| Anchors the claim | pays penalty 1 ETH + auditor reward 0.01 ETH (0.0101) | — | — |
+| Auditor approves | — | pays deposit 0.1 ETH (0.001) | — |
+| Dispute opened (before `verifiedAt + 60 days`) | — | — | pays bond 0.1 ETH (0.001) |
+| Rejected at checkpoint 1 or by the auditor | gets its whole deposit back | — | — |
+| Dispute dismissed | gets half the bond (+ odd wei) | gets half the bond | loses the bond |
+| Dispute upheld | loses penalty and reward | loses its deposit | gets bond + penalty + auditor deposit + reward |
+| `settle` after the window (anyone) | gets its penalty back | gets its deposit + the reward | — |
+
+The prepaid reward goes to the disputant, not back to the organization, when fraud is proven: the organization caused it. The window starts once at the approval and a dismissal does not restart it, so each repeat dispute costs a bond and all disputes end after 60 days. The organization and the approving auditor cannot dispute their own claim. Money leaves the contract only through `withdraw()` (pull payments, reentrancy-guarded). Checkpoint 1 by the internal verifiers involves no money.
+
 ## 3. Demo and validation
 
 **What the demo proves:** a claim that went through the full two-stage verification on Arbitrum Sepolia can be checked by anyone in a browser: a genuine evidence file matches the root recorded onchain, a one-character change is detected, and no private file name or content is ever exposed.
@@ -77,17 +96,18 @@
 
 **Validation evidence:**
 
-- **Contracts:** `cd code/contracts && forge test` → 117 tests pass (45 ParticipantRegistry, 68 ClaimRegistry incl. fuzz, 3 Merkle vectors, 6 invariants over 8,192 random calls); `forge coverage` → 100% lines, branches and functions on both contracts. Removing the four-eyes check or the permanent-identity rule makes tests fail.
-- **Backend:** `cd code/backend && uv run pytest` → 91 tests pass (login, claims, evidence, access matrix, privacy of public views, bundles, CORS, Merkle vectors, P4 indexer and chain-driven access, public API, plus an anvil end-to-end indexer run). Migrations 0001–0003 verified on SQLite, a disposable PostgreSQL 18 and the Docker PostgreSQL 16; the indexer on PostgreSQL indexes the 22 registry events of the Sepolia deployment in ~7 s and a second run adds 0; `GET /public/claims/{id}/timeline` returns the demo claim's 17 events.
-- **Shared recipe:** `cd code/shared && uv run pytest` → 14 tests pass.
-- **Frontend:** `cd code/frontend && pnpm test` → 216 tests pass, including the browser Merkle implementation against every shared vector.
+- **Contracts:** `cd code/contracts && forge test` → 168 tests pass (45 ParticipantRegistry, 82 ClaimRegistry incl. fuzz, 37 incentives, 3 Merkle vectors, 9 invariants over 8,192 random calls, including `balance == credits owed + escrow locked`); `forge coverage` → 100% lines, statements, branches and functions on both contracts. Removing the four-eyes check or the permanent-identity rule makes tests fail. The P9 deploy + demo lifecycle runs on a local anvil chain and ends `Verified` with 0.0111 ETH escrowed.
+- **Backend:** `cd code && uv run --project backend pytest -c backend/pyproject.toml backend/tests` → 111 tests pass (login, claims, evidence, access matrix, privacy of public views, bundles, CORS, Merkle vectors, P4 indexer and chain-driven access, public API, plus an anvil end-to-end indexer run). Migrations 0001–0003 verified on SQLite, a disposable PostgreSQL 18 and the Docker PostgreSQL 16; the indexer on PostgreSQL indexes the 22 registry events of the Sepolia deployment in ~7 s and a second run adds 0; `GET /public/claims/{id}/timeline` returns the demo claim's 17 events.
+- **Shared recipe:** `cd code/shared && uv run pytest` → 30 tests pass.
+- **Frontend:** `cd code/frontend && pnpm test` → 317 tests pass, including the browser Merkle implementation against every shared vector.
 - **Live on Arbitrum Sepolia** (`code/shared/deployments/arbitrum-sepolia.json`): [`ParticipantRegistry`](https://sepolia.arbiscan.io/address/0x50C0b9C11aC7863a0F918b6E730c55bf85279A26) · [`ClaimRegistry`](https://sepolia.arbiscan.io/address/0xC647048a91Fcc6dF42A3608487cEa42c2c8ee0F2). Full demo lifecycle of claim `0xfedebf75…a79b28`, whose evidence roots are the real Merkle roots of the files in `code/frontend/public/demo-evidence/`: [anchor](https://sepolia.arbiscan.io/tx/0x6916e5d9116ebda0c1653f05981d1f3e09a3082497570bbc5c7f535a9af39143) → [internal approval](https://sepolia.arbiscan.io/tx/0xbdca91f6c037625435de12680224c7fa8201478a2ce7dc8b6b3d9cf35a5b2806) → [auditor assigned](https://sepolia.arbiscan.io/tx/0xe020f8ee1355fbf016783ed334fffbf9bd9450c4644c9e20d477122918db649f) → [proof requested](https://sepolia.arbiscan.io/tx/0xa245b49d8ef156f24c707333a51578c0f029f6ab46170a5b2cd2bb10b0ba6344) → [proof submitted](https://sepolia.arbiscan.io/tx/0x52752720e7b5012a30c3aa4932d993e93bcc832491f0457043e78d59d2021aa6) → [second verifier confirms](https://sepolia.arbiscan.io/tx/0x1251df6d205fd19caf8ffe9dfafa459c3b89861104a13979fb66de0bf7c08404) → [final approval](https://sepolia.arbiscan.io/tx/0xf055346b70b693faeb6b120d01d6368f6c84b5f157200b57ddefafa2fad67555) → [dispute](https://sepolia.arbiscan.io/tx/0xe9d5000f3c9891f6e8f4ede7954b4a4529b6ee0c2f03ef2f5d83d82520a25257) → [dispute dismissed](https://sepolia.arbiscan.io/tx/0x56058e9850157a8bf31dda942ef422571e074fe81f386f40144b3611f91858e8). The claim ends `Verified`.
 - **End-to-end check against the live chain:** the public page pointed at the deployed contract shows the 9-step history of the demo claim; the published manifest is accepted because its root matches `evidenceRoots[0]` onchain, and `receipt-001.txt` verifies as **Match**. The two files of supplementary proof #1 checked as a complete bundle → **Match** (root `0x8e94…2370`); the same files with one bit flipped in `stock-count.txt` → **No match** (computed `0x7f22…99ef`). No browser console errors.
 - *(to add)* screenshots of the public page showing match / mismatch.
 
 ## 4. Limitations and next step
 
-- Trust in the Registry Admin and Accreditation Authority is centralized; accreditation is manual, not backed by verifiable credentials.
+- Trust in the Registry Admin and Accreditation Authority is centralized; accreditation is manual, not backed by verifiable credentials. **The Accreditation Authority is a single point of trust:** it assigns auditors and judges every dispute, and since P9 its ruling also moves the deposits.
+- Deposits need ETH up front and the amounts are fixed at deployment; a claim left in `ProofRequested`/`ProofSubmitted` when its organization is revoked keeps its deposit locked forever.
 - The internal checks are not independent by themselves; independence rests on a single assigned auditor, who could still collude.
 - Integrity is proven, not truth: evidence can still be staged before it is anchored.
 - The backend operator is trusted for confidentiality (not for integrity, which is checked onchain).
@@ -97,6 +117,26 @@
 - Role screens for signing actions are still in progress; the demo lifecycle is executed with scripts.
 
 **Next step:** sync the backend with contract events (participants, auditor assignment, bundle sealing), so the offchain access rules follow the onchain truth automatically.
+
+### Next step: Kleros arbitration (designed, not implemented)
+
+The Authority stays the judge in code today. The designed replacement is decentralized arbitration by Kleros, which removes the single point of trust from dispute resolution (accreditation stays with the Authority).
+
+**What is current (checked 2026-09-25):**
+
+- The arbitration interface was standardized by Kleros as **ERC-792** (`IArbitrator` / `IArbitrable`) with the **ERC-1497** evidence standard (`MetaEvidence`, `Evidence`, `Dispute` events); this is what Kleros v1 on Ethereum mainnet uses. Sources: [kleros/erc-792](https://github.com/kleros/erc-792), [ERC-792 docs](https://docs.kleros.io/developer/arbitration-development/erc-792-arbitration-standard), [ERC-1497 docs](https://docs.kleros.io/developer/arbitration-development/erc-1497-evidence-standard).
+- **Kleros 2.0 runs on Arbitrum One**, announced as a beta running in parallel with v1, with the stated plan to move all court activity to Arbitrum One once it is secure enough ([Arbitrum forum, Jan 2025](https://forum.arbitrum.foundation/t/introducing-kleros-2-0-beta-decentralized-justice-built-on-arbitrum-one/28136), [Kleros blog](https://blog.kleros.io/kleros-2-0-beta-is-here-get-started/)). Its interfaces are `IArbitratorV2` / `IArbitrableV2`: `createDispute(uint256 numberOfChoices, bytes extraData) payable`, `arbitrationCost(bytes extraData)`, and the callback `rule(uint256 disputeID, uint256 ruling)`, with ruling 0 reserved for "refuse to arbitrate" ([arbitrator spec](https://github.com/kleros/kleros-v2/blob/dev/contracts/specifications/arbitrator.md), [IArbitrableV2.sol](https://github.com/kleros/kleros-v2/blob/dev/contracts/src/arbitration/interfaces/IArbitrableV2.sol)). **V2 replaces ERC-1497 `MetaEvidence` with dispute templates** (a `DisputeRequest` event carrying a template id) and a separate `EvidenceModule`.
+- **Not verified:** whether Kleros 2.0 left beta by today, its current mainnet `KlerosCore` address and court fees, and whether a Kleros v2 arbitrator is available on Arbitrum **Sepolia** for testing. A search result quoted `KlerosCore` at `0x9C1dA9A04925bDfDedf0f6421bC7EEa8305F9002` on Arbitrum One; we did not confirm it against an official deployment list.
+
+**Design.** Because our contracts already live on Arbitrum, Kleros 2.0 on Arbitrum One is the natural target (no cross-chain bridge).
+
+1. `ClaimRegistry` implements `IArbitrable` (ERC-792; `IArbitrableV2` on Kleros 2.0) and stores the arbitrator address and its `extraData` (court id and number of jurors) as immutables.
+2. `openDispute` stays payable: the disputant sends `disputeBond + arbitrator.arbitrationCost(extraData)`. The contract forwards the fee with `arbitrator.createDispute{value: fee}(2, extraData)` (two choices), stores `arbitratorDisputeId → claimId`, and keeps the bond in escrow as today. The Authority's `resolveDispute` is removed.
+3. Evidence: the counter-evidence hash we already anchor becomes the `Evidence` URI of ERC-1497 (v1), with a `MetaEvidence` describing the claim and the two rulings; on Kleros 2.0 the same content is published as a dispute template plus `EvidenceModule` submissions. The encrypted files stay offchain; jurors get access through the backend like an auditor would.
+4. `rule(disputeID, ruling)` (callable only by the arbitrator) maps 1 = uphold → today's upheld payout and `Rejected`, 2 = dismiss → today's bond split and `Verified`. Ruling 0 (refused) would return the bond to the disputant and the claim to `Verified` (to be decided by the team).
+5. Appeals are handled inside Kleros (crowdfunded appeal fees), so our contract needs no appeal logic; the settlement rule (wait until the dispute is resolved) stays the same.
+
+Trade-offs: arbitration fees make disputes more expensive than today's bond alone, rulings take days to weeks, and the revoked-organization rule (a revoked organization can never be dismissed back to `Verified`) must be re-checked inside `rule()`.
 
 ## 5. AI usage
 
