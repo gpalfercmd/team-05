@@ -215,3 +215,77 @@ class FileVisibilityUpdate(BaseModel):
     """Flip the per-file `public` flag (spec F3: private by default)."""
 
     is_public: bool
+
+
+# --- P4 public chain index (no login). camelCase on the wire, like the
+# manifest, because the only consumer is the frontend. Everything here comes
+# from public chain events: addresses, hashes, booleans, status names, blocks.
+
+
+class _ChainModel(BaseModel):
+    """Base for the public chain-index responses (aliases out, names in)."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+class PublicChainClaim(_ChainModel):
+    """One claim as indexed from ClaimRegistry (verify status/roots onchain)."""
+
+    claim_id: str = Field(alias="claimId", pattern=BYTES32_HEX_PATTERN)
+    organization: str
+    status: str
+    anchored_block: int = Field(alias="anchoredBlock")
+    anchored_at: datetime = Field(alias="anchoredAt")
+    last_status_block: int = Field(alias="lastStatusBlock")
+    last_status_at: datetime = Field(alias="lastStatusAt")
+
+
+class PublicChainClaimList(_ChainModel):
+    """A page of indexed claims, newest anchor first."""
+
+    items: list[PublicChainClaim]
+    total: int
+    limit: int
+    offset: int
+    indexed_to_block: int | None = Field(alias="indexedToBlock")
+
+
+class TimelineEvent(_ChainModel):
+    """One registry event of a claim, in chain order."""
+
+    block_number: int = Field(alias="blockNumber")
+    tx_hash: str = Field(alias="txHash")
+    log_index: int = Field(alias="logIndex")
+    timestamp: datetime
+    event: str
+    args: dict[str, str | bool | int]
+
+
+class ClaimTimeline(_ChainModel):
+    """A claim's indexed history plus how fresh the index is.
+
+    `status` and `evidenceRoots` are the indexer's projection: a convenience,
+    not a proof. Integrity checks must read `statusOf` / `evidenceRoots` from
+    the contract (the public page does).
+    """
+
+    claim_id: str = Field(alias="claimId", pattern=BYTES32_HEX_PATTERN)
+    chain_id: int = Field(alias="chainId")
+    claim_registry: str = Field(alias="claimRegistry")
+    status: str | None
+    evidence_roots: list[str] = Field(alias="evidenceRoots")
+    events: list[TimelineEvent]
+    indexed_to_block: int | None = Field(alias="indexedToBlock")
+
+
+class IndexerStatus(_ChainModel):
+    """Indexer freshness: `lag` = latest seen head − indexed block."""
+
+    chain_id: int = Field(alias="chainId")
+    participant_registry: str = Field(alias="participantRegistry")
+    claim_registry: str = Field(alias="claimRegistry")
+    deploy_block: int = Field(alias="deployBlock")
+    indexed_to_block: int | None = Field(alias="indexedToBlock")
+    head_block: int | None = Field(alias="headBlock")
+    lag: int | None
+    updated_at: datetime | None = Field(alias="updatedAt")

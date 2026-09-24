@@ -26,7 +26,7 @@ from app.api.auth import current_address
 from app.db import get_session
 from app.models import EvidenceFile
 from app.schemas import EvidenceFileResponse, FileVisibilityUpdate
-from app.services.access import can_read_file
+from app.services.access import RoleSource, can_read_file, require_organization
 from app.services.crypto import decrypt_bytes, derive_claim_key
 from app.services.evidence import load_packed
 from app.settings import Settings
@@ -43,7 +43,10 @@ def download_file(
     if stored is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "file not found")
     viewer = current_address(request)
-    if not can_read_file(db, viewer=viewer, claim=stored.claim, evidence_file=stored):
+    roles: RoleSource = request.app.state.role_source
+    if not can_read_file(
+        db, viewer=viewer, claim=stored.claim, evidence_file=stored, roles=roles
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "file not found")
     settings: Settings = request.app.state.settings
     claim_id = bytes.fromhex(stored.claim.claim_id_hex.removeprefix("0x"))
@@ -79,6 +82,10 @@ def set_visibility(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "file not found")
     if stored.claim.created_by != viewer:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "only the owning organization changes visibility")
+    # Publishing a file is irreversible in practice, so a revoked organization may not.
+    accredited = require_organization(db, viewer, roles=request.app.state.role_source)
+    if isinstance(accredited, Err):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, accredited.message)
     stored.is_public = payload.is_public
     db.commit()
     db.refresh(stored)

@@ -8,7 +8,13 @@
 
 `create_app` builds the app from explicit settings so tests inject their own
 (SQLite + temp storage) without touching the real `.env`. Routers: auth
-(wallet login), claims (create/read/upload/manifest), files (download/visibility).
+(wallet login), claims (create/read/upload/manifest), files (download/visibility),
+public (P4: indexed chain claims, timelines and indexer status, no login).
+
+When `DEPLOYMENT_FILE` is set the deployment and the shared ABI catalog are
+loaded at startup (a broken file stops the app instead of serving wrong
+roles), and `app.state.role_source` tells the access matrix whether roles
+come from the chain index or the local `participants` table.
 CORS admits only the configured frontend origins, with credentials, so the
 browser may send the session cookie cross-origin (Vite dev server by default).
 """
@@ -22,15 +28,35 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 from starlette.middleware.sessions import SessionMiddleware
 
+from poa_shared.result import Err
+
 from app.api.auth import router as auth_router
 from app.api.claims import router as claims_router
 from app.api.files import router as files_router
+from app.api.public import router as public_router
 from app.db import make_engine, make_session_factory
+from app.indexer.abi import EventCatalog, load_catalog
+from app.indexer.deployment import Deployment, DeploymentConfigError, load_deployment
+from app.services.access import RoleSource
 from app.settings import Settings, load_settings
 
 # Explicit lists (never "*"): exactly what the routers and the frontend use.
 CORS_METHODS: Final[tuple[str, ...]] = ("GET", "POST", "PATCH", "OPTIONS")
 CORS_HEADERS: Final[tuple[str, ...]] = ("Content-Type", "Accept")
+
+
+def _chain_config(settings: Settings) -> tuple[Deployment | None, EventCatalog | None]:
+    """Load the deployment and ABI catalog when configured; raise if they are broken."""
+    if not settings.deployment_file:
+        return None, None
+    deployment = load_deployment(settings.deployment_file)
+    if isinstance(deployment, Err):
+        raise DeploymentConfigError(deployment.message)
+    catalog = load_catalog()
+    if isinstance(catalog, Err):
+        raise DeploymentConfigError(catalog.message)
+    loaded: tuple[Deployment | None, EventCatalog | None] = (deployment.value, catalog.value)
+    return loaded
 
 
 def create_app(settings: Settings | None = None, engine: Engine | None = None) -> FastAPI:
@@ -44,6 +70,13 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     app = FastAPI(title="Proof of Aid — backend")
     app.state.settings = resolved
     app.state.session_factory = make_session_factory(active_engine)
+    deployment, catalog = _chain_config(resolved)
+    app.state.deployment = deployment
+    app.state.event_catalog = catalog
+    app.state.role_source = RoleSource(
+        mode=resolved.effective_role_source,
+        chain_id=deployment.chain_id if deployment is not None else None,
+    )
     app.add_middleware(SessionMiddleware, secret_key=resolved.session_secret)
     # Added last so it wraps everything: preflights are answered before the
     # session layer, and error responses still carry the CORS headers.
@@ -57,6 +90,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     app.include_router(auth_router)
     app.include_router(claims_router)
     app.include_router(files_router)
+    app.include_router(public_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

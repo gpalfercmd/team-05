@@ -43,7 +43,7 @@ from app.schemas import (
     EvidenceUploadResponse,
     PublicClaimResponse,
 )
-from app.services.access import can_view_private_evidence, require_organization
+from app.services.access import RoleSource, can_view_private_evidence, require_organization
 from app.services.bundles import (
     EvidenceBundle,
     build_bundles,
@@ -95,7 +95,8 @@ def create_claim(
     viewer = current_address(request)
     if viewer is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "login required")
-    authorized = require_organization(db, viewer)
+    roles: RoleSource = request.app.state.role_source
+    authorized = require_organization(db, viewer, roles=roles)
     if isinstance(authorized, Err):
         raise HTTPException(status.HTTP_403_FORBIDDEN, authorized.message)
     claim_uuid = uuid.uuid4()
@@ -137,7 +138,10 @@ def read_claim(
     """
     claim = _claim_or_404(db, claim_id_hex)
     bundles = _bundles_of(db, claim)
-    authorized = can_view_private_evidence(db, viewer=current_address(request), claim=claim)
+    roles: RoleSource = request.app.state.role_source
+    authorized = can_view_private_evidence(
+        db, viewer=current_address(request), claim=claim, roles=roles
+    )
     view: ClaimResponse | PublicClaimResponse = (
         authorized_claim_view(claim, bundles) if authorized else public_claim_view(claim, bundles)
     )
@@ -189,6 +193,11 @@ async def upload_evidence(
     claim = _claim_or_404(db, claim_id_hex)
     if claim.created_by != viewer:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "only the owning organization uploads here")
+    # A revoked organization keeps ownership of its claims but may not add evidence.
+    roles: RoleSource = request.app.state.role_source
+    accredited = require_organization(db, viewer, roles=roles)
+    if isinstance(accredited, Err):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, accredited.message)
     if not files:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "at least one file is required")
     # Lock the claim row first so two concurrent uploads cannot both read the same

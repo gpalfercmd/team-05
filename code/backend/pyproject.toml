@@ -25,6 +25,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "itsdangerous>=2.2",
     "proof-of-aid-shared",
+    "web3>=8.0.0",
 ]
 
 [dependency-groups]
@@ -49,3 +50,6 @@ proof-of-aid-shared = { path = "../shared", editable = true }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "anvil: needs Foundry (anvil + forge) on PATH; skipped automatically otherwise",
+]
