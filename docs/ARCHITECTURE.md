@@ -78,7 +78,7 @@ flowchart LR
     AUTH[Accreditation Authority]
   end
 
-  subgraph Client["Frontend (React/Next.js + viem/wagmi)"]
+  subgraph Client["Frontend (React + Vite + viem/wagmi)"]
     UI[Web UI]
     WAL[MetaMask wallet]
   end
@@ -96,10 +96,9 @@ flowchart LR
     CLM[ClaimRegistry<br/>anchors · attestations · disputes]
   end
 
-  ORG & IVER & AUD & PUB --> UI
-  ADM & AUTH --> WAL
+  ORG & IVER & AUD & PUB & ADM & AUTH --> UI
   UI --> API
-  UI --> WAL
+  UI -- tx request --> WAL
   WAL -- signed tx --> REG
   WAL -- signed tx --> CLM
   API --> EVS --> FS
@@ -110,6 +109,8 @@ flowchart LR
   classDef impl fill:#d4f4dd,stroke:#2e7d32;
   class EVS,CLM,REG,API,IDX impl;
 ```
+
+Every state-changing action (accreditation, auditor assignment, anchoring, attestations, proof requests, disputes) is a transaction signed in the user's own MetaMask wallet; the contracts authorize it by the signer's role. The backend never holds user keys. The Donor / Public Auditor only reads and never signs.
 
 Green components form the implemented contribution (evidence anchoring, two-stage verification with proof requests, public verification). Funding and beneficiary confirmation are designed but not implemented.
 
