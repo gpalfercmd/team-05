@@ -15,7 +15,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd code/frontend && VITE_CHAIN=arbitrumSepolia VITE_CLAIM_REGISTRY_ADDRESS=0xC647048a91Fcc6dF42A3608487cEa42c2c8ee0F2 VITE_PARTICIPANT_REGISTRY_ADDRESS=0x50C0b9C11aC7863a0F918b6E730c55bf85279A26 VITE_DEPLOY_BLOCK=312332294 pnpm dev --port 5174 --strictPort"
+        "cd code/frontend && VITE_CHAIN=arbitrumSepolia VITE_CLAIM_REGISTRY_ADDRESS=0x658e3D60058a0B4f52AAbc4e536F4b2963bBc013 VITE_PARTICIPANT_REGISTRY_ADDRESS=0x9c0599ca7ADF39648e62110A14ed29Ab0D994aA1 VITE_DEPLOY_BLOCK=312397989 pnpm dev --port 5174 --strictPort"
       ],
       "port": 5174
     }
