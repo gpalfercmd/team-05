@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 from typing import Any, Final, TypeVar
 
-from poa_shared.merkle import build_proof, build_root, file_hash, leaf_from_file_hash
+from poa_shared.merkle import build_proof, build_root, file_hash, leaf_from_file_hash, salted_file_hash
 from poa_shared.result import Err, Result
 
 T = TypeVar("T")
@@ -41,6 +41,12 @@ CASES: Final[list[tuple[str, list[tuple[str, bytes]]]]] = [
     ("order_independence", [STOCK, PHOTO, RECEIPT, DELIVERY, INVOICE]),
 ]
 
+# Fixed, made-up salts: real uploads draw 32 random bytes per file (P8.2).
+SALTED_FILES: Final[list[tuple[str, bytes, bytes]]] = [
+    (RECEIPT[0], bytes(range(1, 33)), RECEIPT[1]),
+    (INVOICE[0], bytes(range(101, 133)), INVOICE[1]),
+]
+
 TAMPER_CASE: Final[str] = "three_files"
 TAMPER_FILE_INDEX: Final[int] = 0
 
@@ -53,6 +59,11 @@ SPEC: Final[dict[str, str]] = {
     "single": "The root of a single leaf is that leaf and its proof is empty.",
     "invalid": "Empty input, duplicate files and hashes that are not 32 bytes are rejected.",
     "proof": "Sibling hashes bottom-up; verifies with OpenZeppelin MerkleProof.verify(proof, root, leaf).",
+    "salted": (
+        "Since P8.2 each uploaded file is committed as SHA-256(salt || file bytes) with a random "
+        "32-byte salt; that commitment replaces file_hash as the leaf input and the rest of the "
+        "recipe is unchanged. salted.files[i].sha256 is the plain hash, which must NOT match the leaf."
+    ),
     "encoding": "Byte values are lowercase 0x-prefixed hex strings.",
     "shape": (
         "case_count and cases[i].file_count are helper counts for Foundry's JSON parser; "
@@ -113,10 +124,35 @@ def build_tamper(cases: list[dict[str, Any]]) -> dict[str, Any]:
     return tamper
 
 
+def build_salted() -> dict[str, Any]:
+    """Return the salted section: commitments SHA-256(salt || bytes) feed the unchanged recipe."""
+    commitments = [unwrap(salted_file_hash(salt, content)) for _, salt, content in SALTED_FILES]
+    entries = [
+        {
+            "name": file_name,
+            "content_hex": to_hex(content),
+            "salt": to_hex(salt),
+            "sha256": to_hex(file_hash(content)),
+            "commitment": to_hex(commitment),
+            "leaf": to_hex(leaf_from_file_hash(commitment)),
+            "proof": [to_hex(node) for node in unwrap(build_proof(commitments, commitment))],
+        }
+        for (file_name, salt, content), commitment in zip(SALTED_FILES, commitments, strict=True)
+    ]
+    salted = {"root": to_hex(unwrap(build_root(commitments))), "file_count": len(entries), "files": entries}
+    return salted
+
+
 def build_vectors() -> dict[str, Any]:
     """Return the full vectors document."""
     cases = [build_case(name, files) for name, files in CASES]
-    vectors = {"spec": SPEC, "case_count": len(cases), "cases": cases, "tamper": build_tamper(cases)}
+    vectors = {
+        "spec": SPEC,
+        "case_count": len(cases),
+        "cases": cases,
+        "tamper": build_tamper(cases),
+        "salted": build_salted(),
+    }
     return vectors
 
 

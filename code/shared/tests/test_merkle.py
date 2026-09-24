@@ -20,6 +20,7 @@ from poa_shared.merkle import (
     file_hash,
     keccak256,
     leaf_from_file_hash,
+    salted_file_hash,
     verify_proof,
 )
 from poa_shared.result import Err, Ok
@@ -130,3 +131,31 @@ def test_wrong_length_hash_is_err(bad_hash: bytes) -> None:
 def test_missing_target_is_err() -> None:
     hashes = [file_hash(b"first"), file_hash(b"second")]
     assert isinstance(build_proof(hashes, file_hash(b"not in the set")), Err)
+
+
+def test_salted_vectors_match_commitment_leaf_root_and_proof(vectors: dict[str, Any]) -> None:
+    salted = vectors["salted"]
+    commitments = [from_hex(entry["commitment"]) for entry in salted["files"]]
+    root = from_hex(salted["root"])
+    assert salted["file_count"] == len(salted["files"])
+    assert build_root(commitments) == Ok(root)
+    for entry, commitment in zip(salted["files"], commitments, strict=True):
+        content = from_hex(entry["content_hex"])
+        assert salted_file_hash(from_hex(entry["salt"]), content) == Ok(commitment)
+        assert file_hash(content) == from_hex(entry["sha256"])
+        assert leaf_from_file_hash(commitment) == from_hex(entry["leaf"])
+        assert leaf_from_file_hash(from_hex(entry["sha256"])) != from_hex(entry["leaf"])
+        proof = [from_hex(node) for node in entry["proof"]]
+        assert verify_proof(proof, root, from_hex(entry["leaf"]))
+
+
+@pytest.mark.parametrize("bad_salt", [b"", b"\x01" * 31, b"\x01" * 33])
+def test_salted_hash_rejects_salt_that_is_not_32_bytes(bad_salt: bytes) -> None:
+    assert isinstance(salted_file_hash(bad_salt, b"file"), Err)
+
+
+def test_different_salts_give_different_commitments() -> None:
+    first = salted_file_hash(b"\x01" * 32, b"same file")
+    second = salted_file_hash(b"\x02" * 32, b"same file")
+    assert isinstance(first, Ok) and isinstance(second, Ok)
+    assert first.value != second.value

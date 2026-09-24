@@ -8,6 +8,7 @@
     "single": "The root of a single leaf is that leaf and its proof is empty.",
     "invalid": "Empty input, duplicate files and hashes that are not 32 bytes are rejected.",
     "proof": "Sibling hashes bottom-up; verifies with OpenZeppelin MerkleProof.verify(proof, root, leaf).",
+    "salted": "Since P8.2 each uploaded file is committed as SHA-256(salt || file bytes) with a random 32-byte salt; that commitment replaces file_hash as the leaf input and the rest of the recipe is unchanged. salted.files[i].sha256 is the plain hash, which must NOT match the leaf.",
     "encoding": "Byte values are lowercase 0x-prefixed hex strings.",
     "shape": "case_count and cases[i].file_count are helper counts for Foundry's JSON parser; cases[i].files keep the input order (unsorted); tamper reuses the proof and root of tamper.case for a file with one flipped byte and must not verify."
   },
@@ -268,5 +269,33 @@
     ],
     "root": "0x782bc26076a2f963b32bee26ce28a35afbd0df9cf8e1cc4c7f60afc1b8d3423d",
     "must_verify": false
+  },
+  "salted": {
+    "root": "0xba6a23cf0ef31ef4e02e195564cae94b135fd4e58f70509a24e0bfdda8518296",
+    "file_count": 2,
+    "files": [
+      {
+        "name": "receipt-001.txt",
+        "content_hex": "0x726563656970742d3030313a2035303020666f6f64206b6974732c2064697374726963742058",
+        "salt": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "sha256": "0x780360dd82290028fe2e393161ab4fe18ed68cc7cb0e158e6ff9c22299755fec",
+        "commitment": "0x26f44b1fc2ceff7f8afbe5e8b92f56daf7e5c8da2ebec1aa4a34f1b83e54e17c",
+        "leaf": "0x47f9aefc0d28f8f5bdeb69c83208e008cf0a66ac0f982a05eb264ebe9a84a9a9",
+        "proof": [
+          "0x3419021da76f2af4e6c3a7e2e23ad38034ebb17f22369fca5608838a8bb04d4b"
+        ]
+      },
+      {
+        "name": "invoice-7781.txt",
+        "content_hex": "0x696e766f6963652d373738313a2072696365203274",
+        "salt": "0x65666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f8081828384",
+        "sha256": "0xb357168c4bf2efca52e93d94a44f1ebe9bfd9782098168197263277f871ae56a",
+        "commitment": "0x2a33cd37e95c177577a0006d64114c09c35f32885f776bb1e438bdddfb779ff2",
+        "leaf": "0x3419021da76f2af4e6c3a7e2e23ad38034ebb17f22369fca5608838a8bb04d4b",
+        "proof": [
+          "0x47f9aefc0d28f8f5bdeb69c83208e008cf0a66ac0f982a05eb264ebe9a84a9a9"
+        ]
+      }
+    ]
   }
 }

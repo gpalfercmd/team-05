@@ -6,7 +6,9 @@
 # =============================================================================
 """Normative Merkle recipe shared by Solidity, Python and TypeScript.
 
-1. file_hash = SHA-256(file bytes).
+1. file_hash = SHA-256(file bytes). Evidence uploaded since P8.2 uses a salted commitment
+   SHA-256(salt || file bytes) with a random 32-byte salt instead, so a guessed private file
+   cannot be confirmed from its public fingerprint; everything below is unchanged.
 2. leaf = keccak256(file_hash) over the 32 raw bytes (Ethereum keccak, not NIST SHA3).
 3. Empty input and duplicate files are rejected.
 4. Leaves are sorted ascending as raw bytes.
@@ -42,6 +44,14 @@ def file_hash(content: bytes) -> bytes:
     """Return the SHA-256 digest of a file's bytes."""
     digest = hashlib.sha256(content).digest()
     return digest
+
+
+def salted_file_hash(salt: bytes, content: bytes) -> Result[bytes]:
+    """Return the salted commitment SHA-256(salt || content), or Err when the salt is not 32 bytes."""
+    if not _is_hash(salt):
+        return Err(f"the salt must be exactly {HASH_LENGTH} bytes")
+    commitment: Result[bytes] = Ok(hashlib.sha256(salt + content).digest())
+    return commitment
 
 
 def leaf_from_file_hash(file_hash: bytes) -> bytes:

@@ -8,7 +8,7 @@
 import vectors from '@shared/merkle-vectors.json';
 import { hexToBytes, type Hex } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { buildRoot, hashFile, leafFromFileHash, sha256Hex, verifyProof } from './merkle';
+import { buildRoot, hashFile, leafFromFileHash, saltedSha256Hex, sha256Hex, verifyProof } from './merkle';
 
 // The same file is checked by Solidity (MerkleVectors.t.sol) and Python (test_merkle.py): if this
 // suite passes, the browser computes exactly the roots the contract and the backend compute.
@@ -94,5 +94,25 @@ describe('hashFile', () => {
     const receipt = vectors.cases[0]?.files[0];
     const file = new File([bytesOf(receipt?.content_hex ?? '0x')], 'receipt-001.txt');
     expect(await hashFile(file)).toEqual({ ok: true, value: receipt?.sha256 });
+  });
+});
+
+describe('salted commitments vs merkle-vectors.json (P8.2)', () => {
+  const { salted } = vectors;
+
+  it('commits SHA-256(salt ‖ bytes) and feeds it to the unchanged recipe', async () => {
+    for (const file of salted.files) {
+      const commitment = await saltedSha256Hex(file.salt, bytesOf(file.content_hex));
+      expect(commitment).toEqual({ ok: true, value: file.commitment });
+      expect(leafFromFileHash(file.commitment as Hex)).toBe(file.leaf);
+      expect(leafFromFileHash(file.sha256 as Hex)).not.toBe(file.leaf);
+      expect(verifyProof(file.proof, salted.root, file.leaf)).toBe(true);
+    }
+    expect(buildRoot(salted.files.map((file) => file.commitment))).toEqual({ ok: true, value: salted.root });
+  });
+
+  it('refuses a salt that is not 32 bytes', async () => {
+    const result = await saltedSha256Hex('0x1234', bytesOf('0x00'));
+    expect(result.ok).toBe(false);
   });
 });

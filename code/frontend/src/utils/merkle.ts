@@ -5,7 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { bytesToHex, concat, keccak256, type Hex } from 'viem';
+import { bytesToHex, concat, hexToBytes, keccak256, type Hex } from 'viem';
 import { err, ok, type Result } from './result';
 
 // Third implementation of the recipe in code/shared/merkle-vectors.json, next to Solidity and
@@ -13,6 +13,8 @@ import { err, ok, type Result } from './result';
 // report false mismatches, so this file follows the Python reference step by step:
 //   fileHash = SHA-256(bytes); leaf = keccak256(fileHash); empty input and duplicates rejected;
 //   leaves sorted ascending; parent = keccak256(min ‖ max); odd node promoted; one leaf = root.
+// Since P8.2 uploads commit to SHA-256(salt ‖ bytes) with a random 32-byte salt instead of the plain
+// SHA-256 (saltedSha256Hex); the commitment is the fileHash for everything above.
 
 export type MerkleError =
   | { kind: 'empty' }
@@ -109,6 +111,19 @@ export async function sha256Hex(bytes: ArrayBuffer): Promise<Result<Hex, string>
   } catch (error: unknown) {
     result = err(error instanceof Error ? error.message : 'The browser could not compute the fingerprint.');
   }
+  return result;
+}
+
+/** Salted commitment SHA-256(salt ‖ bytes); a salt that is not 32 bytes is refused. */
+export async function saltedSha256Hex(salt: string, bytes: ArrayBuffer): Promise<Result<Hex, string>> {
+  if (!isBytes32(salt)) {
+    return err('The salt must be exactly 32 bytes of hex.');
+  }
+  const saltBytes = hexToBytes(salt);
+  const joined = new Uint8Array(saltBytes.length + bytes.byteLength);
+  joined.set(saltBytes, 0);
+  joined.set(new Uint8Array(bytes), saltBytes.length);
+  const result = await sha256Hex(joined.buffer);
   return result;
 }
 

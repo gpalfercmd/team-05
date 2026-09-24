@@ -19,6 +19,7 @@ from poa_shared.merkle import (
     file_hash,
     keccak256,
     leaf_from_file_hash,
+    salted_file_hash,
     verify_proof,
 )
 from poa_shared.result import Err, Ok, Result
@@ -33,5 +34,6 @@ __all__ = [
     "file_hash",
     "keccak256",
     "leaf_from_file_hash",
+    "salted_file_hash",
     "verify_proof",
 ]
