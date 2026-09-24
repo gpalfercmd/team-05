@@ -2,7 +2,7 @@
 
 ## Context Snapshot
 * **Goal**: Trust, Evidence & Privacy — offchain encrypted evidence, Merkle root anchored onchain, two-stage verification (internal verifier → Authority-assigned external auditor with proof requests; supplementary proof confirmed by a 2nd internal verifier), public verification, disputes by accredited participants resolved by the Accreditation Authority.
-* **Current state**: `/plan` done (2026-09-24). Stack fixed: Foundry + OpenZeppelin on Arbitrum Sepolia, FastAPI + PostgreSQL, React + Vite + viem/wagmi, local encrypted volume.
+* **Current state**: P0 + P1 done (2026-09-24): checkpoint docs, frozen contract interfaces (`f8280b4`). See **Team Setup** below for what each phase needs. Stack fixed: Foundry + OpenZeppelin on Arbitrum Sepolia, FastAPI + PostgreSQL, React + Vite + viem/wagmi, local encrypted volume.
 * **Concrete problem (README Start here §2)**: Trust, Evidence & Privacy — letting a third party trust an aid claim whose evidence cannot be published because it contains beneficiaries' personal data. Scope statement in `docs/ARCHITECTURE.md#implementation-focus`; reuse it verbatim in `SUBMISSION.md` (P0.2). Every task must serve this problem; Funding and Delivery & Impact stay designed-only.
 * **Build order**: contracts → backend → frontend (option 1). `DESIGN.md` is written at the start of P5, not in `/spec` (logged in `memory.md`).
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
@@ -10,6 +10,57 @@
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
 * **Next step**: P1 done (interfaces frozen). `/build` P2 — implement `ParticipantRegistry` + `ClaimRegistry` against the frozen interfaces.
 * **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
+
+## Team Setup — what each phase needs
+
+> Read this before picking up a phase. Work on `develop`; never commit `.env` files or private keys (`.gitignore` blocks `.env`, but check `git status` before every commit).
+
+### Common (everyone)
+| Tool | Why | Install / check |
+| --- | --- | --- |
+| Git + access to `proof-of-aid/team-05` | Shared repo, branch `develop` | `git fetch && git switch develop` |
+| Claude Code (optional) | Same SDD workflow: it reads `CLAUDE.md` → `dbv-specs-ops/` | Open the repo root, ask it to continue from `task.md` |
+| MetaMask (browser extension) | Test wallets for demo roles | Add network **Arbitrum Sepolia** (chain id 421614, RPC `https://sepolia-rollup.arbitrum.io/rpc`, explorer `https://sepolia.arbiscan.io`) |
+
+### P2 — Smart contracts (`code/contracts/`)
+| Need | Detail |
+| --- | --- |
+| **Foundry** (`forge`, `cast`, `anvil`) | `curl -L https://foundry.paradigm.xyz \| bash && foundryup` (or `brew install foundry`). Tested with forge 1.8.3. Soldeer is built in. |
+| Dependencies | `cd code/contracts && forge soldeer install` (restores OpenZeppelin 5.7.0 + forge-std 1.16.2 from `soldeer.lock`); solc 0.8.30 downloads on first `forge build`. |
+| **Testnet ETH** | Arbitrum Sepolia ETH for the deployer (a public faucet, or bridge Sepolia ETH). About 0.05 ETH is plenty; the demo script funds the other 6 test wallets from it. |
+| **7 test wallets** | Registry Admin, Accreditation Authority, Organization, Internal Verifier 1, Internal Verifier 2, Auditor, Disputant. Use a **fresh test-only mnemonic** (e.g. `cast wallet new-mnemonic`), never a personal wallet. |
+| `code/contracts/.env` (local only) | `ARBITRUM_SEPOLIA_RPC_URL`, `DEPLOYER_PRIVATE_KEY` / `MNEMONIC` (test only), optional `ARBISCAN_API_KEY` for source verification. Template: `.env.example` (created in P2). |
+| Output for other lanes | `code/shared/deployments/arbitrum-sepolia.json` (contract addresses + deploy block). |
+| Checks | `forge build`, `forge test` (all transitions + reverts + fuzz), `forge coverage` optional. |
+
+### P3 — Evidence pipeline (`code/backend/`)
+| Need | Detail |
+| --- | --- |
+| **Python ≥ 3.12** + **uv** | `curl -LsSf https://astral.sh/uv/install.sh \| sh`. uv creates `.venv/` per package and pins versions in `uv.lock`. |
+| **Docker Desktop** | Runs PostgreSQL 16 via `docker compose` (no local Postgres install needed). |
+| Python libraries (verified names, avoid look-alikes) | `fastapi`, `uvicorn`, `pydantic` v2, `pydantic-settings`, `sqlalchemy` 2, `alembic`, `psycopg[binary]`, `pillow` (EXIF/GPS strip by re-encoding), `cryptography` (AES-GCM), `eth-account` (wallet-signature login), `python-multipart` (uploads), shared `proof-of-aid-shared` (`uv add --editable ../shared`); dev: `pytest`, `httpx`. |
+| `code/backend/.env` (local only) | `DATABASE_URL`, `EVIDENCE_ENCRYPTION_KEY` (32 random bytes, base64 — generate locally, never share in chat), `STORAGE_DIR`, `SESSION_SECRET`. |
+| Test data | Made-up files only; one demo photo **with** fake EXIF/GPS to prove stripping. No real personal data. |
+| Checks | `uv run pytest` (EXIF removed, ciphertext unreadable, hash of sanitized bytes, access matrix, Merkle root = shared vectors). |
+| Depends on | Only `code/shared` (P1). **Can start now, in parallel with P2.** |
+
+### P4 — Indexer + public API (`code/backend/`, same app as P3)
+| Need | Detail |
+| --- | --- |
+| Everything from P3 | Same Python env and database. |
+| `web3` (web3.py) | Reads contract events over RPC; ABIs from `code/shared/abi/`. |
+| **anvil** (from Foundry) | Local chain for indexer tests: deploy the P2 contracts, emit events, check the DB. |
+| Contract addresses | From `code/shared/deployments/*.json` (P2 output) + the deploy block to start indexing from. |
+| Env | `RPC_URL`, `CLAIM_REGISTRY_ADDRESS`, `PARTICIPANT_REGISTRY_ADDRESS`, `START_BLOCK`. |
+| Checks | `uv run pytest` against anvil: every event stored exactly once (idempotent on tx hash + log index), survives restart; public endpoints return timeline without login. |
+| Depends on | P2 contracts compiled (for anvil tests) and deployed (for the real demo). |
+
+### Suggested split for 3 people
+| Lane | Phases | Starts |
+| --- | --- | --- |
+| A — Blockchain | P2 → deploy → help P4 | now |
+| B — Backend | P3 → P4 | now (uses `code/shared`) |
+| C — Frontend + docs | P5 (`DESIGN.md` first, UI against `code/shared/abi/`), then P6 RUNBOOK | now with mocked data; wire to real contracts after P2 deploy |
 
 ## Task Checklist
 

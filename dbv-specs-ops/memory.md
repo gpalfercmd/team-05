@@ -9,14 +9,26 @@
 
 ## 🎯 Active Context — Proof of Aid Team 05
 - **Focus:** Trust, Evidence & Privacy. Plan approved 2026-09-24; build order contracts → backend → frontend.
+- **State (2026-09-24):** interfaces frozen in P1; next are P2 (contract logic), P3 (evidence pipeline) and P5 (frontend), which can run in parallel. Work on `develop`; `main` only receives merges decided by the team.
 
 ## 🏗️ Decisions (Team 05)
 - **2026-09-24 - Contracts first, DESIGN.md deferred:** The contract state machine is the dependency of every other layer and the hardest to change once deployed, so it is built and frozen first. `DESIGN.md` (required by MASTER_PROMPT in `/spec` for UI projects) is written at the start of the frontend task (P5.1) instead. Conscious deviation, approved by the team.
 - **2026-09-24 - Implementation under `code/`:** README "Start here" requires the implementation under `code/`; it overrides MASTER_PROMPT's rule of placing `venv/`, `pyproject.toml` and `package.json` at the project root. Each toolchain root lives in `code/<layer>/`.
-- **2026-09-24 - Merkle construction:** leaf = SHA-256 of the sanitized file; tree = OpenZeppelin standard (keccak256, sorted pairs). Python, TypeScript and Solidity must pass the same vectors in `code/shared/merkle-vectors.json`, otherwise public verification gives false mismatches.
+- **2026-09-24 - Merkle construction (frozen P1):** fileHash = SHA-256(sanitized bytes); leaf = keccak256(fileHash) (double hashing so an internal node can never pass as a file); leaves sorted so upload order does not matter; duplicates rejected; nodes = keccak256 of the sorted pair; an odd node is promoted unchanged. Verifies with OpenZeppelin `MerkleProof.verify`. Python (`poa_shared.merkle`), TypeScript and Solidity must pass `code/shared/merkle-vectors.json`, otherwise public verification gives false mismatches.
 - **2026-09-24 - Accepted risk (adversarial review): ≥2 internal verifiers per organization.** The proof-confirmation rule (2nd verifier ≠ checkpoint-1 verifier ≠ submitter) deadlocks an organization with only one verifier, so anchoring requires ≥2 active internal verifiers. Small organizations cannot use the system alone; accepted for the prototype.
 - **2026-09-24 - Accepted risk: auditor revoked mid-audit.** The Accreditation Authority can reassign the auditor while the claim is `InternallyVerified`, `ProofRequested` or `ProofSubmitted`; the previous auditor's attestations stay in history.
+- **2026-09-24 - Claim ID:** the backend generates a UUID; onchain `claimId = keccak256(uuid)` (bytes32). Not a counter, so it does not reveal how many claims exist or their order, and the backend can name a claim before it is anchored. The hash gives a fixed format, not secrecy.
+- **2026-09-24 - Soldeer instead of git submodules:** dependencies are pinned with checksums in `soldeer.lock` and restored with one command (`forge soldeer install`), so a fresh clone cannot build with missing or different libraries. `dependencies/` is git-ignored.
+- **2026-09-24 - Interface design (P1):** one participant role per wallet (an auditor can never be an organization's verifier); role ids are file-level constants in `IParticipantRegistry.sol`; `ClaimStatus.None = 0` means "does not exist"; `evidenceRoots(claimId)` returns the original root plus one per supplementary proof, so the public page verifies against the contract, not the DB; a generic `StatusChanged` event on every transition feeds the timeline; custom errors name the broken rule. Changing an interface after P1 needs whole-team agreement plus `script/export-abi.sh`.
+- **2026-09-24 - Python environments:** each Python package (`code/shared`, `code/backend`) has its own uv-managed `.venv/` + `uv.lock`, instead of MASTER_PROMPT's single root `venv/` (implementation lives under `code/`).
 - **2026-09-24 - Accepted risk: dispute spam.** Only accredited wallets can dispute, and a claim holds at most one open dispute. No stake/bond mechanism in the prototype.
+
+## 🗺️ Code Map (Team 05)
+- `code/contracts/src/interfaces/` — frozen interfaces: `IParticipantRegistry` (accreditation) and `IClaimRegistry` (lifecycle). P2 implementations go in `code/contracts/src/`.
+- `code/shared/abi/` — exported ABIs + `claim-status.json` (enum names). Backend and frontend import these, never the Solidity source.
+- `code/shared/poa_shared/` — Python Merkle reference + `Result` type (Ok/Err); the backend installs it as an editable dependency.
+- `code/shared/merkle-vectors.json` — cross-language test vectors, checked by `code/contracts/test/MerkleVectors.t.sol` and `code/shared/tests/`.
+- Planned: `code/backend/` (FastAPI: evidence pipeline P3 + indexer/public API P4), `code/frontend/` (React + Vite, P5), `code/shared/deployments/` (addresses per network, P2).
 
 ---
 
