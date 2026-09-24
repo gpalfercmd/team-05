@@ -3,7 +3,7 @@
 Describe the complete Proof of Aid system, including parts beyond the prototype.
 Keep implementation status in [SUBMISSION.md](SUBMISSION.md).
 
-> **Status:** Validated design (2026-09-24, checkpoint). Implementation status per capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary).
+> **Status:** Design as built (2026-09-24): contracts deployed to Arbitrum Sepolia, evidence backend and public verification page implemented. Implementation status per capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary).
 > Requirements and acceptance criteria live in [`dbv-specs-ops/docs/SPECIFICATIONS.md`](../dbv-specs-ops/docs/SPECIFICATIONS.md).
 
 ## Vision and actors
@@ -60,7 +60,7 @@ The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **
 7. **Dispute** — An accredited participant opens a dispute with a hash of counter-evidence; the claim becomes `Disputed` until resolved by the Accreditation Authority (`upheld` → `Rejected`, `dismissed` → `Verified`).
 8. *Funding (design only)* — Donations are escrowed and released per milestone once the related claim is `Verified`.
 9. *Delivery & Impact (future)* — Beneficiary confirmation of receipt (e.g. signed acknowledgement or one-time code) is added as an additional attestation type.
-10. **Public verification & history** — An indexer consumes contract events into PostgreSQL; anyone can view the claim timeline, recompute hashes of public evidence, and see who attested what and when.
+10. **Public verification & history** — The public claim page reads status, evidence roots and the full event history **directly from `ClaimRegistry`** (no server in between), and lets anyone re-hash files in the browser against the onchain roots. Per-bundle file lists (manifests) come from the backend and are accepted only if their recomputed root matches the chain. An event indexer into PostgreSQL is an optional speed-up for search and dashboards, never the source of truth.
 
 ### Claim lifecycle (enforced onchain)
 
@@ -113,6 +113,7 @@ flowchart LR
 
   ORG & IVER & AUD & PUB & ADM & AUTH --> UI
   UI --> API
+  UI -. reads views and events .-> CLM
   UI -- tx request --> WAL
   WAL -- signed tx --> REG
   WAL -- signed tx --> CLM
@@ -130,13 +131,13 @@ flowchart LR
 
   classDef impl fill:#d4f4dd,stroke:#2e7d32;
   classDef future fill:#eeeeee,stroke:#9e9e9e,stroke-dasharray: 4 4;
-  class UI,EVS,CLM,REG,API,IDX impl;
-  class ESC,BEN future;
+  class UI,EVS,CLM,REG,API impl;
+  class ESC,BEN,IDX future;
 ```
 
 Every state-changing action (accreditation, auditor assignment, anchoring, attestations, proof requests, disputes) is a transaction signed in the user's own MetaMask wallet; the contracts authorize it by the signer's role. The backend never holds user keys. The Donor / Public Auditor only reads and never signs.
 
-Green components form the prototype's contribution (evidence anchoring, two-stage verification with proof requests, disputes, public verification). Grey dashed components are designed but not implemented.
+Green components form the prototype's contribution (evidence anchoring, two-stage verification with proof requests, disputes, public verification). Grey dashed components are designed but not implemented; the public page does not depend on the indexer because it reads the contract directly.
 
 ## Components
 
@@ -144,12 +145,13 @@ Green components form the prototype's contribution (evidence anchoring, two-stag
 | --- | --- | --- | --- |
 | `ParticipantRegistry` contract | Wallet roles (`ORGANIZATION`, `INTERNAL_VERIFIER` + organization link, `AUDITOR`); role admins (Registry Admin, Accreditation Authority) | Solidity + OpenZeppelin `AccessControl` | Standard, audited role management |
 | `ClaimRegistry` contract | Claim anchors, evidence roots, two-stage attestations, proof requests, lifecycle state machine, disputes | Solidity, Foundry tests | The only state that must be independently verifiable |
-| Backend API | Claims CRUD, auth (wallet signature login), role-based access to evidence | Python — FastAPI + Pydantic v2 | Team language; validation at the boundary |
-| Evidence service | Hashing (SHA-256), Merkle bundles, encryption at rest, metadata stripping (EXIF/GPS) | Python | Keeps personal data offchain and private |
-| Event indexer | Consumes contract events into queryable timelines | Python + web3.py RPC polling from the deployment block, idempotent per (tx hash, log index) | Fast queries without trusting the DB as source of truth |
+| Backend API | Claims, evidence uploads per bundle, wallet-signature login, role-based access to private files, public claim view (private files as fingerprints only) and per-bundle manifests | Python — FastAPI + Pydantic v2, separate response models per viewer | Team language; validation at the boundary; a private field cannot leak through a shared model |
+| Evidence service | Metadata stripping (EXIF/GPS) before hashing, SHA-256 per file, one Merkle root per bundle (`root_index` 0 = original, n = supplementary proof), AES-GCM encryption at rest with a per-claim key | Python (`poa_shared` recipe) | Keeps personal data offchain and private; each bundle root equals `evidenceRoots(claimId)[n]` onchain |
+| Evidence manifest | Per-bundle list of file fingerprints (`version`, `claimId`, `rootIndex`, `files[{sha256, public, name?}]`); names only for public files | JSON Schema in `code/shared/manifest.schema.json` | Lets anyone check a single file; untrusted by design because its recomputed root must match the chain |
+| Event indexer *(designed, optional)* | Consumes contract events into queryable timelines; seals a bundle once its root is anchored; syncs participants from `ParticipantRegistry` | Python + web3.py RPC polling from the deployment block, idempotent per (tx hash, log index) | Fast search and dashboards; never the source of truth |
 | Database | Operational data, indexed events, access logs | PostgreSQL | Mature, relational, suggested by organizers |
 | File storage | Encrypted evidence files | Local Docker volume, files encrypted with a key from `.env` (MinIO/S3 is the production path) | Files do not belong onchain |
-| Frontend | Views per role (organization, internal verifier, auditor, authority, admin) and a public claim page that re-hashes public files in the browser; wallet signing | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps |
+| Frontend | Public claim page (no wallet): status, verification summary and timeline read from the contract with `eth_getLogs` filtered by claim ID; in-browser verification of single files (via manifest) or whole bundles. Views per role for signing actions. | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps; files never leave the visitor's browser |
 | `FundingEscrow` contract *(designed only)* | Holds donations per claim milestone; releases funds only when the linked claim is `Verified` and not `Disputed` | Solidity, reads `ClaimRegistry` status | Makes verification economically meaningful |
 | Beneficiary confirmation *(designed only, Delivery & Impact)* | Beneficiary acknowledges or challenges receipt through a one-time code redeemed by the backend into an attestation, without exposing their identity | Backend + new attestation type in `ClaimRegistry` | Closes the gap between delivery evidence and the recipient's own voice |
 
@@ -163,9 +165,11 @@ Green components form the prototype's contribution (evidence anchoring, two-stag
 | Evidence confidentiality | Files private by default and encrypted at rest; the organization can mark individual non-personal files (receipts, invoices, aggregate reports) as public; only the owning organization, its internal verifiers and the auditor reviewing the claim can decrypt via backend; public sees hashes and attestations. | Public cannot inspect content themselves, so trust shifts to the auditor. Mitigated by the auditor's independent accreditation and public, attributable attestations. |
 | Trust / verification | Two sequential stages enforced by the contract: internal verifier (fast first checkpoint, affiliated with the organization, not the submitter) then an external accredited auditor assigned by the Accreditation Authority (final, independent). Supplementary proof is confirmed by a second internal verifier before it returns to the auditor (four-eyes inside the organization). | The internal checks are not independent, so independence rests on the auditor; authority assignment stops the organization from choosing a friendly auditor, but a single auditor can still collude. Alternative: multiple auditors per claim. |
 | Proof requests | The auditor's request, the organization's supplementary evidence and the second internal verifier's confirmation are anchored as hashes/attestations, so the back-and-forth is part of the public history. | More transactions per claim; the requests' content stays offchain (only its hash is public). |
-| Identity & permissions | Allowlist of wallets: organizations and internal verifiers registered by the Registry Admin; auditors approved and assigned by a separate Accreditation Authority. | Trust in two central roles; splitting them prevents one party from both registering organizations and choosing their auditors. Future: verifiable credentials. |
+| Identity & permissions | Allowlist of wallets: organizations and internal verifiers registered by the Registry Admin; auditors approved and assigned by a separate Accreditation Authority. One participant role per wallet, **for life**: a wallet that ever held a participant role can never be registered again in any role. | Trust in two central roles; splitting them prevents one party from both registering organizations and choosing their auditors. Permanent identity closes a real attack found while building (a verifier revoked, re-accredited as auditor and assigned the same claim would sign both checkpoints), at the cost that a revoked participant needs a new wallet. Future: verifiable credentials. |
+| Evidence bundles and manifests | Each proof request adds a new bundle with its own root (`evidenceRoots` is append-only). Single-file checks use a manifest that anyone may serve, because the verifier recomputes its root and compares it with the chain. Private entries carry only fingerprints, never names. | One extra transaction per bundle; file names of private evidence are never published, even though they would help auditors. |
+| Public verification without a backend | The public page reads contract views and events itself and re-hashes files in the browser; the backend and indexer only add convenience. | Slower history loading (chunked `eth_getLogs` from the deployment block) versus trusting a database that could be tampered with. |
 | Disputes | Any accredited participant (organization, internal verifier, auditor) can dispute a `Verified` claim with a counter-evidence hash; append-only dispute events; resolved by the Accreditation Authority. | Centralized arbitration; alternatives: verifier panel vote, Kleros-style arbitration. |
 | Right to erasure (GDPR) | Deleting an offchain file leaves only an unlinkable hash onchain. | The onchain proof becomes unverifiable for that file after deletion. |
-| Network | Arbitrum Sepolia testnet. | No real value at stake; mainnet deployment would need audit and gas budgeting. |
+| Network | Arbitrum Sepolia testnet. Deployment block and transaction hashes are taken from receipts, because inside the Arbitrum EVM `block.number` returns the L1 block, not the L2 block that logs and explorers use. | No real value at stake; mainnet deployment would need audit and gas budgeting. |
 
 **Assumptions:** evidence is submitted by accredited organizations only; verifiers can access the internet and a wallet; the backend operator is trusted for confidentiality (not for integrity, which is checked onchain).
