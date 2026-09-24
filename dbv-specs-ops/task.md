@@ -2,13 +2,18 @@
 
 ## Context Snapshot
 * **Goal**: Trust, Evidence & Privacy — offchain encrypted evidence, Merkle root anchored onchain, two-stage verification (internal verifier → Authority-assigned external auditor with proof requests; supplementary proof confirmed by a 2nd internal verifier), public verification, disputes by accredited participants resolved by the Accreditation Authority.
-* **Current state**: P0 + P1 done (2026-09-24): checkpoint docs, frozen contract interfaces (`f8280b4`). See **Team Setup** below for what each phase needs. Stack fixed: Foundry + OpenZeppelin on Arbitrum Sepolia, FastAPI + PostgreSQL, React + Vite + viem/wagmi, local encrypted volume.
+* **Current state** (Thu 24 Sep, evening): P0–P2 done (contracts live on Arbitrum Sepolia, `code/shared/deployments/arbitrum-sepolia.json`); P3 evidence backend done; P4 backend done (indexer, chain-driven access, public API — `80fc6aa`); P5.1/P5.2/P5.4 done (public page verifies evidence in the browser against the live contract). Open: P6 RUNBOOK (still the empty template), P4.4 frontend `ApiClaimSource`, P5.3 role screens, P7 final.
 * **Concrete problem (README Start here §2)**: Trust, Evidence & Privacy — letting a third party trust an aid claim whose evidence cannot be published because it contains beneficiaries' personal data. Scope statement in `docs/ARCHITECTURE.md#implementation-focus`; reuse it verbatim in `SUBMISSION.md` (P0.2). Every task must serve this problem; Funding and Delivery & Impact stay designed-only.
 * **Build order**: contracts → backend → frontend (option 1). `DESIGN.md` is written at the start of P5, not in `/spec` (logged in `memory.md`).
 * **Structure rule**: all implementation lives under `code/` (README "Start here" §2), which overrides MASTER_PROMPT's "venv/pyproject/package.json at the project root": each toolchain root is inside `code/`.
 * **Branching (updated 2026-09-24)**: Guillermo merged `develop` into `main` (`19b877f`) to keep one line of work; work now continues on `main`. Pushing stays a team decision; evaluation reads `main`, so every pushed commit on `main` is a candidate for the final SHA.
 * **Deadlines**: Thursday checkpoint (today, time set by organizers) · **Final: Friday 25, 14:00**.
-* **Next step**: P2 done and live on Arbitrum Sepolia (`code/shared/deployments/arbitrum-sepolia.json`). Lane B → P3 backend (manifests per `code/shared/manifest.schema.json`); lane C (Guillermo) → point P5.4 at Sepolia (`VITE_*` from `arbitrum-sepolia.json`, `VITE_DEPLOY_BLOCK=312262109`) and check the live page, then P5.3 role screens.
+* **Plan for Friday 25 Sep (final deadline 14:00)**, in this order:
+  1. **P6 RUNBOOK first** (`docs/RUNBOOK.md` is still the template): requirements, setup per layer (contracts / backend + Postgres + `alembic upgrade head` + indexer / frontend with pnpm), `.env` files, run + validate commands (`forge test`, `uv run pytest`, `pnpm test`), demo table on the **live Sepolia deployment** (public page → ✅ match → edit one byte → ❌ mismatch → onchain timeline), Real/Mock/Simulated dependency table, reset steps. Then **dry-run it from a fresh clone** (P6.3). Target: done by ~11:00.
+  2. Run `alembic upgrade head` once against the Docker Postgres (P4 migration only tested on SQLite so far).
+  3. Screenshots of the live public page (match / mismatch) → SUBMISSION validation evidence.
+  4. P7: re-measure effort split, AI-usage table, README "Before submitting" checklist, secret scan, push `main`, send Team ID + SHA through the final form **before 14:00**.
+  5. Only if time remains: P4.4 `ApiClaimSource`, then a thin P5.3 role screen. Both are optional (cut line).
 * **Frontend known gaps (for P5.3)**: role detection is a placeholder; no wrong-network warning; wagmi v3 renamed `useAccount` → `useConnection`; P4 `ApiClaimSource` is only a slot in `src/data/createClaimSource.ts`.
 * **TDD mode**: off (not configured in project or session). Runners: `forge test` (code/contracts), `uv run pytest` (code/shared, later code/backend).
 
