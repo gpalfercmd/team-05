@@ -75,13 +75,18 @@ onchain. The optional P4 indexer API only speeds up the history (see *P4 API mod
   same entries.
 - **Browser-side Merkle** (`src/utils/merkle.ts`): the frozen P1 recipe — SHA-256 with WebCrypto,
   keccak256 leaves, sorted leaves and pairs, odd node promoted. It passes every case of
-  `code/shared/merkle-vectors.json`, like the Solidity and Python implementations.
+  `code/shared/merkle-vectors.json`, like the Solidity and Python implementations. Since P8.2 the
+  leaf input of a newly uploaded file is the salted commitment SHA-256(salt ‖ bytes)
+  (`saltedSha256Hex`, checked against the `salted` vectors); claims recorded earlier, including
+  the demo claim, use the plain SHA-256.
 - **Evidence manifest** (`src/evidence/`): the per-bundle file list defined by
   [`code/shared/manifest.schema.json`](../shared/manifest.schema.json), mirrored in zod (a test runs
   both schemas over the same samples). A manifest is untrusted until the Merkle root of its
   fingerprints equals `evidenceRoots[rootIndex]`; otherwise the page shows "File list altered".
-  Private entries carry no name. Visitors can check single files against a verified list, or a
-  complete bundle without any list. Files are hashed locally and never sent anywhere.
+  Private entries carry no name and no salt. Version 2 lists give public entries their salt: a
+  dropped file matches when its SHA-256 or SHA-256(salt ‖ file) equals the fingerprint, so a
+  private salted file cannot be confirmed from a guessed copy. Visitors can check single files
+  against a verified list, or a complete bundle (salted bundles need their verified list). Files are hashed locally and never sent anywhere.
 
 ### P4 API mode (`VITE_API_URL`)
 

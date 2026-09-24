@@ -1,8 +1,8 @@
 # Backend
 
-FastAPI app for Proof of Aid Team 05: evidence pipeline (EXIF strip, SHA-256, AES-256-GCM at
-rest), wallet-signature login, access matrix for private evidence, and the P4 chain indexer with
-its public API.
+FastAPI app for Proof of Aid Team 05: evidence pipeline (EXIF strip, salted SHA-256 commitment,
+AES-256-GCM at rest), wallet-signature login, access matrix for private evidence, and the P4 chain
+indexer with its public API.
 
 ```bash
 uv sync                       # Python >= 3.12, uv-managed .venv
