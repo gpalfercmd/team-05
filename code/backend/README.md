@@ -9,8 +9,19 @@ uv sync                       # Python >= 3.12, uv-managed .venv
 cp .env.example .env          # fill the secrets locally, never commit .env
 uv run alembic upgrade head   # create/upgrade the schema
 uv run uvicorn app.main:create_app --factory --reload
-uv run pytest -q              # whole suite (the anvil test runs when Foundry is on PATH)
 ```
+
+Tests (111; the anvil end-to-end test runs when Foundry is on PATH and `forge soldeer install` was
+run in `../contracts`). Run them **from `code/`**, so the local `.env` is not read:
+
+```bash
+cd ..   # code/
+uv run --project backend pytest -c backend/pyproject.toml backend/tests -q
+```
+
+Inside `code/backend`, `uv run pytest` loads `.env`; once it sets P4 values such as
+`DEPLOYMENT_FILE`, they leak into the tests' settings and many tests fail. Full setup, the local
+demo and PostgreSQL options are in [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md).
 
 ## Claim metadata hash (P8.4)
 
@@ -81,8 +92,15 @@ The first run starts at `deployBlock` (an L2 block taken from the deployment rec
 forward in `INDEXER_BLOCK_CHUNK` steps. If the provider limits `eth_getLogs` ranges, lower
 `INDEXER_BLOCK_CHUNK` to skip the halving retries.
 
-Restarting anvil resets the chain but not the database: use a fresh database (or drop the
-`chain_*` and `sync_state` rows for chain 31337) before indexing a new anvil run.
+Restarting anvil, or redeploying the registries on any chain, resets the chain but not the
+database: empty the index before indexing again (the evidence tables are untouched):
+
+```bash
+psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
+  -c "TRUNCATE chain_events, chain_participants, chain_claims, sync_state;"
+```
+
+(Use your `DATABASE_URL` without the `+psycopg` part.)
 
 ### Chain-driven access control
 

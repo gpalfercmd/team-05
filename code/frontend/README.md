@@ -1,10 +1,11 @@
 # Proof of Aid — Frontend
 
-React + Vite + TypeScript app for the **Trust, Evidence & Privacy** prototype: role views for the
-participants (P5.3) and a public claim page where anyone can check a claim's evidence without a
-wallet and without seeing personal data (P5.4). This folder holds the shell (P5.2: tooling, design
-tokens from [`DESIGN.md`](../../dbv-specs-ops/docs/DESIGN.md), routing, wallet connection,
-`StatusBadge`, `HashDisplay`) and the public claim page (P5.4).
+React + Vite + TypeScript app for the **Trust, Evidence & Privacy** prototype: a public claim page
+where anyone can check a claim's evidence without a wallet and without seeing personal data (P5.4),
+on top of the shell (P5.2: tooling, design tokens from
+[`DESIGN.md`](../../dbv-specs-ops/docs/DESIGN.md), routing, wallet connection, `StatusBadge`,
+`HashDisplay`). Role views for signing actions (P5.3) were cut and not built: in the prototype the
+role actions are signed by the Foundry scripts (see [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md)).
 
 Stack: React 19, React Router 7, wagmi 3 + viem 2 (injected wallet, e.g. MetaMask), TanStack
 Query, zod, plain CSS with custom properties. Tests: Vitest + Testing Library (jsdom).
@@ -23,7 +24,8 @@ pnpm dev                # http://localhost:5173
 
 | Script | What it does |
 | --- | --- |
-| `pnpm dev` | Dev server with hot reload |
+| `pnpm dev` | Dev server with hot reload (demo data, or whatever `.env` configures) |
+| `pnpm dev:sepolia` | Dev server reading the live Arbitrum Sepolia deployment from the committed `.env.sepolia` |
 | `pnpm test` | Unit and component tests (`vitest run`) |
 | `pnpm typecheck` | Strict TypeScript check (`tsc -b --noEmit`) |
 | `pnpm lint` | oxlint (no `any`, rules of hooks, no `console`) |
@@ -66,13 +68,17 @@ onchain. The optional P4 indexer API only speeds up the history (see *P4 API mod
   equals the onchain root of that bundle; a 404, a network error or a mismatch just means "no file
   list". So on the live deployment the demo claim shows its file lists and download links, and a
   single file such as `receipt-001.txt` can be checked without uploading a manifest.
-- **Typed ABI subset** (`src/data/claimRegistryAbi.ts`): the three views and all ten events as
+- **Typed ABI subset** (`src/data/claimRegistryAbi.ts`): the six views the page reads (`statusOf`,
+  `getClaim`, `evidenceRoots`, `lockedOf`, `disputeWindowClosesAt`, `settled`) and the 13 events that carry a claim ID (all but `Withdrawn`) as
   human-readable signatures, so decoded values arrive typed. A test fails if any of them drifts from
   `code/shared/abi/IClaimRegistry.json` (names, types, indexed flags, selectors).
 - **Timeline and summary:** one entry per transaction, oldest first; `StatusChanged` gives the
   badge and the action event of the same transaction gives the sentence (`AuditorAssigned` changes
   no status). The summary card (checkpoint 1, auditor, final decision, dispute) is derived from the
   same entries.
+- **Deposits** (`EscrowStatus`, P9): ETH still held for the claim (`lockedOf`), "Disputes open
+  until …" or "Dispute window closed" (`disputeWindowClosesAt`, compared with the visitor's clock)
+  and "Settled" (`settled`); timeline entries for deposits locked, payouts credited and settlement.
 - **Claim title and description** (`src/utils/metadata.ts`, `src/data/claimMetadata.ts`,
   `ClaimMetadata`): the text lives only in the backend, the contract keeps its `metadataHash`. With
   `VITE_API_URL` the page reads the public claim view (`GET /claims/{id}`), recomputes the hash in
@@ -112,11 +118,16 @@ event, so that proves nothing is missing). Otherwise — API unreachable, non-2x
 behind — the page reads the whole history from the chain exactly as without the API.
 
 ```bash
-# backend (code/backend): allow the frontend origin, the API listens on port 8000
-CORS_ORIGINS=http://localhost:5173,http://localhost:5174 uv run uvicorn app.main:create_app --factory --port 8000
+# backend (code/backend, .env filled, `alembic upgrade head` done): index the chain, then serve the API
+DEPLOYMENT_FILE=../shared/deployments/arbitrum-sepolia.json CHAIN_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc \
+  uv run python -m app.indexer --once
+DEPLOYMENT_FILE=../shared/deployments/arbitrum-sepolia.json CORS_ORIGINS=http://localhost:5173,http://localhost:5174 \
+  uv run uvicorn app.main:create_app --factory --port 8000
 # frontend
 VITE_API_URL=http://localhost:8000 pnpm dev:sepolia
 ```
+
+Without `DEPLOYMENT_FILE` the public endpoints answer 503 and the page falls back to the chain.
 
 The backend's `CORS_ORIGINS` must list the exact origin the page is served from
 (`http://localhost:5173` for `pnpm dev`, `http://localhost:5174` for the `frontend-sepolia` launch
@@ -145,10 +156,12 @@ src/
   data/               claim sources (chain, API, demo), published file lists, typed ABI subset,
                       events → timeline, indexer timeline parser, summary
   evidence/           manifest schema (zod), verification logic, plain-language labels
-  hooks/              useAppConfig, useClaim, useEvidenceVerifier, useRole (stub until P5.3), useTheme
-  components/         Header, RoleBanner, ConnectButton, ThemeToggle, StatusBadge, HashDisplay,
-                      Timeline, VerificationSummary, EvidenceSection, EvidenceVerifier,
-                      VerificationResult, FileDropZone, icons/
+  hooks/              useAppConfig, useClaim, useEvidenceVerifier, useRole (stub: role screens were
+                      cut), useTheme
+  components/         AppLayout, Header, RoleBanner, ConnectButton, ThemeToggle, ConfigError,
+                      DemoDataNotice, StatusBadge, HashDisplay, AddressText, ClaimLookup,
+                      ClaimMetadata, EscrowStatus, Timeline, VerificationSummary, EvidenceSection,
+                      EvidenceVerifier, VerificationResult, FileDropZone, icons/
   pages/              DashboardPage, PublicClaimPage, NotFoundPage
   mocks/              demo claims (contract state + events) and demo manifests
   types/              ClaimView (public, onchain-only view of a claim)

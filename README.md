@@ -90,13 +90,13 @@ Month, year, timezone, and exact Thursday checkpoint deadline are awaiting organ
 
 ## Before submitting
 
-- [ ] The complete design and focused implementation are clear and connected.
-- [ ] Implemented, mocked, designed-only, and out-of-scope capabilities are explicit.
-- [ ] Setup and demo instructions work; dependencies and limitations are documented.
-- [ ] All documentation, demos, and pitch material are in **English**.
-- [ ] Meaningful AI use is disclosed, including how outputs were reviewed or validated. The team can explain and defend the work.
-- [ ] No secrets, private keys, production credentials, or sensitive personal data are committed.
-- [ ] Everything to be evaluated is pushed to `main`, and **Team ID + SHA** is submitted through the form.
+- [x] The complete design and focused implementation are clear and connected.
+- [x] Implemented, mocked, designed-only, and out-of-scope capabilities are explicit.
+- [x] Setup and demo instructions work; dependencies and limitations are documented. *(RUNBOOK dry-run from a fresh clone on 2026-09-25.)*
+- [ ] All documentation, demos, and pitch material are in **English**. *(Documentation and demo: yes. Pitch material: the team confirms.)*
+- [x] Meaningful AI use is disclosed, including how outputs were reviewed or validated. The team can explain and defend the work. *(SUBMISSION §5; the team adds any other tool it used.)*
+- [x] No secrets, private keys, production credentials, or sensitive personal data are committed. *(`git grep` scan on 2026-09-25: no `.env` tracked or ever committed; the only keys are Foundry's public anvil development key and mnemonic in the local-demo instructions and tests.)*
+- [ ] Everything to be evaluated is pushed to `main`, and **Team ID + SHA** is submitted through the form. *(Team action.)*
 
 ## License
 

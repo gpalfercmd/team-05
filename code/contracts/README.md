@@ -19,7 +19,8 @@ Dependencies are managed with [Soldeer](https://soldeer.xyz) and pinned in `sold
 ```bash
 forge soldeer install   # restore pinned dependencies
 forge build
-forge test
+forge test              # 168 tests
+forge coverage --report summary   # 100% lines/statements/branches/functions on src/
 ```
 
 Changing an interface after P1 requires the whole team's agreement, then `script/export-abi.sh`.
@@ -206,6 +207,13 @@ forge script script/DemoLifecycle.s.sol:DemoLifecycle --rpc-url arbitrum_sepolia
 python3 script/record_transactions.py DemoLifecycle.s.sol --chain-id 421614
 # optional: add --verify to the forge command (needs ARBISCAN_API_KEY)
 ```
+
+Current deployment (P9, with deposits): ParticipantRegistry
+`0x9c0599ca7ADF39648e62110A14ed29Ab0D994aA1`, ClaimRegistry
+`0x658e3D60058a0B4f52AAbc4e536F4b2963bBc013`, deploy block 312397989; the demo claim is `Verified`
+with 0.0111 ETH in escrow. After a redeploy, also update `code/frontend/.env.sepolia`,
+`.claude/launch.json` and the Arbiscan links in `docs/SUBMISSION.md`, and empty the backend's chain
+index (see `../backend/README.md`).
 
 `DemoLifecycle` deploys and writes `arbitrum-sepolia.json` itself; the helper then adds both the
 deployment and the lifecycle transactions. To deploy without the demo, use `Deploy.s.sol` with

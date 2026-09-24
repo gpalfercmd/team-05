@@ -3,7 +3,7 @@
 Describe the complete Proof of Aid system, including parts beyond the prototype.
 Keep implementation status in [SUBMISSION.md](SUBMISSION.md).
 
-> **Status:** Design as built (2026-09-24): contracts deployed to Arbitrum Sepolia, evidence backend and public verification page implemented. Implementation status per capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary).
+> **Status:** Design as built (2026-09-25, final submission): contracts with deposits, rewards and penalties deployed to Arbitrum Sepolia; evidence backend, chain indexer and public verification page implemented. Implementation status per capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary).
 > Requirements and acceptance criteria live in [`dbv-specs-ops/docs/SPECIFICATIONS.md`](../dbv-specs-ops/docs/SPECIFICATIONS.md).
 
 ## Vision and actors
@@ -54,13 +54,13 @@ The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **
 1. **Accreditation** — Registry Admin registers organization wallets and their internal verifier wallets onchain (`ORGANIZATION`, `INTERNAL_VERIFIER` linked to an organization); the Accreditation Authority approves external auditor wallets (`AUDITOR`).
 2. **Need / claim creation** — Organization creates a claim (e.g. "500 food kits delivered in district X") via the backend; descriptive metadata is stored in PostgreSQL.
 3. **Evidence upload** — Organization uploads evidence files (photos, receipts, signed delivery lists). The backend stores them offchain, encrypted at rest, and computes a salted fingerprint per file: SHA-256(salt ‖ sanitized bytes) with a random 32-byte salt, sealed with the claim key.
-4. **Evidence anchoring** — The organization's wallet signs a transaction that records onchain: claim ID, evidence bundle root (Merkle root of file hashes) and metadata hash (keccak256 of the claim's title, description, region, date and ID, see *Claim metadata check* below). A `ClaimAnchored` event is emitted.
+4. **Evidence anchoring** — The organization's wallet signs a transaction that records onchain: claim ID, evidence bundle root (Merkle root of file hashes) and metadata hash (keccak256 of the claim's title, description, region, date and ID, see *Claim metadata check* below), and locks the organization's deposit (see *Incentives*). A `ClaimAnchored` event is emitted.
 5. **Internal verification (checkpoint 1)** — An internal verifier of the same organization reviews the evidence, checks it against the onchain root and signs an attestation (`approve` / `reject` + justification hash). On approval the claim becomes `InternallyVerified`.
 6. **External audit (checkpoint 2)** — The Accreditation Authority assigns an accredited external auditor to the claim; only that auditor can act on it. The auditor reviews the private evidence (role-checked). If it is insufficient, the auditor opens an onchain **proof request** (hash of the request text) and the claim becomes `ProofRequested`. The organization anchors supplementary evidence (`ProofSubmitted`); a second internal verifier of the organization, different from the checkpoint-1 verifier, confirms it (back to audit) or sends it back (`ProofRequested`). The auditor then signs the final attestation: `approve` → `Verified`, `reject` → `Rejected`.
 7. **Dispute** — Within 60 days of the approval, an accredited participant (not the claim's organization or its approving auditor) posts a dispute bond and a hash of counter-evidence; the claim becomes `Disputed` until resolved by the Accreditation Authority (`upheld` → `Rejected`, `dismissed` → `Verified`). After the window anyone can settle the claim, which releases the deposits; a settled claim can never be disputed.
 8. *Funding (design only)* — Donations are escrowed and released per milestone once the related claim is `Verified`.
 9. *Delivery & Impact (future)* — Beneficiary confirmation of receipt (e.g. signed acknowledgement or one-time code) is added as an additional attestation type.
-10. **Public verification & history** — The public claim page reads status, evidence roots and the full event history **directly from `ClaimRegistry`** (no server in between), and lets anyone re-hash files in the browser against the onchain roots. Per-bundle file lists (manifests) come from the backend and are accepted only if their recomputed root matches the chain. An event indexer into PostgreSQL is an optional speed-up for search and dashboards, never the source of truth.
+10. **Public verification & history** — The public claim page reads status, evidence roots and the full event history **directly from `ClaimRegistry`** (no server in between), and lets anyone re-hash files in the browser against the onchain roots. Per-bundle file lists (manifests) come from the backend and are accepted only if their recomputed root matches the chain. An event indexer into PostgreSQL feeds the backend's access rules and a public timeline API; for the page it is an optional speed-up, never the source of truth.
 
 ### Claim lifecycle (enforced onchain)
 
@@ -169,13 +169,13 @@ flowchart LR
 
   classDef impl fill:#d4f4dd,stroke:#2e7d32;
   classDef future fill:#eeeeee,stroke:#9e9e9e,stroke-dasharray: 4 4;
-  class UI,EVS,CLM,REG,API impl;
-  class ESC,BEN,IDX future;
+  class UI,EVS,CLM,REG,API,IDX impl;
+  class ESC,BEN future;
 ```
 
 Every state-changing action (accreditation, auditor assignment, anchoring, attestations, proof requests, disputes) is a transaction signed in the user's own MetaMask wallet; the contracts authorize it by the signer's role. The backend never holds user keys. The Donor / Public Auditor only reads and never signs.
 
-Green components form the prototype's contribution (evidence anchoring, two-stage verification with proof requests, disputes, public verification). Grey dashed components are designed but not implemented; the public page does not depend on the indexer because it reads the contract directly.
+Green components form the prototype's contribution (evidence anchoring, two-stage verification with proof requests, disputes with deposits, the evidence service, the indexer and public verification). Grey dashed components are designed but not implemented. The public page does not depend on the indexer: it reads the contract directly and uses the indexer's API only as a speed-up. In the prototype, role actions are signed by scripts with test wallets; the per-role signing screens are designed but were not built.
 
 ## Components
 
@@ -186,10 +186,10 @@ Green components form the prototype's contribution (evidence anchoring, two-stag
 | Backend API | Claims, evidence uploads per bundle, wallet-signature login, role-based access to private files, public claim view (private files as fingerprints only) and per-bundle manifests | Python — FastAPI + Pydantic v2, separate response models per viewer | Team language; validation at the boundary; a private field cannot leak through a shared model |
 | Evidence service | Metadata stripping (EXIF/GPS) before hashing, salted SHA-256 commitment per file (salt encrypted with the claim key, per-claim HMAC for duplicate detection), one Merkle root per bundle (`root_index` 0 = original, n = supplementary proof), AES-GCM encryption at rest with a per-claim key | Python (`poa_shared` recipe) | Keeps personal data offchain and private; each bundle root equals `evidenceRoots(claimId)[n]` onchain |
 | Evidence manifest | Per-bundle list of file fingerprints (`version` 1 or 2, `claimId`, `rootIndex`, `files[{sha256, public, name?, salt?}]`); names and salts only for public files, version 2 when the bundle holds salted files | JSON Schema in `code/shared/manifest.schema.json` | Lets anyone check a single file; untrusted by design because its recomputed root must match the chain |
-| Event indexer *(designed, optional)* | Consumes contract events into queryable timelines; seals a bundle once its root is anchored; syncs participants from `ParticipantRegistry` | Python + web3.py RPC polling from the deployment block, idempotent per (tx hash, log index) | Fast search and dashboards; never the source of truth |
+| Event indexer | Consumes both registries' events into queryable timelines and projects participants and claims (status, assigned auditor, roots), which drive the backend's access rules (`ROLE_SOURCE=chain`) and the public timeline API. Designed next: seal a backend bundle once its root is anchored (today bundles are sealed by upload order). | Python + web3.py RPC polling from the deployment block, idempotent per (chain, tx hash, log index), confirmation margin, automatic range halving | Access rules follow onchain accreditation and revocation; fast history and search; never the source of truth for the public page |
 | Database | Operational data, indexed events, access logs | PostgreSQL | Mature, relational, suggested by organizers |
 | File storage | Encrypted evidence files | Local Docker volume, files encrypted with a key from `.env` (MinIO/S3 is the production path) | Files do not belong onchain |
-| Frontend | Public claim page (no wallet): status, verification summary and timeline read from the contract with `eth_getLogs` filtered by claim ID; in-browser verification of single files (via manifest) or whole bundles. Views per role for signing actions. | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps; files never leave the visitor's browser |
+| Frontend | Public claim page (no wallet): status, verification summary, deposits and timeline read from the contract with `eth_getLogs` filtered by claim ID (or from the indexer API when it is up to date); in-browser verification of single files (via manifest) or whole bundles; claim text checked against the onchain `metadataHash`. Views per role for signing actions *(designed, not built)*. | React + Vite + TypeScript + viem/wagmi + MetaMask | Ecosystem standard for EVM dapps; files never leave the visitor's browser |
 | `FundingEscrow` contract *(designed only)* | Holds donations per claim milestone; releases funds only when the linked claim is `Verified` and not `Disputed` | Solidity, reads `ClaimRegistry` status | Makes verification economically meaningful |
 | Beneficiary confirmation *(designed only, Delivery & Impact)* | Beneficiary acknowledges or challenges receipt through a one-time code redeemed by the backend into an attestation, without exposing their identity | Backend + new attestation type in `ClaimRegistry` | Closes the gap between delivery evidence and the recipient's own voice |
 
