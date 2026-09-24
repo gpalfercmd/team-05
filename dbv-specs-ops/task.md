@@ -126,11 +126,16 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
     - [x] Use test-only wallets for Registry Admin, Accreditation Authority, Organization, two Internal Verifiers, Auditor, and Disputant; document the demo's initial state and reset path.
 
 - [ ] **P3 — Evidence pipeline (S2, Real-world connection)** — F2, F3
-  - [ ] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
-  - [ ] P3.2 Upload: EXIF/GPS strip → SHA-256 on sanitized bytes → AES-GCM encryption to the local volume; `public` flag per file; no personal data in logs.
-  - [ ] P3.3 Merkle root builder in Python, passing P1.3 vectors.
-  - [ ] P3.4 Wallet login (EIP-191 signed nonce → session) and role-based decryption: org, its internal verifiers, and the claim's assigned auditor only.
-  - [ ] P3.5 pytest: EXIF removed, ciphertext unreadable without key, hash = sanitized bytes, access matrix, Merkle vectors.
+  - [x] P3.1 `code/backend/` FastAPI app (own venv + `pyproject.toml`), settings from `.env`, PostgreSQL via SQLAlchemy + Alembic, docker-compose for Postgres.
+    - Evidence (2026-09-24): `app/{settings,db,models,main}.py` with project headers; `itsdangerous` added for sessions; `alembic/` env reads `DATABASE_URL` from settings (never in `alembic.ini`); migration `0001` (`claims`, `evidence_files`, `participants`, `challenges`); `alembic upgrade head` OK on native Postgres; `GET /health` → 200; key validation rejects short keys.
+  - [x] P3.2 Upload: EXIF/GPS strip → SHA-256 on sanitized bytes → AES-GCM encryption to the local volume; `public` flag per file; no personal data in logs.
+    - Evidence (2026-09-24): `app/services/crypto.py` (HKDF per claim + AES-GCM, `Result`) and `app/services/evidence.py` (`sanitize_upload` re-encodes JPEG/PNG/WebP with empty EXIF, passthrough for non-images; `process_upload` → hash + packed blob; `store/load_packed` with traversal guard). Inline run: GPS-laden demo JPEG stripped (exif gone), hash == SHA-256(sanitized) ≠ raw, encrypt/store/load/decrypt roundtrip OK, tampered blob and wrong key → `Err`. `public` flag enforced at the API layer (P3.4 slice).
+  - [x] P3.3 Merkle root builder in Python, passing P1.3 vectors.
+    - Evidence (2026-09-24): `app/services/claims.py` (`claim_id_from_uuid` = keccak256(uuid), `metadata_digest` canónico v1, `build_evidence_root` sobre la receta P1.3). Inline run: keccak == `eth_utils.keccak` (coincide con Solidity), claim_id determinista/único, digest sensible a cada campo + guards, 6/6 vectores P1.3, e2e pipeline → root → proof válida.
+  - [x] P3.4 Wallet login (EIP-191 signed nonce → session) and role-based decryption: org, its internal verifiers, and the claim's assigned auditor only.
+    - Evidence (2026-09-24): `app/schemas.py` (Pydantic v2), `services/auth.py` (challenge single-use 10min + `eth-account` verify), `services/access.py` (matrix; denied private reads → 404, no oracle), `api/{auth,claims,files}.py` wired in `main.py`. E2E run (SQLite + TestClient): challenge/verify/replay-401/me/logout; POST /claims 401/403/422/201 + digest match; uploads 403-for-verifier/409-dup/root match; public GET claim (hashes+root, no bytes); matrix org/verifier/assigned-auditor 200, others 404, public file free; PATCH visibility 401/403/flip. `auditor_address` set via DB seed until P4 reads `AuditorAssigned` onchain (orgs must not self-assign auditors).
+  - [x] P3.5 pytest: EXIF removed, ciphertext unreadable without key, hash = sanitized bytes, access matrix, Merkle vectors.
+    - Evidence (2026-09-24): `tests/` (conftest con app aislada por test: SQLite `:memory:` + `StaticPool`, storage temporal, claves aleatorias; `pythonpath=["."]` + `tests/__init__.py`) — `test_auth` (7: challenge/verify/replay/expiry/logout), `test_claims` (12: guards + anchor ids + root), `test_evidence` (7: EXIF/GPS, hash=saneado, roundtrip/tamper, traversal), `test_access` (4: matriz + visibility), `test_merkle` (5: 6/6 vectores + e2e). **`uv run pytest`: 34 passed.** `create_app` acepta `engine` inyectado (solo tests).
 
 - [ ] **P4 — Indexer + public API (S2)** — F6 · *joint task, starts after P3; optional for the demo (see timing rule)*
   - [ ] P4.1 web3.py event indexer (poll from deploy block) → `claim_events` table; idempotent on (tx hash, log index).

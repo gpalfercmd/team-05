@@ -32,5 +32,10 @@ code/contracts/broadcast/
 # Evidence storage (encrypted demo files, never committed)
 code/backend/storage/
 
+# Lane B local tooling (working notes + one-command check + its log, not committed)
+code/backend/backend.md
+code/backend/backend_test
+code/backend/.backend_test.log
+
 # Soldeer downloads (restored with `forge soldeer install` from soldeer.lock)
 code/contracts/dependencies/
