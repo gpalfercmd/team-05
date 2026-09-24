@@ -45,10 +45,10 @@ Status at the checkpoint: *In progress* marks capabilities being built for the f
 
 | Capability | Status | What exists in the prototype |
 | --- | --- | --- |
-| Participant accreditation (org, internal verifiers, auditors) | In progress | Planned: `ParticipantRegistry` contract with separate Registry Admin and Accreditation Authority |
-| Evidence anchoring (Merkle root onchain) | In progress | Planned: `ClaimRegistry.anchor` + shared Merkle test vectors (Solidity/Python/TypeScript) |
-| Two-stage verification + proof requests | In progress | Planned: onchain state machine with Foundry tests for every valid and invalid transition |
-| Disputes | In progress | Planned: accredited dispute + Authority resolution onchain |
+| Participant accreditation (org, internal verifiers, auditors) | Implemented | `ParticipantRegistry` on Arbitrum Sepolia: separate Registry Admin and Accreditation Authority, one lifetime role per wallet (revocation is permanent) |
+| Evidence anchoring (Merkle root onchain) | Implemented | `ClaimRegistry.anchorClaim` + append-only supplementary roots; shared Merkle vectors pass in Solidity and Python |
+| Two-stage verification + proof requests | Implemented | Onchain state machine: checkpoint 1, Authority-assigned auditor, proof loop with four-eyes confirmation, final attestation; 117 Foundry tests, 100% coverage |
+| Disputes | Implemented | Any accredited wallet disputes a `Verified` claim; the Authority upholds or dismisses it onchain |
 | Privacy pipeline (EXIF strip, encryption, role-based access) | In progress | Planned: FastAPI evidence service with pytest |
 | Public verification page | In progress | Planned: React page with browser-side re-hashing |
 | Real-world identity of participants | Simulated | Accreditation is a manual admin action on test wallets |
@@ -73,7 +73,11 @@ Status at the checkpoint: *In progress* marks capabilities being built for the f
 
 **Reproduce the demo:** Follow [RUNBOOK.md](RUNBOOK.md) for setup, initial state, scenario, and expected results.
 
-**Validation evidence:** *(planned)* Foundry and pytest output, Arbiscan links to the deployment and the lifecycle transactions, screenshots of the public page showing match / mismatch.
+**Validation evidence:**
+
+- **Contracts:** `cd code/contracts && forge test` → 117 tests pass (45 ParticipantRegistry, 68 ClaimRegistry incl. fuzz, 3 Merkle vectors, 6 invariants over 8,192 random calls); `forge coverage` → 100% lines, branches and functions on both contracts.
+- **Live on Arbitrum Sepolia** (`code/shared/deployments/arbitrum-sepolia.json`): [`ParticipantRegistry`](https://sepolia.arbiscan.io/address/0x32a479e9Ad3C0C9e6e00eF2Dff4D7374b6460564) · [`ClaimRegistry`](https://sepolia.arbiscan.io/address/0x44780Bed68bDd0f9B9a74d82de81B4C069234BFE). Full demo lifecycle of claim `0xfedebf75…a79b28`, whose evidence roots are the real Merkle roots of the files in `code/frontend/public/demo-evidence/`: [anchor](https://sepolia.arbiscan.io/tx/0x758ab032bbf2b10e044f9218fecdb07031048d4d2bf47f9fde8e9549c86f990b) → [internal approval](https://sepolia.arbiscan.io/tx/0xf7234a13cf1ea8f45a25d56458e60ebc4d6d571d6b04e4edba4930e70eff0b03) → [auditor assigned](https://sepolia.arbiscan.io/tx/0x53f2c8f0a2f0fed64ba3933524eb7ce9e5fdc8fe706a18d489984babf3faf69a) → [proof requested](https://sepolia.arbiscan.io/tx/0x6c3afeb1f1127f05d3d49ca77a5f8a549e9f926eeea96bef769af7a31f0e337b) → [proof submitted](https://sepolia.arbiscan.io/tx/0x2d1d92c6a2fe9616f49f8a0e257a3dada2be265312f116939480de48a27c077f) → [second verifier confirms](https://sepolia.arbiscan.io/tx/0x8b40155fbd77aca4561ac6878379011e923150b454983b6179daa4c6b90e62e9) → [final approval](https://sepolia.arbiscan.io/tx/0x853d25339d5a0692ba6f6bf5f8b2e018b38117dfdde4e48fa960631b30fd75f7) → [dispute](https://sepolia.arbiscan.io/tx/0xe33989d631bbe8130ce609c1c8e6a6b1063093eb129e0743006cca12091bbf9c) → [dispute dismissed](https://sepolia.arbiscan.io/tx/0xe56d7ee7333b161be971bf612534fbef84f58687afd4359ce31f088208fc7353). The claim ends `Verified`.
+- *(to add)* pytest output of the evidence pipeline; screenshots of the public page showing match / mismatch.
 
 ## 4. Limitations and next step
 

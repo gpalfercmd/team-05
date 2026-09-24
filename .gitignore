@@ -26,8 +26,8 @@ dist/
 # Foundry
 code/contracts/out/
 code/contracts/cache/
-code/contracts/broadcast/*/31337/
-code/contracts/broadcast/**/dry-run/
+# Forge run logs; the tx hashes that matter are recorded in code/shared/deployments/*.json
+code/contracts/broadcast/
 
 # Evidence storage (encrypted demo files, never committed)
 code/backend/storage/

@@ -78,8 +78,10 @@ The deployment file is how the backend and the frontend find the contracts:
 `../shared/deployments/anvil.json` (31337) or `arbitrum-sepolia.json` (421614). Every deployment
 of the Solidity scripts writes it from scratch with `chainId`, `participantRegistry`,
 `claimRegistry`, `deployBlock`, `registryAdmin` and `accreditationAuthority`, and only when the
-transactions are really sent (`--broadcast`). `deployBlock` is the first block that can hold the
-deployment (exact on anvil, a safe lower bound elsewhere).
+transactions are really sent (`--broadcast`). The script's `deployBlock` is only a first guess:
+on Arbitrum, `block.number` inside the EVM is the **L1** block, far below the chain's own block
+numbers. `record_transactions.py` therefore overwrites `deployBlock` with the block of the first
+deployment receipt, which is what `eth_getLogs` needs. Always run it after a deployment.
 
 A Solidity script cannot know its own transaction hashes, so each `forge script` is followed by
 `script/record_transactions.py` (Python 3, standard library only). It reads

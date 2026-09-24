@@ -137,12 +137,20 @@ def extract_transactions(broadcast: JsonObject, deployment: JsonObject) -> Resul
 
 
 def merge(deployment: JsonObject, recorded: Recorded) -> JsonObject:
-    """Return `deployment` with the new entries appended to its two lists (deduplicated by txHash)."""
+    """Return `deployment` with the new entries appended to its two lists (deduplicated by txHash).
+
+    `deployBlock` is corrected from the deployment receipts: on Arbitrum, `block.number` inside
+    a script is the L1 block, but `eth_getLogs` needs the chain's own block number, so the value
+    the Solidity script wrote can be hundreds of millions of blocks too low.
+    """
     merged = dict(deployment)
     merged["deploymentTransactions"] = _append_new(
         deployment.get("deploymentTransactions"), recorded.deployments
     )
     merged["lifecycleTransactions"] = _append_new(deployment.get("lifecycleTransactions"), recorded.lifecycle)
+    deploy_blocks = [entry["blockNumber"] for entry in merged["deploymentTransactions"]]
+    if deploy_blocks:
+        merged["deployBlock"] = min(deploy_blocks)
     return merged
 
 
