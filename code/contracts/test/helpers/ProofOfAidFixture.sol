@@ -15,7 +15,9 @@ import {IClaimRegistry} from "../../src/interfaces/IClaimRegistry.sol";
 /// @notice Deploys both registries and accredits a realistic cast:
 ///         `org` and `org2` each with two internal verifiers, two auditors (`auditor` and
 ///         `disputant`, the latter used as the second auditor and as a dispute opener) and an
-///         unaccredited `outsider`. Drivers move a claim to any status through valid calls only.
+///         unaccredited `outsider`. Drivers move a claim to any status through valid calls only,
+///         sending the exact deposits; every actor starts with `ACTOR_BALANCE` wei. The registry
+///         uses the production reference amounts (P9).
 abstract contract ProofOfAidFixture is Test {
     /// @dev Every claim action except `anchorClaim`, which has no prior status.
     enum Action {
@@ -40,6 +42,14 @@ abstract contract ProofOfAidFixture is Test {
     bytes32 internal constant SUPPLEMENTARY_ROOT = keccak256("test:supplementary-root");
     bytes32 internal constant COUNTER_EVIDENCE = keccak256("test:counter-evidence");
 
+    uint256 internal constant AUDITOR_REWARD = 0.01 ether;
+    uint256 internal constant AUDITOR_DEPOSIT = 0.1 ether;
+    uint256 internal constant ORGANIZATION_PENALTY = 1 ether;
+    uint256 internal constant DISPUTE_BOND = 0.1 ether;
+    uint256 internal constant DISPUTE_WINDOW = 60 days;
+    uint256 internal constant ANCHOR_DEPOSIT = ORGANIZATION_PENALTY + AUDITOR_REWARD;
+    uint256 internal constant ACTOR_BALANCE = 1000 ether;
+
     ParticipantRegistry internal participants;
     ClaimRegistry internal claims;
 
@@ -57,7 +67,7 @@ abstract contract ProofOfAidFixture is Test {
 
     function setUp() public virtual {
         participants = new ParticipantRegistry(registryAdmin, authority);
-        claims = new ClaimRegistry(participants);
+        claims = _newClaimRegistry(DISPUTE_BOND);
 
         vm.startPrank(registryAdmin);
         participants.registerOrganization(org);
@@ -72,13 +82,25 @@ abstract contract ProofOfAidFixture is Test {
         participants.accreditAuditor(auditor);
         participants.accreditAuditor(disputant);
         vm.stopPrank();
+
+        address[11] memory actors = _actors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            vm.deal(actors[i], ACTOR_BALANCE);
+        }
+    }
+
+    /// @dev A registry on the fixture's participants with the reference amounts and `bond`.
+    function _newClaimRegistry(uint256 bond) internal returns (ClaimRegistry registry) {
+        registry = new ClaimRegistry(
+            participants, AUDITOR_REWARD, AUDITOR_DEPOSIT, ORGANIZATION_PENALTY, bond, DISPUTE_WINDOW
+        );
     }
 
     // ------------------------------------------------------------- claim drivers
 
     function _anchor(bytes32 claimId) internal {
         vm.prank(org);
-        claims.anchorClaim(claimId, ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(claimId, ROOT, METADATA);
     }
 
     function _attestInternal(bytes32 claimId, bool approve) internal {
@@ -108,12 +130,12 @@ abstract contract ProofOfAidFixture is Test {
 
     function _attestFinal(bytes32 claimId, bool approve) internal {
         vm.prank(auditor);
-        claims.attestFinal(claimId, approve, JUSTIFICATION);
+        claims.attestFinal{value: approve ? AUDITOR_DEPOSIT : 0}(claimId, approve, JUSTIFICATION);
     }
 
     function _openDispute(bytes32 claimId) internal {
         vm.prank(disputant);
-        claims.openDispute(claimId, COUNTER_EVIDENCE);
+        claims.openDispute{value: DISPUTE_BOND}(claimId, COUNTER_EVIDENCE);
     }
 
     function _resolveDispute(bytes32 claimId, bool upheld) internal {
@@ -172,11 +194,18 @@ abstract contract ProofOfAidFixture is Test {
         }
     }
 
-    /// @dev Calls `action` as `caller` and bubbles any revert, so `vm.expectRevert` works.
+    /// @dev The exact `msg.value` of `_calldata(action, …)`: the approval deposit or the bond.
+    function _valueFor(Action action) internal pure returns (uint256 value) {
+        if (action == Action.AttestFinal) value = AUDITOR_DEPOSIT;
+        else if (action == Action.OpenDispute) value = DISPUTE_BOND;
+    }
+
+    /// @dev Calls `action` as `caller`, with its deposit, and bubbles any revert, so
+    ///      `vm.expectRevert` works. The caller must hold the deposit.
     function _actAs(Action action, bytes32 claimId, address caller) internal {
         bytes memory data = _calldata(action, claimId);
         vm.prank(caller);
-        (bool ok, bytes memory returned) = address(claims).call(data);
+        (bool ok, bytes memory returned) = address(claims).call{value: _valueFor(action)}(data);
         if (!ok) {
             assembly ("memory-safe") {
                 revert(add(returned, 32), mload(returned))

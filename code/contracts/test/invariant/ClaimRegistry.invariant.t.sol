@@ -25,17 +25,22 @@ uint8 constant ORGANIZATION_BIT = 1;
 uint8 constant VERIFIER_BIT = 2;
 uint8 constant AUDITOR_BIT = 4;
 
-/// @notice Drives a small, fixed set of claims through four entry points: `advance` takes the
+/// @notice Drives a small, fixed set of claims through six entry points: `advance` takes the
 ///         next valid step with a caller picked from the live registry (so campaigns reach deep
 ///         states), `chaos` tries any action with any wallet and raw inputs (mostly invalid),
 ///         `churn` revokes participants and tries to register any wallet in any role, including
-///         the role switches that permanent identity must block, and `revokeDecidingOrganization`
-///         revokes a claim's organization right before its final decision. All wallets come
-///         from one pool (the fixture cast plus fresh wallets for replacements). Reverts are
+///         the role switches that permanent identity must block, `revokeDecidingOrganization`
+///         revokes a claim's organization right before its final decision, `elapse` moves time
+///         forward (up to 40 days, so windows close) and tries to settle, and `withdraw` pays a
+///         random wallet its credits. Payable calls send the exact deposit, except in `chaos`,
+///         which also sends none or one wei too much. All wallets come from one pool (the fixture
+///         cast plus fresh wallets for replacements), each funded up front. Reverts are
 ///         swallowed; ghosts record only what succeeded or was observed.
 contract ClaimRegistryHandler is CommonBase {
     uint256 internal constant CLAIM_COUNT = 3;
     uint256 internal constant FRESH_WALLETS = 8;
+    uint256 internal constant WALLET_BALANCE = 1_000_000 ether;
+    uint256 internal constant MAX_ELAPSE = 40 days;
 
     enum Kind {
         Organization,
@@ -47,6 +52,9 @@ contract ClaimRegistryHandler is CommonBase {
     ParticipantRegistry internal immutable participants;
     address internal immutable registryAdmin;
     address internal immutable authority;
+    uint256 internal immutable anchorDeposit;
+    uint256 internal immutable auditorDeposit;
+    uint256 internal immutable disputeBond;
 
     address[] internal pool;
     bytes32[CLAIM_COUNT] internal claimIds;
@@ -62,6 +70,10 @@ contract ClaimRegistryHandler is CommonBase {
     /// @dev Transitions into Verified (attestFinal approve, dispute dismissed) of a claim whose
     ///      organization was already revoked when the call was made. Must stay 0.
     uint256 public ghostRevokedOrganizationVerifications;
+    /// @dev Wei accepted by successful payable calls, and wei paid out by `withdraw`.
+    uint256 public ghostDeposited;
+    uint256 public ghostWithdrawn;
+    uint256 public ghostSettlements;
 
     constructor(
         ClaimRegistry claims_,
@@ -74,6 +86,9 @@ contract ClaimRegistryHandler is CommonBase {
         participants = participants_;
         registryAdmin = registryAdmin_;
         authority = authority_;
+        anchorDeposit = claims_.anchorDeposit();
+        auditorDeposit = claims_.auditorDeposit();
+        disputeBond = claims_.disputeBond();
         for (uint256 i = 0; i < actors.length; i++) {
             pool.push(actors[i]);
         }
@@ -82,6 +97,7 @@ contract ClaimRegistryHandler is CommonBase {
         }
         for (uint256 i = 0; i < pool.length; i++) {
             _observe(pool[i]);
+            vm.deal(pool[i], WALLET_BALANCE);
         }
         for (uint256 i = 0; i < CLAIM_COUNT; i++) {
             claimIds[i] = keccak256(abi.encode("invariant-claim", i));
@@ -105,12 +121,14 @@ contract ClaimRegistryHandler is CommonBase {
         address caller = _anyWallet(seed >> 16);
         address candidate = _anyWallet(seed >> 24);
         uint256 action = seed % 9;
+        uint256 amount = _chaosAmount(action, flag, seed >> 32);
         IClaimRegistry.ClaimStatus before = claims.statusOf(claimId);
         bool organizationActive = _organizationActive(claimId);
         vm.prank(caller);
         if (action == 0) {
-            try claims.anchorClaim(claimId, value, value) {
+            try claims.anchorClaim{value: amount}(claimId, value, value) {
                 _recordAnchor(claimId, caller, value, value);
+                ghostDeposited += amount;
             } catch {}
         } else if (action == 1) {
             try claims.attestInternal(claimId, flag, value) {} catch {}
@@ -125,9 +143,13 @@ contract ClaimRegistryHandler is CommonBase {
         } else if (action == 5) {
             try claims.confirmProof(claimId, flag, value) {} catch {}
         } else if (action == 6) {
-            try claims.attestFinal(claimId, flag, value) {} catch {}
+            try claims.attestFinal{value: amount}(claimId, flag, value) {
+                ghostDeposited += amount;
+            } catch {}
         } else if (action == 7) {
-            try claims.openDispute(claimId, value) {} catch {}
+            try claims.openDispute{value: amount}(claimId, value) {
+                ghostDeposited += amount;
+            } catch {}
         } else {
             try claims.resolveDispute(claimId, flag, value) {} catch {}
         }
@@ -174,7 +196,40 @@ contract ClaimRegistryHandler is CommonBase {
         participants.revokeOrganization(claim.organization);
     }
 
+    /// @notice Moves time forward by up to MAX_ELAPSE, then anyone tries to settle a claim.
+    function elapse(uint256 seed) external {
+        vm.warp(block.timestamp + seed % MAX_ELAPSE);
+        vm.prank(_anyWallet(seed >> 64));
+        try claims.settle(_claim(seed >> 128)) {
+            ghostSettlements += 1;
+        } catch {}
+    }
+
+    /// @notice A random pool wallet withdraws its credits (usually nothing, which reverts).
+    function withdraw(uint256 seed) external {
+        address wallet = _anyWallet(seed);
+        uint256 before = wallet.balance;
+        vm.prank(wallet);
+        try claims.withdraw() {
+            ghostWithdrawn += wallet.balance - before;
+        } catch {}
+    }
+
     // ------------------------------------------------------------------ views
+
+    /// @notice Escrow a claim should hold, derived independently from its status and the
+    ///         deposit rules: the organization's deposit until a decision, plus the auditor's
+    ///         deposit once Verified (until settled), plus the bond while Disputed.
+    function expectedLocked(bytes32 claimId) public view returns (uint256 locked) {
+        IClaimRegistry.ClaimStatus status = claims.statusOf(claimId);
+        if (status == IClaimRegistry.ClaimStatus.Disputed) {
+            locked = anchorDeposit + auditorDeposit + disputeBond;
+        } else if (status == IClaimRegistry.ClaimStatus.Verified) {
+            locked = claims.settled(claimId) ? 0 : anchorDeposit + auditorDeposit;
+        } else if (status != IClaimRegistry.ClaimStatus.None && status != IClaimRegistry.ClaimStatus.Rejected) {
+            locked = anchorDeposit;
+        }
+    }
 
     function claimIdAt(uint256 index) external view returns (bytes32) {
         return claimIds[index];
@@ -205,8 +260,9 @@ contract ClaimRegistryHandler is CommonBase {
             address organization = _pick(r >> 8, Kind.Organization, address(0), address(0));
             bytes32 metadata = keccak256(abi.encode(hash));
             vm.prank(organization);
-            try claims.anchorClaim(claimId, hash, metadata) {
+            try claims.anchorClaim{value: anchorDeposit}(claimId, hash, metadata) {
                 _recordAnchor(claimId, organization, hash, metadata);
+                ghostDeposited += anchorDeposit;
             } catch {}
         } else if (status == IClaimRegistry.ClaimStatus.Anchored) {
             vm.prank(_pick(r >> 8, Kind.VerifierOf, claim.organization, address(0)));
@@ -223,7 +279,9 @@ contract ClaimRegistryHandler is CommonBase {
             try claims.confirmProof(claimId, (r >> 16) % 3 != 0, hash) {} catch {}
         } else if (status == IClaimRegistry.ClaimStatus.Verified) {
             vm.prank(_anyWallet(r >> 8));
-            try claims.openDispute(claimId, hash) {} catch {}
+            try claims.openDispute{value: disputeBond}(claimId, hash) {
+                ghostDeposited += disputeBond;
+            } catch {}
         } else if (status == IClaimRegistry.ClaimStatus.Disputed) {
             vm.prank(authority);
             try claims.resolveDispute(claimId, (r >> 16) % 2 == 0, hash) {} catch {}
@@ -241,9 +299,24 @@ contract ClaimRegistryHandler is CommonBase {
             vm.prank(assigned);
             try claims.requestProof(claimId, hash) {} catch {}
         } else {
+            bool approve = (r >> 40) % 5 != 0;
+            uint256 amount = approve ? auditorDeposit : 0;
             vm.prank(assigned);
-            try claims.attestFinal(claimId, (r >> 40) % 5 != 0, hash) {} catch {}
+            try claims.attestFinal{value: amount}(claimId, approve, hash) {
+                ghostDeposited += amount;
+            } catch {}
         }
+    }
+
+    /// @dev Mostly the exact deposit for payable `action`s (`flag` is attestFinal's approve),
+    ///      sometimes none or one wei too much. Non-payable actions are called without value.
+    function _chaosAmount(uint256 action, bool flag, uint256 seed) internal view returns (uint256 amount) {
+        if (action == 0) amount = anchorDeposit;
+        else if (action == 6 && flag) amount = auditorDeposit;
+        else if (action == 7) amount = disputeBond;
+        uint256 mode = seed % 4;
+        if (mode == 0) amount = 0;
+        else if (mode == 3) amount += 1;
     }
 
     function _revoke(address wallet) internal {
@@ -397,6 +470,33 @@ contract ClaimRegistryInvariantTest is ProofOfAidFixture {
     ///      rejected (or a dispute upheld) but never approved or have a dispute dismissed.
     function invariant_RevokedOrganizationNeverBecomesVerified() public view {
         assertEq(handler.ghostRevokedOrganizationVerifications(), 0);
+    }
+
+    /// @dev Money is conserved: the registry holds exactly the credits it owes plus the escrow
+    ///      its claims still lock, and exactly what it accepted minus what it paid out.
+    function invariant_BalanceEqualsCreditsPlusLockedEscrow() public view {
+        uint256 owed;
+        for (uint256 i = 0; i < handler.walletCount(); i++) {
+            owed += claims.credits(handler.walletAt(i));
+        }
+        uint256 locked;
+        for (uint256 i = 0; i < handler.claimCount(); i++) {
+            bytes32 claimId = handler.claimIdAt(i);
+            locked += handler.expectedLocked(claimId);
+            assertEq(claims.lockedOf(claimId), handler.expectedLocked(claimId), "lockedOf");
+        }
+        assertEq(address(claims).balance, owed + locked, "balance != credits + escrow");
+        assertEq(address(claims).balance, handler.ghostDeposited() - handler.ghostWithdrawn(), "leak");
+    }
+
+    /// @dev A settled claim is Verified, past its window, and can never be disputed again.
+    function invariant_SettledClaimsArePastTheirWindow() public view {
+        for (uint256 i = 0; i < handler.claimCount(); i++) {
+            bytes32 claimId = handler.claimIdAt(i);
+            if (!claims.settled(claimId)) continue;
+            assertEq(uint8(claims.statusOf(claimId)), uint8(IClaimRegistry.ClaimStatus.Verified));
+            assertGe(block.timestamp, claims.disputeWindowClosesAt(claimId));
+        }
     }
 
     /// @dev The anchoring organization and metadata of a claim never change.

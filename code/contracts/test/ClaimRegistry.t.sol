@@ -22,7 +22,14 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
     function test_Constructor_RevertsOnZeroRegistry() public {
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
-        new ClaimRegistry(IParticipantRegistry(address(0)));
+        new ClaimRegistry(
+            IParticipantRegistry(address(0)),
+            AUDITOR_REWARD,
+            AUDITOR_DEPOSIT,
+            ORGANIZATION_PENALTY,
+            DISPUTE_BOND,
+            DISPUTE_WINDOW
+        );
     }
 
     // ---------------------------------------------------------------- anchorClaim
@@ -53,7 +60,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         _anchor(CLAIM_ID);
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.ClaimAlreadyExists.selector, CLAIM_ID));
         vm.prank(org2);
-        claims.anchorClaim(CLAIM_ID, SUPPLEMENTARY_ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, SUPPLEMENTARY_ROOT, METADATA);
 
         // The original root is never overwritten.
         assertEq(claims.evidenceRoots(CLAIM_ID)[0], ROOT);
@@ -75,7 +82,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         for (uint256 i = 0; i < notOrganizations.length; i++) {
             vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, notOrganizations[i]));
             vm.prank(notOrganizations[i]);
-            claims.anchorClaim(CLAIM_ID, ROOT, METADATA);
+            claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
         }
     }
 
@@ -89,23 +96,24 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
     function test_AnchorClaim_NeedsTwoActiveInternalVerifiers() public {
         address small = makeAddr("smallOrg");
+        vm.deal(small, ACTOR_BALANCE);
         vm.prank(registryAdmin);
         participants.registerOrganization(small);
 
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.InsufficientInternalVerifiers.selector, small, 0));
         vm.prank(small);
-        claims.anchorClaim(CLAIM_ID, ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
 
         vm.prank(registryAdmin);
         participants.registerInternalVerifier(makeAddr("smallVerifier1"), small);
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.InsufficientInternalVerifiers.selector, small, 1));
         vm.prank(small);
-        claims.anchorClaim(CLAIM_ID, ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
 
         vm.prank(registryAdmin);
         participants.registerInternalVerifier(makeAddr("smallVerifier2"), small);
         vm.prank(small);
-        claims.anchorClaim(CLAIM_ID, ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
         assertEq(MIN_INTERNAL_VERIFIERS, 2);
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Anchored));
     }
@@ -121,18 +129,18 @@ contract ClaimRegistryTest is ProofOfAidFixture {
     function test_AnchorClaim_RevertsOnZeroInputs() public {
         vm.startPrank(org);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
-        claims.anchorClaim(bytes32(0), ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(bytes32(0), ROOT, METADATA);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
-        claims.anchorClaim(CLAIM_ID, bytes32(0), METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, bytes32(0), METADATA);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
-        claims.anchorClaim(CLAIM_ID, ROOT, bytes32(0));
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, bytes32(0));
         vm.stopPrank();
     }
 
     function test_AnchorClaim_AuthorizationIsCheckedBeforeInputs() public {
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, outsider));
         vm.prank(outsider);
-        claims.anchorClaim(bytes32(0), bytes32(0), bytes32(0));
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(bytes32(0), bytes32(0), bytes32(0));
     }
 
     // ------------------------------------------------------------- attestInternal
@@ -271,7 +279,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         _attestFinal(CLAIM_ID, true);
 
         vm.prank(disputant);
-        claims.attestFinal(CLAIM_ID, true, JUSTIFICATION);
+        claims.attestFinal{value: AUDITOR_DEPOSIT}(CLAIM_ID, true, JUSTIFICATION);
         IClaimRegistry.Claim memory claim = claims.getClaim(CLAIM_ID);
         assertEq(uint8(claim.status), uint8(IClaimRegistry.ClaimStatus.Verified));
         assertEq(claim.auditor, disputant);
@@ -528,7 +536,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         for (uint256 i = 0; i < callers.length; i++) {
             vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAssignedAuditor.selector, callers[i]));
             vm.prank(callers[i]);
-            claims.attestFinal(CLAIM_ID, true, JUSTIFICATION);
+            claims.attestFinal{value: AUDITOR_DEPOSIT}(CLAIM_ID, true, JUSTIFICATION);
         }
     }
 
@@ -545,7 +553,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.InternallyVerified);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
         vm.prank(auditor);
-        claims.attestFinal(CLAIM_ID, true, bytes32(0));
+        claims.attestFinal{value: AUDITOR_DEPOSIT}(CLAIM_ID, true, bytes32(0));
     }
 
     function test_AttestFinal_RevokedOrganizationCannotBeVerified() public {
@@ -578,11 +586,11 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAssignedAuditor.selector, outsider));
         vm.prank(outsider);
-        claims.attestFinal(CLAIM_ID, true, bytes32(0));
+        claims.attestFinal{value: AUDITOR_DEPOSIT}(CLAIM_ID, true, bytes32(0));
 
         vm.startPrank(auditor);
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, org));
-        claims.attestFinal(CLAIM_ID, true, bytes32(0));
+        claims.attestFinal{value: AUDITOR_DEPOSIT}(CLAIM_ID, true, bytes32(0));
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
         claims.attestFinal(CLAIM_ID, false, bytes32(0));
         vm.stopPrank();
@@ -600,8 +608,9 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
     // ---------------------------------------------------------------- openDispute
 
+    /// @dev Except the claim's own organization and approving auditor (see the incentives tests).
     function test_OpenDispute_AnyAccreditedParticipant() public {
-        address[7] memory disputants = [org, verifier1, auditor, disputant, org2, org2Verifier1, org2Verifier2];
+        address[6] memory disputants = [verifier1, verifier2, disputant, org2, org2Verifier1, org2Verifier2];
         for (uint256 i = 0; i < disputants.length; i++) {
             bytes32 claimId = keccak256(abi.encode("dispute", i));
             _driveTo(claimId, IClaimRegistry.ClaimStatus.Verified);
@@ -613,7 +622,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
                 claimId, IClaimRegistry.ClaimStatus.Verified, IClaimRegistry.ClaimStatus.Disputed
             );
             vm.prank(disputants[i]);
-            claims.openDispute(claimId, COUNTER_EVIDENCE);
+            claims.openDispute{value: DISPUTE_BOND}(claimId, COUNTER_EVIDENCE);
         }
     }
 
@@ -623,7 +632,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         for (uint256 i = 0; i < callers.length; i++) {
             vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotAccredited.selector, callers[i]));
             vm.prank(callers[i]);
-            claims.openDispute(CLAIM_ID, COUNTER_EVIDENCE);
+            claims.openDispute{value: DISPUTE_BOND}(CLAIM_ID, COUNTER_EVIDENCE);
         }
     }
 
@@ -642,14 +651,14 @@ contract ClaimRegistryTest is ProofOfAidFixture {
             abi.encodeWithSelector(IClaimRegistry.InvalidStatus.selector, CLAIM_ID, IClaimRegistry.ClaimStatus.Disputed)
         );
         vm.prank(org2);
-        claims.openDispute(CLAIM_ID, COUNTER_EVIDENCE);
+        claims.openDispute{value: DISPUTE_BOND}(CLAIM_ID, COUNTER_EVIDENCE);
     }
 
     function test_OpenDispute_RevertsOnZeroCounterEvidence() public {
         _driveTo(CLAIM_ID, IClaimRegistry.ClaimStatus.Verified);
         vm.expectRevert(IClaimRegistry.ZeroValue.selector);
         vm.prank(disputant);
-        claims.openDispute(CLAIM_ID, bytes32(0));
+        claims.openDispute{value: DISPUTE_BOND}(CLAIM_ID, bytes32(0));
     }
 
     /// @dev A Verified claim whose organization is revoked can still be disputed (and then upheld).
@@ -687,7 +696,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Verified));
 
         vm.prank(org2);
-        claims.openDispute(CLAIM_ID, COUNTER_EVIDENCE);
+        claims.openDispute{value: DISPUTE_BOND}(CLAIM_ID, COUNTER_EVIDENCE);
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Disputed));
     }
 
@@ -903,7 +912,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         _openDispute(CLAIM_ID);
         _resolveDispute(CLAIM_ID, false);
         vm.prank(org2Verifier1);
-        claims.openDispute(CLAIM_ID, COUNTER_EVIDENCE);
+        claims.openDispute{value: DISPUTE_BOND}(CLAIM_ID, COUNTER_EVIDENCE);
         _resolveDispute(CLAIM_ID, true);
 
         uint8[2][12] memory expected = [
@@ -949,7 +958,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         bytes32 other = keccak256("test:other-claim");
         _anchor(CLAIM_ID);
         vm.prank(org2);
-        claims.anchorClaim(other, SUPPLEMENTARY_ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(other, SUPPLEMENTARY_ROOT, METADATA);
 
         // org's verifier cannot attest org2's claim, and vice versa.
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotOrganizationVerifier.selector, verifier1));
@@ -970,7 +979,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         vm.assume(claimId != bytes32(0) && root != bytes32(0) && metadata != bytes32(0));
         vm.warp(timestamp);
         vm.prank(org2);
-        claims.anchorClaim(claimId, root, metadata);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(claimId, root, metadata);
 
         IClaimRegistry.Claim memory claim = claims.getClaim(claimId);
         assertEq(claim.organization, org2);
@@ -989,6 +998,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
     ///      authorization error (the claim is in the status the action needs).
     function testFuzz_StrangerCannotAct(address stranger, uint8 actionSeed) public {
         vm.assume(!_isKnownActor(stranger) && stranger != address(vm));
+        vm.deal(stranger, ACTOR_BALANCE);
         Action action = Action(bound(actionSeed, 0, ACTION_COUNT - 1));
         IClaimRegistry.ClaimStatus status = _firstValidStatus(action);
         _driveTo(CLAIM_ID, status);
@@ -998,7 +1008,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
         vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.NotActiveOrganization.selector, stranger));
         vm.prank(stranger);
-        claims.anchorClaim(keccak256("test:stranger-claim"), ROOT, METADATA);
+        claims.anchorClaim{value: ANCHOR_DEPOSIT}(keccak256("test:stranger-claim"), ROOT, METADATA);
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(status));
     }
 
@@ -1014,7 +1024,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
         bytes memory data = _calldata(action, CLAIM_ID);
         vm.prank(caller);
-        (bool ok,) = address(claims).call(data);
+        (bool ok,) = address(claims).call{value: _valueFor(action)}(data);
 
         assertEq(ok, _isValidStatus(action, status) && _isEntitled(action, caller), "success iff allowed");
         IClaimRegistry.ClaimStatus expected = ok ? _nextStatus(action, status) : status;
@@ -1065,7 +1075,9 @@ contract ClaimRegistryTest is ProofOfAidFixture {
                     for (uint256 d = 0; d < 2; d++) {
                         uint256 snapshot = vm.snapshotState();
                         vm.prank(actors[i]);
-                        (bool ok,) = address(claims).call(_decisionCalldata(Action(a), claimId, d == 1));
+                        (bool ok,) = address(claims).call{value: _decisionValue(Action(a), d == 1)}(
+                            _decisionCalldata(Action(a), claimId, d == 1)
+                        );
                         IClaimRegistry.ClaimStatus afterCall = claims.statusOf(claimId);
                         if (status != IClaimRegistry.ClaimStatus.Verified) {
                             assertTrue(afterCall != IClaimRegistry.ClaimStatus.Verified, "revoked org verified");
@@ -1108,6 +1120,12 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         }
     }
 
+    /// @dev The exact deposit for `_decisionCalldata`: attestFinal takes one only when approving.
+    function _decisionValue(Action action, bool decision) internal pure returns (uint256 value) {
+        value = _valueFor(action);
+        if (action == Action.AttestFinal && !decision) value = 0;
+    }
+
     function _firstValidStatus(Action action) internal pure returns (IClaimRegistry.ClaimStatus status) {
         for (uint8 s = LAST_STATUS; s >= 1; s--) {
             if (_isValidStatus(action, IClaimRegistry.ClaimStatus(s))) status = IClaimRegistry.ClaimStatus(s);
@@ -1136,6 +1154,6 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         else if (action == Action.RequestProof || action == Action.AttestFinal) entitled = caller == auditor;
         else if (action == Action.SubmitProof) entitled = caller == org;
         else if (action == Action.ConfirmProof) entitled = caller == verifier2;
-        else entitled = participants.isAccredited(caller);
+        else entitled = participants.isAccredited(caller) && caller != org && caller != auditor;
     }
 }

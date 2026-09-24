@@ -20,6 +20,15 @@ import {ClaimRegistry} from "../src/ClaimRegistry.sol";
 ///         `script/record_transactions.py` later adds `deploymentTransactions` and
 ///         `lifecycleTransactions` from Foundry's broadcast log.
 abstract contract DeploymentFile is Script {
+    // Incentive amounts at 1/100 of the production reference values (reward 0.01, auditor
+    // deposit 0.1, organization penalty 1, dispute bond 0.1 ETH), so the testnet demo stays cheap.
+    // The dispute window is the real one.
+    uint256 internal constant AUDITOR_REWARD = 0.0001 ether;
+    uint256 internal constant AUDITOR_DEPOSIT = 0.001 ether;
+    uint256 internal constant ORGANIZATION_PENALTY = 0.01 ether;
+    uint256 internal constant DISPUTE_BOND = 0.001 ether;
+    uint256 internal constant DISPUTE_WINDOW = 60 days;
+
     struct Deployment {
         uint256 chainId;
         address participantRegistry;
@@ -43,7 +52,11 @@ abstract contract DeploymentFile is Script {
         deployment.accreditationAuthority = accreditationAuthority;
         ParticipantRegistry participants = new ParticipantRegistry(registryAdmin, accreditationAuthority);
         deployment.participantRegistry = address(participants);
-        deployment.claimRegistry = address(new ClaimRegistry(participants));
+        deployment.claimRegistry = address(
+            new ClaimRegistry(
+                participants, AUDITOR_REWARD, AUDITOR_DEPOSIT, ORGANIZATION_PENALTY, DISPUTE_BOND, DISPUTE_WINDOW
+            )
+        );
     }
 
     /// @dev Written only when the transactions are really sent (`--broadcast` or `--resume`),
