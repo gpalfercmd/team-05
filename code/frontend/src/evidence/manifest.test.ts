@@ -17,6 +17,7 @@ const sharedValidator = z.fromJSONSchema(manifestJsonSchema as Parameters<typeof
 const CLAIM_ID = `0x${'ab'.repeat(32)}`;
 const HASH_A = `0x${'11'.repeat(32)}`;
 const HASH_B = `0x${'22'.repeat(32)}`;
+const SALT = `0x${'cd'.repeat(32)}`;
 
 const manifest = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
   version: 1,
@@ -36,13 +37,26 @@ const VALID_SAMPLES: Record<string, unknown> = {
     rootIndex: 3,
     files: [{ sha256: HASH_A.toUpperCase().replace('0X', '0x'), public: false }],
   }),
+  'a version 2 list with a salted public file': manifest({
+    version: 2,
+    files: [
+      { sha256: HASH_A, public: true, name: 'receipt-001.txt', salt: SALT },
+      { sha256: HASH_B, public: false },
+    ],
+  }),
+  'a version 2 list with an unsalted public file': manifest({ version: 2 }),
 };
 
 const INVALID_SAMPLES: Record<string, unknown> = {
   'a private file with a name (privacy rule)': manifest({
     files: [{ sha256: HASH_B, public: false, name: 'beneficiaries.xlsx' }],
   }),
-  'an unknown version': manifest({ version: 2 }),
+  'an unknown version': manifest({ version: 3 }),
+  'a private file with a salt (privacy rule)': manifest({
+    version: 2,
+    files: [{ sha256: HASH_B, public: false, salt: SALT }],
+  }),
+  'a salt that is not bytes32': manifest({ version: 2, files: [{ sha256: HASH_A, public: true, salt: '0x1234' }] }),
   'a missing version': (({ version: _version, ...rest }) => rest)(manifest()),
   'an empty file list': manifest({ files: [] }),
   'a short fingerprint': manifest({ files: [{ sha256: '0x1234', public: true }] }),
@@ -77,6 +91,12 @@ describe('evidence manifest schema', () => {
     });
     expect(manifestJsonSchema.description).toContain('same sha256 are invalid');
     expect(manifestSchema.safeParse(duplicated).success).toBe(false);
+  });
+
+  it('rejects salts in a version 1 list in code, as the JSON Schema description requires', () => {
+    const salted = manifest({ files: [{ sha256: HASH_A, public: true, salt: SALT }] });
+    expect(manifestJsonSchema.description).toContain('version 1 manifest must carry no salt');
+    expect(manifestSchema.safeParse(salted).success).toBe(false);
   });
 });
 

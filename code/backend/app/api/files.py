@@ -10,7 +10,9 @@
   only for the owning org, its verifiers and the assigned auditor
   (`services.access`). Denied reads return 404, indistinguishable from a
   missing file, so ids are not an existence oracle.
-- `PATCH /files/{id}`: the owning org flips the per-file `public` flag.
+- `PATCH /files/{id}`: the owning org flips the per-file `public` flag. Every
+  file uploaded since P8.2 is salted, so publishing one later also publishes
+  its salt and lets anyone re-hash it.
 """
 
 from __future__ import annotations
@@ -25,10 +27,11 @@ from poa_shared.result import Err
 from app.api.auth import current_address
 from app.db import get_session
 from app.models import EvidenceFile
+from app.api.views import file_response
 from app.schemas import EvidenceFileResponse, FileVisibilityUpdate
 from app.services.access import RoleSource, can_read_file, require_organization
 from app.services.crypto import decrypt_bytes, derive_claim_key
-from app.services.evidence import load_packed
+from app.services.evidence import load_packed, unseal_salts
 from app.settings import Settings
 
 router = APIRouter(tags=["files"])
@@ -89,5 +92,14 @@ def set_visibility(
     stored.is_public = payload.is_public
     db.commit()
     db.refresh(stored)
-    updated = EvidenceFileResponse.model_validate(stored)
+    settings: Settings = request.app.state.settings
+    salts = unseal_salts(
+        [stored],
+        master_key=settings.encryption_key_bytes,
+        claim_id=bytes.fromhex(stored.claim.claim_id_hex.removeprefix("0x")),
+    )
+    if isinstance(salts, Err):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, salts.message)
+    # The owning organization may see the salt whatever the visibility.
+    updated = file_response(stored, salts.value.get(stored.id))
     return updated

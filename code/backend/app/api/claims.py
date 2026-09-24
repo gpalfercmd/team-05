@@ -17,6 +17,10 @@
   fingerprints only (`api.views`).
 - `GET /claims/{id}/bundles/{n}/manifest`: public per-bundle manifest in the
   `code/shared/manifest.schema.json` format.
+
+Salted commitments (P8.2): each upload is fingerprinted as SHA-256(salt ‖
+bytes). Duplicates are caught by a per-claim HMAC of the sanitized bytes, and
+by the plain SHA-256 against unsalted rows from before P8.2.
 """
 
 from __future__ import annotations
@@ -26,19 +30,24 @@ import uuid
 from typing import Final
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from poa_shared.result import Err
 
 from app.api.auth import current_address
-from app.api.views import authorized_claim_view, manifest_view, public_claim_view
+from app.api.views import (
+    Salts,
+    authorized_claim_view,
+    file_response,
+    manifest_view,
+    public_claim_view,
+)
 from app.db import get_session
 from app.models import Claim, EvidenceFile
 from app.schemas import (
     ClaimCreate,
     ClaimResponse,
-    EvidenceFileResponse,
     EvidenceManifest,
     EvidenceUploadResponse,
     PublicClaimResponse,
@@ -52,7 +61,13 @@ from app.services.bundles import (
     highest_root_index,
 )
 from app.services.claims import claim_id_from_uuid, metadata_digest
-from app.services.evidence import process_upload, safe_filename, store_packed
+from app.services.evidence import (
+    ProcessedFile,
+    process_upload,
+    safe_filename,
+    store_packed,
+    unseal_salts,
+)
 from app.settings import Settings
 
 router = APIRouter(tags=["claims"])
@@ -85,6 +100,42 @@ def _bundles_of(db: Session, claim: Claim) -> list[EvidenceBundle]:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, bundles.message)
     grouped: list[EvidenceBundle] = bundles.value
     return grouped
+
+
+def _salts_of(request: Request, claim: Claim, files: list[EvidenceFile]) -> Salts:
+    """Unseal the salts of a claim's files (500 if a stored salt cannot be decrypted)."""
+    settings: Settings = request.app.state.settings
+    salts = unseal_salts(
+        files,
+        master_key=settings.encryption_key_bytes,
+        claim_id=bytes.fromhex(claim.claim_id_hex.removeprefix("0x")),
+    )
+    if isinstance(salts, Err):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, salts.message)
+    unsealed: Salts = salts.value
+    return unsealed
+
+
+def _is_duplicate(
+    db: Session, claim: Claim, processed: ProcessedFile, pending: list[EvidenceFile]
+) -> bool:
+    """True when the same sanitized bytes are already in the claim or in this request.
+
+    Salted rows match on the keyed tag; unsalted pre-P8.2 rows on their plain SHA-256.
+    """
+    tag_hex = f"0x{processed.dedup_tag.hex()}"
+    plain_hex = f"0x{processed.plain_hash.hex()}"
+    stored = db.scalars(
+        select(EvidenceFile).where(
+            EvidenceFile.claim_id == claim.id,
+            or_(
+                EvidenceFile.dedup_tag_hex == tag_hex,
+                and_(EvidenceFile.salt_sealed.is_(None), EvidenceFile.sha256_hex == plain_hex),
+            ),
+        )
+    ).first()
+    duplicate = stored is not None or any(item.dedup_tag_hex == tag_hex for item in pending)
+    return duplicate
 
 
 @router.post("/claims", response_model=ClaimResponse, status_code=status.HTTP_201_CREATED)
@@ -123,7 +174,7 @@ def create_claim(
     db.add(claim)
     db.commit()
     db.refresh(claim)
-    created: ClaimResponse = authorized_claim_view(claim, [])
+    created: ClaimResponse = authorized_claim_view(claim, [], {})
     return created
 
 
@@ -142,8 +193,11 @@ def read_claim(
     authorized = can_view_private_evidence(
         db, viewer=current_address(request), claim=claim, roles=roles
     )
+    salts = _salts_of(request, claim, [item for bundle in bundles for item in bundle.files])
     view: ClaimResponse | PublicClaimResponse = (
-        authorized_claim_view(claim, bundles) if authorized else public_claim_view(claim, bundles)
+        authorized_claim_view(claim, bundles, salts)
+        if authorized
+        else public_claim_view(claim, bundles, salts)
     )
     return view
 
@@ -151,9 +205,11 @@ def read_claim(
 @router.get(
     "/claims/{claim_id_hex}/bundles/{root_index}/manifest",
     response_model=EvidenceManifest,
+    # An unsalted public entry omits `salt` instead of sending null (schema v1 has no salt).
+    response_model_exclude_none=True,
 )
 def read_bundle_manifest(
-    claim_id_hex: str, root_index: int, db: Session = Depends(get_session)
+    request: Request, claim_id_hex: str, root_index: int, db: Session = Depends(get_session)
 ) -> EvidenceManifest:
     """Public manifest of one bundle (`evidenceRoots(claimId)[root_index]`).
 
@@ -166,7 +222,7 @@ def read_bundle_manifest(
     )
     if bundle is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "bundle not found")
-    manifest = manifest_view(claim, bundle)
+    manifest = manifest_view(claim, bundle, _salts_of(request, claim, list(bundle.files)))
     if isinstance(manifest, Err):
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, manifest.message)
     published: EvidenceManifest = manifest.value
@@ -219,18 +275,9 @@ async def upload_evidence(
         processed = process_upload(data, master_key=settings.encryption_key_bytes, claim_id=claim_id)
         if isinstance(processed, Err):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, processed.message)
-        sha_hex = f"0x{processed.value.file_hash.hex()}"
-        duplicate = (
-            db.scalars(
-                select(EvidenceFile).where(
-                    EvidenceFile.claim_id == claim.id, EvidenceFile.sha256_hex == sha_hex
-                )
-            ).first()
-            is not None
-        )
         # Same bytes twice in one request would otherwise hit the unique
         # constraint at commit time as a 500 instead of a clear 409.
-        if duplicate or any(item.sha256_hex == sha_hex for item in stored):
+        if _is_duplicate(db, claim, processed.value, stored):
             raise HTTPException(status.HTTP_409_CONFLICT, "file already uploaded to this claim")
         saved = store_packed(settings.storage_path, processed.value.packed)
         if isinstance(saved, Err):
@@ -238,7 +285,9 @@ async def upload_evidence(
         stored.append(
             EvidenceFile(
                 claim_id=claim.id,
-                sha256_hex=sha_hex,
+                sha256_hex=f"0x{processed.value.file_hash.hex()}",
+                salt_sealed=processed.value.sealed_salt,
+                dedup_tag_hex=f"0x{processed.value.dedup_tag.hex()}",
                 storage_name=saved.value,
                 original_name=safe_filename(upload.filename),
                 mime_type=upload.content_type or "application/octet-stream",
@@ -252,13 +301,15 @@ async def upload_evidence(
     db.commit()
     for item in stored:
         db.refresh(item)
+    # Only the uploading organization sees this response, so private salts are fine here.
+    salts = _salts_of(request, claim, stored)
     bundle_files = [item for item in _files_of(db, claim) if item.root_index == target.value]
     root = bundle_root(bundle_files)
     if isinstance(root, Err):
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, root.message)
     uploaded = EvidenceUploadResponse(
         root_index=target.value,
-        files=[EvidenceFileResponse.model_validate(item) for item in stored],
+        files=[file_response(item, salts.get(item.id)) for item in stored],
         evidence_root=root.value,
     )
     return uploaded

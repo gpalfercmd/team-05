@@ -12,6 +12,12 @@ metadata. The public sees hashes and the roots (spec Q3), never bytes. Private
 file metadata is split into its own models (`PrivateFileFingerprint`,
 `ManifestPrivateFile`) so the outsider view is fingerprint-only by
 construction, not by remembering to blank fields.
+
+Salts (P8.2): a salted file's `sha256_hex` is the commitment
+SHA-256(salt ‖ bytes). Public files publish their salt so anyone can re-hash
+them; a private file's salt appears only in the authorized models
+(`EvidenceFileResponse`), never in `PrivateFileFingerprint` or
+`ManifestPrivateFile`. `salt` is `None` on unsalted rows from before P8.2.
 """
 
 from __future__ import annotations
@@ -40,12 +46,14 @@ class EvidenceFileResponse(BaseModel):
 
     Only for the uploader and the claim's authorized viewers (access matrix):
     `original_name` of a private file can carry beneficiaries' personal data.
+    `salt` is filled by the API from the sealed column (never read from the ORM row).
     """
 
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID
     sha256_hex: str
+    salt: str | None = Field(default=None, pattern=BYTES32_HEX_PATTERN)
     original_name: str
     mime_type: str
     size_bytes: int
@@ -62,6 +70,7 @@ class PublicFileResponse(BaseModel):
 
     id: UUID
     sha256_hex: str
+    salt: str | None = Field(default=None, pattern=BYTES32_HEX_PATTERN)
     original_name: str
     mime_type: str
     size_bytes: int
@@ -141,13 +150,17 @@ class EvidenceUploadResponse(BaseModel):
 
 
 class ManifestPublicFile(BaseModel):
-    """Manifest entry of a public file; its name is a plain base name."""
+    """Manifest entry of a public file; its name is a plain base name.
+
+    `salt` is omitted (not null) on the wire when the file is unsalted.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     sha256: str = Field(pattern=BYTES32_HEX_PATTERN)
     public: Literal[True]
     name: str = Field(min_length=1, max_length=255, pattern=r"^[^/\\]+$")
+    salt: str | None = Field(default=None, pattern=BYTES32_HEX_PATTERN)
 
 
 class ManifestPrivateFile(BaseModel):
@@ -160,7 +173,10 @@ class ManifestPrivateFile(BaseModel):
 
 
 class EvidenceManifest(BaseModel):
-    """One bundle's file list, exactly `code/shared/manifest.schema.json` v1.
+    """One bundle's file list, exactly `code/shared/manifest.schema.json`.
+
+    Version 2 (P8.2) adds an optional `salt` on public entries; the API emits
+    version 1 for bundles with no salted file, so legacy manifests are unchanged.
 
     Field names are camelCase on the wire because the schema is shared with
     the frontend verifier. Duplicate fingerprints are checked here because
@@ -169,7 +185,7 @@ class EvidenceManifest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    version: Literal[1] = 1
+    version: Literal[1, 2] = 1
     claim_id: str = Field(alias="claimId", pattern=BYTES32_HEX_PATTERN)
     root_index: int = Field(alias="rootIndex", ge=0)
     files: list[ManifestPublicFile | ManifestPrivateFile] = Field(min_length=1)
@@ -180,6 +196,10 @@ class EvidenceManifest(BaseModel):
         fingerprints = [item.sha256 for item in self.files]
         if len(set(fingerprints)) != len(fingerprints):
             raise ValueError("manifest files must have unique sha256 values")
+        if self.version == 1 and any(
+            isinstance(item, ManifestPublicFile) and item.salt is not None for item in self.files
+        ):
+            raise ValueError("salts need manifest version 2")
         validated: EvidenceManifest = self
         return validated
 

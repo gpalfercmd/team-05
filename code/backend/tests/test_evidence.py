@@ -18,8 +18,14 @@ from pathlib import Path
 from PIL import Image
 from PIL.TiffImagePlugin import IFDRational
 
-from app.services.crypto import decrypt_bytes, derive_claim_key, encrypt_bytes
-from app.services.evidence import load_packed, process_upload, sanitize_upload, store_packed
+from app.services.crypto import decrypt_bytes, dedup_tag, derive_claim_key, encrypt_bytes
+from app.services.evidence import (
+    load_packed,
+    process_upload,
+    reveal_salt,
+    sanitize_upload,
+    store_packed,
+)
 from poa_shared.result import Err, Ok
 
 
@@ -51,13 +57,48 @@ def test_sanitize_leaves_non_images_untouched() -> None:
     assert sanitize_upload(blob) == blob
 
 
-def test_process_upload_hashes_sanitized_bytes() -> None:
+def test_process_upload_commits_to_salted_sanitized_bytes() -> None:
     raw = demo_jpeg_with_fake_exif_gps()
     result = process_upload(raw, master_key=os.urandom(32), claim_id=os.urandom(32))
     assert isinstance(result, Ok)
-    assert result.value.file_hash == hashlib.sha256(sanitize_upload(raw)).digest()
+    sanitized = sanitize_upload(raw)
+    assert len(result.value.salt) == 32
+    assert result.value.file_hash == hashlib.sha256(result.value.salt + sanitized).digest()
+    assert result.value.plain_hash == hashlib.sha256(sanitized).digest()
+    assert result.value.file_hash != result.value.plain_hash
     assert result.value.file_hash != hashlib.sha256(raw).digest()
-    assert result.value.size_bytes == len(sanitize_upload(raw))
+    assert result.value.size_bytes == len(sanitized)
+
+
+def test_salt_is_random_and_sealed_with_the_claim_key() -> None:
+    master_key, claim_id = os.urandom(32), os.urandom(32)
+    first = process_upload(b"same file", master_key=master_key, claim_id=claim_id)
+    second = process_upload(b"same file", master_key=master_key, claim_id=claim_id)
+    assert isinstance(first, Ok) and isinstance(second, Ok)
+    assert first.value.salt != second.value.salt
+    assert first.value.file_hash != second.value.file_hash
+    assert first.value.salt not in first.value.sealed_salt
+    key = derive_claim_key(master_key, claim_id)
+    assert isinstance(key, Ok)
+    assert decrypt_bytes(first.value.sealed_salt, key.value) == Ok(first.value.salt)
+    assert reveal_salt(first.value.sealed_salt, key.value) == Ok(f"0x{first.value.salt.hex()}")
+    assert isinstance(reveal_salt(first.value.sealed_salt, os.urandom(32)), Err)
+
+
+def test_dedup_tag_is_stable_per_claim_and_differs_across_claims() -> None:
+    master_key = os.urandom(32)
+    first = process_upload(b"same file", master_key=master_key, claim_id=b"\x01" * 32)
+    again = process_upload(b"same file", master_key=master_key, claim_id=b"\x01" * 32)
+    other_claim = process_upload(b"same file", master_key=master_key, claim_id=b"\x02" * 32)
+    assert isinstance(first, Ok) and isinstance(again, Ok) and isinstance(other_claim, Ok)
+    assert first.value.dedup_tag == again.value.dedup_tag
+    assert first.value.dedup_tag != other_claim.value.dedup_tag
+    assert first.value.dedup_tag != first.value.plain_hash
+    assert isinstance(dedup_tag(b"file", b"short"), Err)
+
+
+def test_legacy_row_without_salt_reveals_none() -> None:
+    assert reveal_salt(None, os.urandom(32)) == Ok(None)
 
 
 def test_encrypt_roundtrip_and_tamper_detection() -> None:

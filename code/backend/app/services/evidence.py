@@ -4,8 +4,15 @@
 # Licensed under the MIT License. See LICENSE for details.
 # Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 # =============================================================================
-"""Upload pipeline (spec F3, P3.2): EXIF/GPS strip → SHA-256 of the *sanitized*
-bytes → AES-GCM to the local volume.
+"""Upload pipeline (spec F3, P3.2): EXIF/GPS strip → salted commitment of the
+*sanitized* bytes → AES-GCM to the local volume.
+
+Salted commitments (P8.2): every new file gets 32 random salt bytes and is
+committed as SHA-256(salt ‖ sanitized bytes), so nobody can confirm a guessed
+file from its public fingerprint. The commitment is the Merkle leaf input
+(stored in `sha256_hex`); the salt is sealed with the claim key. Every file
+is salted, public or private, because a file can be made public after it was
+anchored. Rows from before P8.2 have no salt and keep their plain SHA-256.
 
 Privacy rules enforced here: the stored hash is always computed on the
 sanitized bytes (never on the raw upload), the original filename never leaves
@@ -15,7 +22,9 @@ the database row, and this module logs nothing at all.
 from __future__ import annotations
 
 import re
+import secrets
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -23,10 +32,11 @@ from typing import Final
 
 from PIL import Image, UnidentifiedImageError
 
-from poa_shared.merkle import file_hash
+from poa_shared.merkle import HASH_LENGTH, file_hash, salted_file_hash
 from poa_shared.result import Err, Ok, Result
 
-from app.services.crypto import derive_claim_key, encrypt_bytes
+from app.models import EvidenceFile
+from app.services.crypto import decrypt_bytes, dedup_tag, derive_claim_key, encrypt_bytes
 
 STORAGE_SUFFIX: Final = ".enc"
 FILENAME_UNSAFE_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9._-]+")
@@ -36,9 +46,18 @@ FILENAME_MAX_LENGTH: Final[int] = 100
 
 @dataclass(frozen=True, slots=True)
 class ProcessedFile:
-    """An upload ready for storage: hash of sanitized bytes + encrypted blob."""
+    """An upload ready for storage: salted commitment, sealed salt, dedup tag, encrypted blob.
+
+    `file_hash` is the commitment SHA-256(salt ‖ sanitized bytes), the Merkle
+    leaf input. `plain_hash` is SHA-256(sanitized bytes), used only to catch
+    duplicates of unsalted rows from before P8.2 and never stored.
+    """
 
     file_hash: bytes
+    salt: bytes
+    sealed_salt: bytes
+    dedup_tag: bytes
+    plain_hash: bytes
     packed: bytes
     size_bytes: int
 
@@ -80,13 +99,62 @@ def process_upload(data: bytes, *, master_key: bytes, claim_id: bytes) -> Result
     if isinstance(key, Err):
         return key
     sanitized = sanitize_upload(data)
+    salt = secrets.token_bytes(HASH_LENGTH)
+    commitment = salted_file_hash(salt, sanitized)
+    if isinstance(commitment, Err):
+        return commitment
+    sealed_salt = encrypt_bytes(salt, key.value)
+    if isinstance(sealed_salt, Err):
+        return sealed_salt
+    tag = dedup_tag(sanitized, key.value)
+    if isinstance(tag, Err):
+        return tag
     packed = encrypt_bytes(sanitized, key.value)
     if isinstance(packed, Err):
         return packed
     processed: Result[ProcessedFile] = Ok(
-        ProcessedFile(file_hash=file_hash(sanitized), packed=packed.value, size_bytes=len(sanitized))
+        ProcessedFile(
+            file_hash=commitment.value,
+            salt=salt,
+            sealed_salt=sealed_salt.value,
+            dedup_tag=tag.value,
+            plain_hash=file_hash(sanitized),
+            packed=packed.value,
+            size_bytes=len(sanitized),
+        )
     )
     return processed
+
+
+def reveal_salt(sealed_salt: bytes | None, claim_key: bytes) -> Result[str | None]:
+    """Return a stored salt as 0x-hex, `None` for an unsalted pre-P8.2 row, or Err."""
+    if sealed_salt is None:
+        return Ok(None)
+    salt = decrypt_bytes(sealed_salt, claim_key)
+    if isinstance(salt, Err):
+        return salt
+    if len(salt.value) != HASH_LENGTH:
+        return Err(f"stored salt is not {HASH_LENGTH} bytes")
+    revealed: Result[str | None] = Ok(f"0x{salt.value.hex()}")
+    return revealed
+
+
+def unseal_salts(
+    files: Sequence[EvidenceFile], *, master_key: bytes, claim_id: bytes
+) -> Result[dict[uuid.UUID, str]]:
+    """Return the salt of every salted file of one claim, by file id (legacy rows omitted)."""
+    key = derive_claim_key(master_key, claim_id)
+    if isinstance(key, Err):
+        return key
+    salts: dict[uuid.UUID, str] = {}
+    for item in files:
+        salt = reveal_salt(item.salt_sealed, key.value)
+        if isinstance(salt, Err):
+            return salt
+        if salt.value is not None:
+            salts[item.id] = salt.value
+    unsealed: Result[dict[uuid.UUID, str]] = Ok(salts)
+    return unsealed
 
 
 def store_packed(storage_dir: Path, packed: bytes) -> Result[str]:

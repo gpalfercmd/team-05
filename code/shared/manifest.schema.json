@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:proof-of-aid:evidence-manifest:v1",
-  "title": "Proof of Aid evidence manifest (version 1)",
-  "description": "File list of ONE evidence bundle of a claim: the SHA-256 fingerprint of every file whose Merkle root was anchored onchain as evidenceRoots(claimId)[rootIndex]. The manifest is untrusted: a verifier recomputes the Merkle root from the sha256 values (recipe in code/shared/merkle-vectors.json) and accepts the list only if it equals the onchain root. Privacy rule: a file name is allowed ONLY when public is true, because names of private files can contain personal data (for example a beneficiary's name); private files are listed by fingerprint alone. Two entries with the same sha256 are invalid (the Merkle recipe rejects duplicate files); JSON Schema cannot express that uniqueness, so validators must also check it in code.",
+  "title": "Proof of Aid evidence manifest (versions 1 and 2)",
+  "description": "File list of ONE evidence bundle of a claim: the fingerprint of every file whose Merkle root was anchored onchain as evidenceRoots(claimId)[rootIndex]. The manifest is untrusted: a verifier recomputes the Merkle root from the sha256 values (recipe in code/shared/merkle-vectors.json) and accepts the list only if it equals the onchain root. Fingerprints: in version 1 (claims recorded before P8.2) sha256 is the plain SHA-256 of the file. In version 2, files uploaded since P8.2 are salted: sha256 is the commitment SHA-256(salt || file bytes) with a random 32-byte salt, so nobody can confirm a guessed private file from its fingerprint; a public entry publishes its salt so anyone can re-hash the file, a private entry never does. A version 2 entry without a salt is an unsalted file. Privacy rule: a file name and a salt are allowed ONLY when public is true, because names of private files can contain personal data (for example a beneficiary's name) and a published salt would make a private fingerprint guessable again; private files are listed by fingerprint alone. Two entries with the same sha256 are invalid (the Merkle recipe rejects duplicate files); JSON Schema cannot express that uniqueness, so validators must also check it in code. Likewise a version 1 manifest must carry no salt at all; validators check that in code too (kept out of the schema so every consumer can convert it).",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "claimId", "rootIndex", "files"],
   "properties": {
     "version": {
-      "description": "Format version of this manifest. Only 1 exists.",
-      "const": 1
+      "description": "Format version of this manifest: 1 (plain SHA-256, no salts) or 2 (public entries may carry a salt, P8.2).",
+      "enum": [1, 2]
     },
     "claimId": {
       "description": "Onchain claim ID (bytes32, keccak256 of the backend's claim UUID) this bundle belongs to.",
@@ -36,16 +36,20 @@
       "pattern": "^0x[0-9a-fA-F]{64}$"
     },
     "publicFile": {
-      "description": "A file anyone may download and check. It may carry its file name.",
+      "description": "A file anyone may download and check. It may carry its file name and, in version 2, its salt.",
       "type": "object",
       "additionalProperties": false,
       "required": ["sha256", "public"],
       "properties": {
         "sha256": {
-          "description": "SHA-256 of the file's exact (sanitized) bytes.",
+          "description": "SHA-256 of the file's exact (sanitized) bytes, or SHA-256(salt || bytes) when salt is present.",
           "$ref": "#/$defs/bytes32"
         },
         "public": { "const": true },
+        "salt": {
+          "description": "Version 2 only: the 32-byte salt of a salted file, whose fingerprint is SHA-256(salt || file bytes).",
+          "$ref": "#/$defs/bytes32"
+        },
         "name": {
           "description": "File name shown to visitors. A plain name, without folders.",
           "type": "string",
@@ -56,13 +60,13 @@
       }
     },
     "privateFile": {
-      "description": "A file that stays private to protect beneficiaries. Only its fingerprint is published: no name, no other field.",
+      "description": "A file that stays private to protect beneficiaries. Only its fingerprint is published: no name, no salt, no other field.",
       "type": "object",
       "additionalProperties": false,
       "required": ["sha256", "public"],
       "properties": {
         "sha256": {
-          "description": "SHA-256 of the file's exact (sanitized) bytes.",
+          "description": "SHA-256 of the file's exact (sanitized) bytes, or its salted commitment SHA-256(salt || bytes); the salt itself is never published.",
           "$ref": "#/$defs/bytes32"
         },
         "public": { "const": false }

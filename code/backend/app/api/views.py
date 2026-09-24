@@ -14,11 +14,19 @@
 - Manifests follow `code/shared/manifest.schema.json`: names for public files
   only, re-sanitized so no path separator can reach the verifier page.
 
+Salts (P8.2): views receive the already unsealed salts by file id. A public
+file publishes its salt (claim view and manifest); a private file's salt goes
+only into the authorized view. A bundle manifest is version 2 when any of its
+files is salted, version 1 otherwise, so pre-P8.2 manifests stay identical.
+
 Views are assembled field by field into dedicated models instead of dumping
 ORM rows, so adding a column never publishes it by accident.
 """
 
 from __future__ import annotations
+
+import uuid
+from collections.abc import Mapping
 
 from pydantic import ValidationError
 
@@ -42,15 +50,26 @@ from app.services.bundles import EvidenceBundle
 from app.services.evidence import safe_filename
 
 
-def authorized_claim_view(claim: Claim, bundles: list[EvidenceBundle]) -> ClaimResponse:
-    """Serialize a claim with full file detail (authorized viewers only)."""
+Salts = Mapping[uuid.UUID, str]
+
+
+def file_response(item: EvidenceFile, salt: str | None) -> EvidenceFileResponse:
+    """Full file detail plus its salt (authorized viewers and the uploader only)."""
+    response = EvidenceFileResponse.model_validate(item).model_copy(update={"salt": salt})
+    return response
+
+
+def authorized_claim_view(
+    claim: Claim, bundles: list[EvidenceBundle], salts: Salts
+) -> ClaimResponse:
+    """Serialize a claim with full file detail and every salt (authorized viewers only)."""
     view = ClaimResponse(
         **_claim_fields(claim),
         bundles=[
             EvidenceBundleResponse(
                 root_index=bundle.root_index,
                 evidence_root=bundle.evidence_root,
-                files=[EvidenceFileResponse.model_validate(item) for item in bundle.files],
+                files=[file_response(item, salts.get(item.id)) for item in bundle.files],
             )
             for bundle in bundles
         ],
@@ -58,15 +77,17 @@ def authorized_claim_view(claim: Claim, bundles: list[EvidenceBundle]) -> ClaimR
     return view
 
 
-def public_claim_view(claim: Claim, bundles: list[EvidenceBundle]) -> PublicClaimResponse:
-    """Serialize a claim for anonymous or unauthorized viewers."""
+def public_claim_view(
+    claim: Claim, bundles: list[EvidenceBundle], salts: Salts
+) -> PublicClaimResponse:
+    """Serialize a claim for anonymous or unauthorized viewers (public salts only)."""
     view = PublicClaimResponse(
         **_claim_fields(claim),
         bundles=[
             PublicEvidenceBundleResponse(
                 root_index=bundle.root_index,
                 evidence_root=bundle.evidence_root,
-                files=[_public_file(item) for item in bundle.files],
+                files=[_public_file(item, salts.get(item.id)) for item in bundle.files],
             )
             for bundle in bundles
         ],
@@ -74,14 +95,15 @@ def public_claim_view(claim: Claim, bundles: list[EvidenceBundle]) -> PublicClai
     return view
 
 
-def manifest_view(claim: Claim, bundle: EvidenceBundle) -> Result[EvidenceManifest]:
+def manifest_view(claim: Claim, bundle: EvidenceBundle, salts: Salts) -> Result[EvidenceManifest]:
     """Build the bundle manifest; `Err` if stored data breaks the shared schema."""
+    salted = any(item.salt_sealed is not None for item in bundle.files)
     try:
         manifest = EvidenceManifest(
-            version=1,
+            version=2 if salted else 1,
             claimId=claim.claim_id_hex.lower(),
             rootIndex=bundle.root_index,
-            files=[_manifest_entry(item) for item in bundle.files],
+            files=[_manifest_entry(item, salts.get(item.id)) for item in bundle.files],
         )
     except ValidationError as cause:
         return Err("stored evidence does not fit the manifest schema", cause)
@@ -95,8 +117,10 @@ def _claim_fields(claim: Claim) -> dict[str, object]:
     return fields
 
 
-def _public_file(item: EvidenceFile) -> PublicFileResponse | PrivateFileFingerprint:
-    """Public files keep download metadata; private ones shrink to a fingerprint."""
+def _public_file(
+    item: EvidenceFile, salt: str | None
+) -> PublicFileResponse | PrivateFileFingerprint:
+    """Public files keep download metadata and salt; private ones shrink to a fingerprint."""
     if not item.is_public:
         return PrivateFileFingerprint(
             sha256_hex=item.sha256_hex, is_public=False, root_index=item.root_index
@@ -104,6 +128,7 @@ def _public_file(item: EvidenceFile) -> PublicFileResponse | PrivateFileFingerpr
     entry: PublicFileResponse | PrivateFileFingerprint = PublicFileResponse(
         id=item.id,
         sha256_hex=item.sha256_hex,
+        salt=salt,
         original_name=item.original_name,
         mime_type=item.mime_type,
         size_bytes=item.size_bytes,
@@ -113,12 +138,14 @@ def _public_file(item: EvidenceFile) -> PublicFileResponse | PrivateFileFingerpr
     return entry
 
 
-def _manifest_entry(item: EvidenceFile) -> ManifestPublicFile | ManifestPrivateFile:
-    """Map one file to its manifest entry; a name only when the file is public."""
+def _manifest_entry(
+    item: EvidenceFile, salt: str | None
+) -> ManifestPublicFile | ManifestPrivateFile:
+    """Map one file to its manifest entry; a name and salt only when the file is public."""
     fingerprint = item.sha256_hex.lower()
     if not item.is_public:
         return ManifestPrivateFile(sha256=fingerprint, public=False)
     entry: ManifestPublicFile | ManifestPrivateFile = ManifestPublicFile(
-        sha256=fingerprint, public=True, name=safe_filename(item.original_name)
+        sha256=fingerprint, public=True, name=safe_filename(item.original_name), salt=salt
     )
     return entry

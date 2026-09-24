@@ -12,6 +12,8 @@ import { err, ok, type Result } from '../utils/result';
 // Mirrors code/shared/manifest.schema.json, the format agreed with the backend (P3/P4). A test
 // runs both schemas over the same samples so they cannot drift apart. A manifest is untrusted
 // input: parsing it only proves its shape; `checkManifest` then proves it against the chain.
+// Version 2 (P8.2) lets a public entry carry its 32-byte salt: its sha256 is then the commitment
+// SHA-256(salt ‖ bytes). A private entry never carries a salt, and a version 1 manifest has none.
 
 const bytes32Schema = z.custom<Hex>(
   (value) => typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value),
@@ -27,9 +29,11 @@ const publicFileSchema = z.strictObject({
     .max(255)
     .regex(/^[^/\\]+$/, 'A file name cannot contain folders')
     .optional(),
+  salt: bytes32Schema.optional(),
 });
 
-// strictObject: a private entry carrying a `name` (possible personal data) is rejected outright.
+// strictObject: a private entry carrying a `name` (possible personal data) or a `salt` (which
+// would make its fingerprint guessable again) is rejected outright.
 const privateFileSchema = z.strictObject({
   sha256: bytes32Schema,
   public: z.literal(false),
@@ -37,7 +41,7 @@ const privateFileSchema = z.strictObject({
 
 export const manifestSchema = z
   .strictObject({
-    version: z.literal(1),
+    version: z.union([z.literal(1), z.literal(2)]),
     claimId: bytes32Schema,
     rootIndex: z.int().nonnegative(),
     files: z.array(z.discriminatedUnion('public', [publicFileSchema, privateFileSchema])).min(1),
@@ -48,7 +52,11 @@ export const manifestSchema = z
       return new Set(hashes).size === hashes.length;
     },
     { message: 'Each file fingerprint can appear only once', path: ['files'] },
-  );
+  )
+  .refine((manifest) => manifest.version === 2 || manifest.files.every((file) => !('salt' in file)), {
+    message: 'Only a version 2 file list can carry salts',
+    path: ['files'],
+  });
 
 export type EvidenceManifest = z.infer<typeof manifestSchema>;
 

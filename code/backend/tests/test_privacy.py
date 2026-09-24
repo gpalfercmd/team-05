@@ -26,7 +26,9 @@ from tests.conftest import addresses_of, create_claim, login, seed_standard_role
 PRIVATE_NAME = "beneficiary-jane-roe-id-card.jpg"
 PUBLIC_NAME = "invoice-food-kits.pdf"
 PRIVATE_KEYS = {"sha256_hex", "is_public", "root_index"}
-PUBLIC_KEYS = {"id", "sha256_hex", "original_name", "mime_type", "size_bytes", "is_public", "root_index"}
+PUBLIC_KEYS = {
+    "id", "sha256_hex", "salt", "original_name", "mime_type", "size_bytes", "is_public", "root_index"
+}
 
 
 def _scenario(client: TestClient, engine: Engine, wallets: dict[str, Account]) -> dict:
@@ -80,6 +82,9 @@ def test_anonymous_sees_only_fingerprints_of_private_files(
     assert set(public) == PUBLIC_KEYS
     assert public["original_name"] == PUBLIC_NAME
     assert public["id"] == scenario["public"]["id"]
+    # P8.2: a public file publishes its salt; a private file's salt never leaves the backend.
+    assert public["salt"] == scenario["public"]["salt"]
+    assert scenario["private"]["salt"] not in raw
 
 
 def test_authorized_viewers_see_full_private_detail(
@@ -98,6 +103,7 @@ def test_authorized_viewers_see_full_private_detail(
         assert private["mime_type"] == "image/jpeg"
         assert private["id"] == scenario["private"]["id"]
         assert private["uploaded_by"] == addresses_of(wallets)["org"]
+        assert private["salt"] == scenario["private"]["salt"]
 
 
 def test_unauthorized_wallets_are_treated_as_anonymous(
@@ -127,3 +133,7 @@ def test_public_manifest_never_names_private_files(
     assert PRIVATE_NAME not in response.text
     private = next(item for item in response.json()["files"] if item["public"] is False)
     assert private == {"sha256": scenario["private"]["sha256_hex"], "public": False}
+    assert scenario["private"]["salt"] not in response.text
+    public = next(item for item in response.json()["files"] if item["public"] is True)
+    assert public["salt"] == scenario["public"]["salt"]
+    assert response.json()["version"] == 2

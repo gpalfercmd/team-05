@@ -10,10 +10,16 @@ Each claim gets its own key derived from the master `EVIDENCE_ENCRYPTION_KEY`
 via HKDF with the claim's `claim_id` as salt, so one leaked claim key never
 exposes other claims. Every file uses a fresh random 96-bit nonce; the stored
 blob is `nonce(12) | ciphertext | tag(16)`. Failures return `Err`, never raise.
+
+Since P8.2 the claim key also seals each file's commitment salt, and a
+separate per-claim HMAC key (derived from the claim key) tags the sanitized
+bytes so duplicates are still detected although salted commitments differ.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 from typing import Final
 
@@ -28,6 +34,7 @@ AES_KEY_LENGTH: Final[int] = 32
 NONCE_LENGTH: Final[int] = 12
 TAG_LENGTH: Final[int] = 16
 KDF_INFO: Final[bytes] = b"proof-of-aid evidence v1"
+DEDUP_KEY_LABEL: Final[bytes] = b"proof-of-aid duplicate detection v1"
 
 
 def derive_claim_key(master_key: bytes, claim_id: bytes) -> Result[bytes]:
@@ -65,3 +72,16 @@ def decrypt_bytes(packed: bytes, key: bytes) -> Result[bytes]:
         return Err("decryption failed: wrong key or tampered data", cause)
     decrypted: Result[bytes] = Ok(plaintext)
     return decrypted
+
+
+def dedup_tag(content: bytes, claim_key: bytes) -> Result[bytes]:
+    """Return HMAC-SHA256(dedup_key, content), dedup_key = HMAC(claim_key, label).
+
+    Keyed per claim, so the tag reveals nothing to someone without the claim
+    key and two claims holding the same file get unrelated tags.
+    """
+    if len(claim_key) != AES_KEY_LENGTH:
+        return Err(f"key must be {AES_KEY_LENGTH} bytes")
+    dedup_key = hmac.new(claim_key, DEDUP_KEY_LABEL, hashlib.sha256).digest()
+    tag: Result[bytes] = Ok(hmac.new(dedup_key, content, hashlib.sha256).digest())
+    return tag

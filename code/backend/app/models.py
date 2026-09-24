@@ -9,9 +9,13 @@
 - `Claim` holds the offchain metadata; `claim_id_hex` is `keccak256(uuid)` and
   matches the onchain `bytes32 claimId` (memory.md: claim ID decision).
 - `EvidenceFile` holds one row per uploaded file; the bytes live encrypted in
-  `STORAGE_DIR`, only the SHA-256 of the *sanitized* bytes is stored here (F3).
+  `STORAGE_DIR`, only a fingerprint of the *sanitized* bytes is stored here (F3).
   `root_index` is the file's bundle: its position in the onchain
   `evidenceRoots(claimId)` (0 = original evidence, n = supplementary proof n).
+  Since P8.2 `sha256_hex` holds the salted commitment SHA-256(salt ‖ bytes)
+  (still the Merkle leaf input), `salt_sealed` the salt encrypted with the
+  claim key and `dedup_tag_hex` a per-claim HMAC of the bytes for duplicate
+  detection. Both are NULL on unsalted rows from before P8.2.
 - `Participant` is the P3 local role resolver, now only the explicit
   `ROLE_SOURCE=local` fallback (memory.md: RolResolver local decision), as is
   `auditor_address` on the claim; in chain mode the access matrix reads
@@ -41,6 +45,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -91,6 +96,7 @@ class EvidenceFile(Base):
     __tablename__ = "evidence_files"
     __table_args__ = (
         UniqueConstraint("claim_id", "sha256_hex", name="uq_file_per_claim"),
+        UniqueConstraint("claim_id", "dedup_tag_hex", name="uq_file_dedup_per_claim"),
         CheckConstraint("root_index >= 0", name="ck_evidence_root_index_nonnegative"),
     )
 
@@ -99,6 +105,9 @@ class EvidenceFile(Base):
         ForeignKey("claims.id", ondelete="CASCADE"), index=True
     )
     sha256_hex: Mapped[str] = mapped_column(String(HASH_HEX_LENGTH))
+    # Never named `salt`: response models read ORM attributes by name and must not see ciphertext.
+    salt_sealed: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    dedup_tag_hex: Mapped[str | None] = mapped_column(String(HASH_HEX_LENGTH), nullable=True)
     storage_name: Mapped[str] = mapped_column(String(64))
     original_name: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(127))
