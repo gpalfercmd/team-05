@@ -3,33 +3,6 @@
 Describe the complete Proof of Aid system, including parts beyond the prototype.
 Keep implementation status in [SUBMISSION.md](SUBMISSION.md).
 
-> **Status:** design as built (2026-09-25, final submission), checked against the code on `main`:
-> contracts with deposits, rewards and penalties deployed to Arbitrum Sepolia; evidence backend, chain
-> indexer, public verification page and role screens implemented. Implementation status per
-> capability lives in [SUBMISSION.md](SUBMISSION.md#implementation-boundary). Requirements and
-> acceptance criteria live in [`dbv-specs-ops/docs/SPECIFICATIONS.md`](../dbv-specs-ops/docs/SPECIFICATIONS.md);
-> how to build and run each part is in [`code/README.md`](../code/README.md) and [RUNBOOK.md](RUNBOOK.md).
-
-**Contents:** [The case: 500 food kits after the Valencia floods](#the-case-500-food-kits-after-the-valencia-floods) ·
-[Vision and actors](#vision-and-actors) ·
-[Implementation focus](#implementation-focus) ·
-[End-to-end flow](#end-to-end-flow) ·
-[Claim lifecycle (enforced onchain)](#claim-lifecycle-enforced-onchain) ·
-[Incentives: deposits, rewards and penalties (P9)](#incentives-deposits-rewards-and-penalties-p9) ·
-[System diagram](#system-diagram) ·
-[Stack](#stack) ·
-[Components](#components) ·
-[Data model](#data-model) ·
-[Roles and permissions](#roles-and-permissions) ·
-[Evidence pipeline](#evidence-pipeline) ·
-[Public verification algorithm](#public-verification-algorithm) ·
-[Indexer](#indexer) ·
-[Configuration and deployment topology](#configuration-and-deployment-topology) ·
-[Decisions and trade-offs](#decisions-and-trade-offs) ·
-[Key ADRs](#key-adrs) ·
-[Security considerations](#security-considerations) ·
-[Known edge cases](#known-edge-cases) ·
-[Technical appendix](#technical-appendix)
 
 ## The case: 500 food kits after the Valencia floods
 
