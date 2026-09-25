@@ -11,7 +11,7 @@
 | | |
 | --- | --- |
 | **Project name** | Proof of Aid — Team 05 |
-| **Team ID & members** | Team 05 *(TODO (team): confirm the exact Team ID the organizers assigned; it is also what goes in the final form)* · Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez |
+| **Team ID & members** | team-05 · Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez |
 | **System vision** | Anyone, without special access, can check that an aid claim is backed by unaltered evidence reviewed by independent, accredited verifiers, without seeing beneficiaries' personal data. |
 | **Implementation focus** | **Trust, Evidence & Privacy:** trusting aid claims whose evidence cannot be published, through encrypted offchain evidence anchored onchain by Merkle root and a contract-enforced two-stage verification. |
 | **What we built** | Two smart contracts on Arbitrum Sepolia that enforce accreditation, evidence anchoring, two-stage verification with proof requests, disputes and a per-claim ETH escrow; a Python backend that strips image metadata, salts, hashes and encrypts evidence, serves privacy-safe views and indexes the chain; and a React app where anyone re-checks evidence against the chain in their own browser and each accredited role signs its actions with its wallet. |
@@ -466,7 +466,6 @@ permanent-identity rule makes contract tests fail (mutation spot checks during P
 - **PostgreSQL:** migrations verified on SQLite, a disposable PostgreSQL 18, the Docker PostgreSQL 16
   (0001–0003) and PostgreSQL 18.6 (0001–0004). Before the P9 redeploy, the indexer stored the 22
   registry events of the previous Sepolia deployment in about 7 s and a second run added 0.
-- **UI screenshots (demo data, 2026-09-25):** dashboard and public claim page at 1280px and 375px, light and dark: [home desktop](evidence/ui-home-desktop.png) · [home desktop dark](evidence/ui-home-desktop-dark.png) · [home mobile](evidence/ui-home-mobile.png) · [home mobile dark](evidence/ui-home-mobile-dark.png) · [claim desktop](evidence/ui-claim-desktop.png) · [claim desktop dark](evidence/ui-claim-desktop-dark.png) · [claim mobile](evidence/ui-claim-mobile.png) · [claim mobile dark](evidence/ui-claim-mobile-dark.png).
 - **Secret scan (P7.2):** no `.env` file is tracked or was ever committed (only the three
   `.env.example` templates and the public-address `code/frontend/.env.sepolia`); the only private key
   and mnemonic in the repository are Foundry's public anvil development ones, in the local-demo
