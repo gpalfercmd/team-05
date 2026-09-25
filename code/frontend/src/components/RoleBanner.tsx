@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — RoleBanner: thin bar showing the viewer's role and network
+// Proof of Aid — Team 05 — RoleBanner: thin bar showing the viewer's role (read from the chain) and network
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops

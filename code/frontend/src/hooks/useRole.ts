@@ -1,23 +1,73 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Connected wallet's participant role (placeholder until P5.3)
+// Proof of Aid — Team 05 — Connected wallet's participant role, read from the ParticipantRegistry
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { ROLE_LABELS, type Role } from '../utils/roles';
+import { skipToken, useQuery } from '@tanstack/react-query';
+import type { Address } from 'viem';
+import { readRoleFlags } from '../chain/reads';
+import { ROLE_LABELS, resolveRole, type Role } from '../utils/roles';
+import { useAppConfig } from './useAppConfig';
+import { useReadClient, useRegistries, useWallet } from './useWallet';
+
+export type RoleStatus = 'demo' | 'disconnected' | 'loading' | 'ready' | 'error';
 
 export type RoleState = {
   role: Role;
   label: string;
-  /** True while the role is not yet read from the ParticipantRegistry. */
-  isPlaceholder: boolean;
+  /** `ready` only once the registry answered; every other status shows the public view. */
+  status: RoleStatus;
+  /** The verifier's organization (`organizationOf`), when the role is internal verifier. */
+  verifierOrganization: Address | undefined;
+  error: string | undefined;
 };
 
+/** Registry roles change rarely; a confirmed transaction refreshes them anyway. */
+const ROLE_STALE_MS = 30_000;
+
+const publicState = (status: RoleStatus, error: string | undefined = undefined): RoleState => ({
+  role: 'public',
+  label: ROLE_LABELS.public,
+  status,
+  verifierOrganization: undefined,
+  error,
+});
+
 export function useRole(): RoleState {
-  // TODO(P5.3): resolve the role from ParticipantRegistry (isRegistryAdmin, isAccreditationAuthority,
-  // isOrganization, organizationOf, isAuditor) for the connected wallet; demo mode stays "public".
-  const role: Role = 'public';
-  const state: RoleState = { role, label: ROLE_LABELS[role], isPlaceholder: true };
+  const { chain } = useAppConfig();
+  const wallet = useWallet();
+  const registries = useRegistries();
+  const client = useReadClient();
+  const address = wallet.status === 'connected' ? wallet.address : undefined;
+  const query = useQuery({
+    queryKey: ['role', chain.id, registries?.participantRegistry, address],
+    queryFn:
+      registries === undefined || client === undefined || address === undefined
+        ? skipToken
+        : () => readRoleFlags(client, registries, address),
+    staleTime: ROLE_STALE_MS,
+  });
+
+  let state: RoleState;
+  if (registries === undefined) {
+    state = publicState('demo');
+  } else if (address === undefined) {
+    state = publicState('disconnected');
+  } else if (query.data === undefined) {
+    state = query.isError ? publicState('error', query.error.message) : publicState('loading');
+  } else if (!query.data.ok) {
+    state = publicState('error', query.data.error);
+  } else {
+    const role = resolveRole(query.data.value);
+    state = {
+      role,
+      label: ROLE_LABELS[role],
+      status: 'ready',
+      verifierOrganization: query.data.value.verifierOrganization,
+      error: undefined,
+    };
+  }
   return state;
 }

@@ -1,16 +1,15 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Dashboard (`/`): wallet area, sample claims (demo) or demo claim + lookup (chain)
+// Proof of Aid — Team 05 — Dashboard (`/`): wallet and role actions, sample claims (demo) or demo claim + lookup (chain)
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
 import { Link } from 'react-router';
-import { useConnection } from 'wagmi';
 import { ClaimLookup } from '../components/ClaimLookup';
-import { HashDisplay } from '../components/HashDisplay';
 import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
 import { StatusBadge } from '../components/StatusBadge';
+import { WalletPanel } from '../components/wallet/WalletPanel';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
 import { truncateMiddle } from '../utils/format';
@@ -28,7 +27,6 @@ const HOW_IT_WORKS = [
 ] as const;
 
 export function DashboardPage() {
-  const connection = useConnection();
   const { contracts } = useAppConfig();
   const featuredClaim = MOCK_CLAIMS[0];
   return (
@@ -84,20 +82,7 @@ export function DashboardPage() {
 
       <section className="card" aria-labelledby="wallet-heading">
         <h2 id="wallet-heading">Your wallet</h2>
-        {/* TODO(P5.3): replace with the role views (organization, verifier, auditor, authority, admin). */}
-        {connection.status === 'connected' ? (
-          <>
-            <p>
-              Connected as <HashDisplay value={connection.address} label="wallet address" explorer="address" />
-            </p>
-            <p className="muted">The actions available to your role will appear here.</p>
-          </>
-        ) : (
-          <p className="muted">
-            Connect your wallet to see the actions for your role. You do not need a wallet to check a
-            claim’s evidence.
-          </p>
-        )}
+        <WalletPanel demo={contracts.mode === 'mock'} />
       </section>
 
       {contracts.mode === 'chain' && (

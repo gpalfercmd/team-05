@@ -1,0 +1,162 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Role screens: forms, action cards, transaction status (DESIGN.md tokens)
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.wallet-stack {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.wallet-stack > p {
+  margin: 0;
+}
+
+/* A role action: one column, label above input, the action at the bottom right. */
+.action-form {
+  display: grid;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.action-form h3,
+.action-form h4 {
+  margin: 0;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  line-height: var(--text-subheading-line-height);
+}
+
+.action-form h4 {
+  font-size: 1rem;
+}
+
+.action-form p {
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.field label,
+.field legend {
+  font-size: var(--text-label-size);
+  font-weight: 600;
+}
+
+.field input[type='text'],
+.field input[type='date'],
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.field input.field__mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+}
+
+.field textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.field input[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.field__hint {
+  margin: 0;
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--text-caption-size);
+  color: var(--color-error);
+}
+
+.field--check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.action-form__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.btn-danger {
+  color: var(--color-on-primary);
+  background: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error) 85%, var(--color-on-surface));
+}
+
+.tx-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  min-width: 0;
+  font-size: var(--text-label-size);
+}
+
+.tx-status:empty {
+  display: none;
+}
+
+.tx-status--confirmed {
+  color: var(--color-success);
+}
+
+.tx-status--failed {
+  color: var(--color-error);
+}
+
+.tx-status__hash {
+  color: var(--color-on-neutral);
+}
+
+.claim-queue {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.claim-queue__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.claim-queue__item code {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+}
