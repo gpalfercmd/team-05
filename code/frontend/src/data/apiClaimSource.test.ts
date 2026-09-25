@@ -69,7 +69,6 @@ describe('ApiClaimSource', () => {
     const result = await api.getClaim(fullStory.claimId);
     expect(result.ok && result.value.evidence.map((bundle) => bundle.manifestHref)).toEqual([
       `${DEMO_EVIDENCE_PATH}manifest.json`,
-      `${DEMO_EVIDENCE_PATH}manifest-proof-1.json`,
     ]);
   });
 
@@ -103,7 +102,7 @@ describe('ApiClaimSource', () => {
     const { api, ranges } = sources({ [timelineUrl()]: json(timelineBody(indexed, { indexedToBlock: Number(cursor) })) });
     const result = await api.getClaim(fullStory.claimId);
     expect(result).toEqual({ ok: true, value: await chainView() });
-    expect(result.ok && result.value.timeline).toHaveLength(14);
+    expect(result.ok && result.value.timeline).toHaveLength(11);
     expect(ranges).toEqual([
       [cursor + 1n, LATEST_BLOCK],
       [FIRST_BLOCK, LATEST_BLOCK],
@@ -121,9 +120,11 @@ describe('ApiClaimSource', () => {
   });
 
   it('falls back when the indexed history does not end in the contract status or roots', async () => {
-    const withoutProof = fullStory.logs.filter((log) => log.eventName !== 'ProofSubmitted');
+    // Without the anchor step the index records no roots while the contract holds one;
+    // without the last status change it ends in Disputed while the contract says Verified.
+    const withoutAnchor = fullStory.logs.slice(3);
     const withoutLastStatus = fullStory.logs.slice(0, -1);
-    for (const logs of [withoutProof, withoutLastStatus]) {
+    for (const logs of [withoutAnchor, withoutLastStatus]) {
       const { api } = sources({ [timelineUrl()]: json(timelineBody(logs)) });
       const result = await api.getClaim(fullStory.claimId);
       expect(result.ok && result.value.source).toBe('chain');

@@ -94,7 +94,7 @@ contract ClaimRegistryTest is ProofOfAidFixture {
         _anchor(CLAIM_ID);
     }
 
-    function test_AnchorClaim_NeedsTwoActiveInternalVerifiers() public {
+    function test_AnchorClaim_NeedsOneActiveInternalVerifier() public {
         address small = makeAddr("smallOrg");
         vm.deal(small, ACTOR_BALANCE);
         vm.prank(registryAdmin);
@@ -106,23 +106,19 @@ contract ClaimRegistryTest is ProofOfAidFixture {
 
         vm.prank(registryAdmin);
         participants.registerInternalVerifier(makeAddr("smallVerifier1"), small);
-        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.InsufficientInternalVerifiers.selector, small, 1));
         vm.prank(small);
         claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
-
-        vm.prank(registryAdmin);
-        participants.registerInternalVerifier(makeAddr("smallVerifier2"), small);
-        vm.prank(small);
-        claims.anchorClaim{value: ANCHOR_DEPOSIT}(CLAIM_ID, ROOT, METADATA);
-        assertEq(MIN_INTERNAL_VERIFIERS, 2);
+        assertEq(MIN_INTERNAL_VERIFIERS, 1);
         assertEq(uint8(claims.statusOf(CLAIM_ID)), uint8(IClaimRegistry.ClaimStatus.Anchored));
     }
 
     function test_AnchorClaim_RevokedVerifierDropsOrganizationBelowMinimum() public {
         vm.prank(registryAdmin);
+        participants.revokeInternalVerifier(verifier1);
+        vm.prank(registryAdmin);
         participants.revokeInternalVerifier(verifier2);
 
-        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.InsufficientInternalVerifiers.selector, org, 1));
+        vm.expectRevert(abi.encodeWithSelector(IClaimRegistry.InsufficientInternalVerifiers.selector, org, 0));
         _anchor(CLAIM_ID);
     }
 

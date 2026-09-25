@@ -30,7 +30,7 @@ code/
 │   ├── test/                      ParticipantRegistry.t.sol, ClaimRegistry.t.sol, ClaimRegistryIncentives.t.sol,
 │   │                              MerkleVectors.t.sol, invariant/ClaimRegistry.invariant.t.sol, helpers/ fixture
 │   ├── script/Deploy.s.sol        deploy both registries (REGISTRY_ADMIN, ACCREDITATION_AUTHORITY)
-│   ├── script/DemoLifecycle.s.sol accredit 7 test wallets and run the full demo claim (9 steps)
+ │   ├── script/DemoLifecycle.s.sol accredit 6 test wallets and run the full demo claim (6 steps)
 │   ├── script/DeploymentFile.sol  shared deploy helper; 1/100 incentive amounts; writes ../shared/deployments/*.json
 │   ├── script/record_transactions.py  add tx hashes and the real deployBlock from Foundry's broadcast log
 │   ├── script/export-abi.sh       regenerate ../shared/abi/*.json from the interfaces
@@ -255,7 +255,7 @@ the deployment file, and empty the backend's chain tables (Gotchas).
 | Metadata vectors | `(cd shared && uv run python -m poa_shared.gen_metadata_vectors)` | after changing the metadata recipe |
 | Note vectors | `(cd shared && uv run python -m poa_shared.gen_note_vectors)` | after changing the note recipe |
 | Deployment files | `python3 contracts/script/record_transactions.py <Script>.s.sol --chain-id <id>` | after every broadcast |
-| Demo roots | recompute with `poa_shared.merkle.build_root` and update `EVIDENCE_ROOT` / `SUPPLEMENTARY_ROOT` in `contracts/script/DemoLifecycle.s.sol` and `frontend/src/mocks/claims.ts` | after editing `frontend/public/demo-evidence/` |
+| Demo roots | recompute with `poa_shared.merkle.build_root` and update `EVIDENCE_ROOT` in `contracts/script/DemoLifecycle.s.sol` and `frontend/src/mocks/claims.ts` | after editing `frontend/public/demo-evidence/` |
 
 On 2026-09-25 all four generators reproduced the committed files byte for byte.
 
@@ -511,7 +511,7 @@ or `forge soldeer install` has not been run.
 
 #### Demo, note 1
 
-Steps 1–8 are executed by `DemoLifecycle.s.sol` (on Sepolia they are the transactions linked in
+Steps 1–6 are executed by `DemoLifecycle.s.sol` (on Sepolia they are the transactions linked in
 [SUBMISSION.md](../docs/SUBMISSION.md#3-demo-and-validation)); each appears in the page's history.
 Files are hashed in the browser and never uploaded.
 
@@ -522,7 +522,7 @@ Files are hashed in the browser and never uploaded.
 | Arbitrum Sepolia (public RPC `https://sepolia-rollup.arbitrum.io/rpc`) | Real (testnet) | Used by path A and the Sepolia indexer; no key needed. Public RPCs can rate-limit `eth_getLogs`: the page and the indexer halve their block range automatically. |
 | `ParticipantRegistry` / `ClaimRegistry` | Real | Deployed on Arbitrum Sepolia (addresses above); identical bytecode on local anvil. |
 | Local chain (anvil) | Real (local) | Path B and the backend's end-to-end test. |
-| Participants' wallets | Simulated | Seven test-only wallets from a mnemonic; accreditation is a manual admin action, not a real identity check. |
+| Participants' wallets | Simulated | Six test-only wallets from a mnemonic; accreditation is a manual admin action, not a real identity check. |
 | Role actions (register, anchor, attest, assign, proof loop, dispute, resolve, settle, withdraw) | Real | Signed in the browser by each role's wallet (path D), or by `DemoLifecycle.s.sol` and `cast` for the scripted demo. Recording a claim or proof from the UI needs the backend (path C). |
 | Deposits and bonds | Real (test ETH) | 1/100 of the reference amounts on Sepolia and in the scripts. |
 | Evidence files | Mock | Made-up text/CSV files in `code/frontend/public/demo-evidence/`; the Sepolia demo claim anchors their real Merkle roots. The EXIF/GPS stripping is proven by a backend test with a synthetic JPEG, the PDF metadata stripping by one with a generated PDF. |

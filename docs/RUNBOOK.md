@@ -5,9 +5,9 @@ This section is technically explained at [code/README.md → Introduction, note 
 | Path | Needs | Shows |
 | --- | --- | --- |
 | **A. Live Sepolia page** (read-only) | Node + pnpm | The deployed contracts on Arbitrum Sepolia and the demo claim's full history; in-browser evidence checks (match / mismatch). No wallet, no keys, no backend. |
-| **B. Local anvil demo** | + Foundry | The whole lifecycle executed on your machine by `DemoLifecycle.s.sol` (anchor → checkpoint 1 → proof loop → final approval → dispute with bond → dismissal), then the 60-day settlement of the deposits. |
+| **B. Local anvil demo** | + Foundry | The whole lifecycle executed on your machine by `DemoLifecycle.s.sol` (anchor → checkpoint 1 → final approval → dispute with bond → dismissal), then the 60-day settlement of the deposits. |
 | **C. Backend + indexer** | + Python/uv + PostgreSQL | The evidence API, database migrations, the chain indexer and the public timeline API that the page can use as a speed-up. |
-| **D. Role screens** (sign from the browser) | + MetaMask (B; C to record claims and proof) | Each role signs its own actions on the workspace page (`/workspace`): register participants, record a claim with its evidence, checkpoint 1, assign an auditor, proof loop, final decision, dispute, settle, withdraw. |
+| **D. Role screens** (sign from the browser) | + MetaMask (B; C to record claims and proof) | Each role signs its own actions on the workspace page (`/workspace`): register participants, record a claim with its evidence, checkpoint 1, assign an auditor, final decision, dispute, settle, withdraw. The optional proof loop (request, submit, confirm by a second verifier) is exercised from the same screens whenever an organization registers two verifiers. |
 
 ## Requirements
 
@@ -54,6 +54,63 @@ cd ..
 ```
 
 ## Run
+
+Start order: **1. API**, **2. indexer** (both in [C](#c-backend-api-migrations-and-indexer)),
+**3. web page** ([A](#a-public-page-against-the-live-arbitrum-sepolia-deployment) for Sepolia,
+[B](#b-local-anvil-demo-full-lifecycle-on-your-machine) for the local chain). For the local chain,
+run the `anvil` and deploy snippets of B before C.
+
+### C. Backend API, migrations and indexer
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
+
+```bash
+cd backend
+docker compose up -d        # Postgres 16, role poa / db proof_of_aid, port 5432
+```
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 2](../code/README.md#c-backend-and-indexer-note-2).
+
+```bash
+uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_notes, P10.3)
+```
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 3](../code/README.md#c-backend-and-indexer-note-3).
+
+```bash
+# 1. API (terminal 1)
+DEPLOYMENT_FILE=../shared/deployments/anvil.json \
+uv run uvicorn app.main:create_app --factory --port 8000     # Ctrl+C to stop
+
+# 2. Indexer (terminal 2)
+DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545 \
+INDEXER_CONFIRMATIONS=0 uv run python -m app.indexer --once
+```
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 4](../code/README.md#c-backend-and-indexer-note-4).
+
+**Expected result:**
+
+```bash
+curl -s localhost:8000/health                       # {"status":"ok"}
+curl -s localhost:8000/public/indexer/status        # chainId, both registries, indexedToBlock, lag
+curl -s localhost:8000/public/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28/timeline
+                                                    # the demo claim's events, status "Verified", 2 evidence roots
+```
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 5](../code/README.md#c-backend-and-indexer-note-5).
+
+The indexer's `--once` run exits 0; a second run adds no events (idempotent). To let the page use
+the API, add `VITE_API_URL=http://localhost:8000` to the frontend command of path A or B; the page
+then says "History from the indexer API" and still reads status and roots from the contract. The
+backend's `CORS_ORIGINS` (default `http://localhost:5173`) must list the page's exact origin.
+
+This section is technically explained at [code/README.md → C. Backend and indexer, note 6](../code/README.md#c-backend-and-indexer-note-6).
+
+```bash
+psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
+  -c "TRUNCATE chain_events, chain_participants, chain_claims, sync_state;"
+```
 
 ### A. Public page against the live Arbitrum Sepolia deployment
 
@@ -136,56 +193,6 @@ deposits** card (path D).
 
 This section is technically explained at [code/README.md → B. Local anvil demo, note 5](../code/README.md#b-local-anvil-demo-note-5).
 
-### C. Backend API, migrations and indexer
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
-
-```bash
-cd backend
-docker compose up -d        # Postgres 16, role poa / db proof_of_aid, port 5432
-```
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 2](../code/README.md#c-backend-and-indexer-note-2).
-
-```bash
-uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_notes, P10.3)
-```
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 3](../code/README.md#c-backend-and-indexer-note-3).
-
-```bash
-DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545 \
-INDEXER_CONFIRMATIONS=0 uv run python -m app.indexer --once
-
-DEPLOYMENT_FILE=../shared/deployments/anvil.json \
-uv run uvicorn app.main:create_app --factory --port 8000     # Ctrl+C to stop
-```
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 4](../code/README.md#c-backend-and-indexer-note-4).
-
-**Expected result:**
-
-```bash
-curl -s localhost:8000/health                       # {"status":"ok"}
-curl -s localhost:8000/public/indexer/status        # chainId, both registries, indexedToBlock, lag
-curl -s localhost:8000/public/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28/timeline
-                                                    # the demo claim's events, status "Verified", 2 evidence roots
-```
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 5](../code/README.md#c-backend-and-indexer-note-5).
-
-The indexer's `--once` run exits 0; a second run adds no events (idempotent). To let the page use
-the API, add `VITE_API_URL=http://localhost:8000` to the frontend command of path A or B; the page
-then says "History from the indexer API" and still reads status and roots from the contract. The
-backend's `CORS_ORIGINS` (default `http://localhost:5173`) must list the page's exact origin.
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 6](../code/README.md#c-backend-and-indexer-note-6).
-
-```bash
-psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
-  -c "TRUNCATE chain_events, chain_participants, chain_claims, sync_state;"
-```
-
 ### D. Role screens: sign each role's actions from the browser
 
 This section is technically explained at [code/README.md → D. Role screens, note 1](../code/README.md#d-role-screens-note-1).
@@ -241,7 +248,7 @@ This section is technically explained at [code/README.md → Validate, note 1](.
 (cd contracts && forge fmt --check)              # no output = formatted
 (cd shared && uv run pytest -q)                  # 34 passed
 uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 128 passed
-(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 511 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
+(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 512 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
 ```
 
 This section is technically explained at [code/README.md → Validate, note 2](../code/README.md#validate-note-2).
@@ -255,25 +262,25 @@ local chain), then the demo claim page `/claims/0xfedebf75…a79b28`.
 
 **Initial state:** on Arbitrum Sepolia the demo is already executed (claim `Verified`, 0.0111 ETH in
 escrow, dispute window open until 60 days after the approval). Locally: a fresh `anvil`, then the
-two scripts of path B. Seven test-only wallets play every role (index 0 Registry Admin, 1
-Accreditation Authority, 2 Organization, 3–4 Internal Verifiers, 5 Auditor, 6 Disputant, itself a
+two scripts of path B. Six test-only wallets play every role (index 0 Registry Admin, 1
+Accreditation Authority, 2 Organization, 3 Internal Verifier, 4 Auditor, 5 Disputant, itself a
 second accredited auditor). The evidence files are made up (`code/frontend/public/demo-evidence/`:
-receipts, an invoice, a delivery summary and a stock count), no real personal data.
+receipts, an invoice, a delivery summary and a stock count), no real personal data. The scripted
+demo uses the single verifier and skips the proof loop; the loop stays available onchain and in
+the role screens whenever an organization registers a second verifier.
 
 | Step | Action (signed by) | Expected observable result |
 | ---: | --- | --- |
-| 1 | Accreditation: Registry Admin registers the organization and 2 internal verifiers; the Authority accredits 2 auditors | 5 `ParticipantRegistry` transactions; the organization has 2 active verifiers (script log `cast accredited; organization verifiers: 2`) |
+| 1 | Accreditation: Registry Admin registers the organization and 1 internal verifier; the Authority accredits 2 auditors | 4 `ParticipantRegistry` transactions; the organization has 1 active verifier (script log `cast accredited; organization verifiers: 1`) |
 | 2 | **Anchor** (Organization, pays 0.0101 ETH: penalty + auditor reward) | Claim `Anchored`; `evidenceRoots[0]` = Merkle root of `manifest.json`'s files |
-| 3 | **Internal verify** (Internal Verifier 1) | `InternallyVerified` |
+| 3 | **Internal verify** (Internal Verifier) | `InternallyVerified` |
 | 4 | Auditor assigned (Authority) | Timeline: auditor assigned; status unchanged |
-| 5 | **Proof loop:** request proof (Auditor) → submit supplementary evidence (Organization) → confirm (Internal Verifier 2, not the checkpoint-1 verifier) | `ProofRequested` → `ProofSubmitted` → `InternallyVerified`; a second evidence root is appended |
-| 6 | **Verify** (Auditor, pays its 0.001 ETH deposit) | `Verified`; the 60-day dispute window starts |
-| 7 | **Dispute with bond** (Disputant, pays 0.001 ETH) | `Disputed` |
-| 8 | **Dismissal** (Authority) | `Verified` again; the bond is credited half to the organization, half to the auditor; 0.0111 ETH still in escrow |
-| 9 | **Deposits / settle** (anyone, after 60 days; local only, path B) | `lockedOf` = 0; organization credited its penalty, auditor its deposit + reward; page: "Settled" |
-| 10 | Public check: on the claim page, download `receipt-001.txt` from the first bundle and drop it into **Verify it yourself** | **Match**: its fingerprint belongs to the root recorded onchain |
-| 11 | **Tamper a file:** change one character of `receipt-001.txt` and drop it again | **No match** |
-| 12 | Bundle mode: pick *Supplementary proof #1* and drop `delivery-summary.csv` + `stock-count.txt`; then flip one byte of `stock-count.txt` | **Match** (root `0x8e94…2370`), then **No match** |
+| 5 | **Verify** (Auditor, pays its 0.001 ETH deposit) | `Verified`; the 60-day dispute window starts |
+| 6 | **Dispute with bond** (Disputant, pays 0.001 ETH) | `Disputed` |
+| 7 | **Dismissal** (Authority) | `Verified` again; the bond is credited half to the organization, half to the auditor; 0.0111 ETH still in escrow |
+| 8 | **Deposits / settle** (anyone, after 60 days; local only, path B) | `lockedOf` = 0; organization credited its penalty, auditor its deposit + reward; page: "Settled" |
+| 9 | Public check: on the claim page, download `receipt-001.txt` from the bundle and drop it into **Verify it yourself** | **Match**: its fingerprint belongs to the root recorded onchain |
+| 10 | **Tamper a file:** change one character of `receipt-001.txt` and drop it again | **No match** |
 
 This section is technically explained at [code/README.md → Demo, note 1](../code/README.md#demo-note-1).
 

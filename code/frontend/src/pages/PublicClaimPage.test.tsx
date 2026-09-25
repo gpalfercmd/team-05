@@ -8,10 +8,8 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import deliverySummary from '../../public/demo-evidence/delivery-summary.csv?raw';
 import manifestText from '../../public/demo-evidence/manifest.json?raw';
 import receipt from '../../public/demo-evidence/receipt-001.txt?raw';
-import stockCount from '../../public/demo-evidence/stock-count.txt?raw';
 import { FULL_STORY_CLAIM_ID } from '../mocks/claims';
 import { renderRoute } from '../test/renderRoute';
 
@@ -36,7 +34,7 @@ describe('PublicClaimPage (demo data)', () => {
     await openFullStory();
     const history = section('History');
     const entries = within(history).getAllByRole('listitem');
-    expect(entries).toHaveLength(14);
+    expect(entries).toHaveLength(11);
     expect(entries[0]).toHaveTextContent(/Organization 0x\w{4}…\w{4} recorded the claim/);
     expect(entries[1]).toHaveTextContent(/0x\w{4}…\w{4} locked a deposit in the contract\./);
     expect(within(entries[1] as HTMLElement).queryByText('Anchored')).not.toBeInTheDocument();
@@ -44,11 +42,11 @@ describe('PublicClaimPage (demo data)', () => {
     expect(entries[2]).toHaveTextContent('Internally verified');
     expect(entries[3]).toHaveTextContent(/The Accreditation Authority assigned auditor 0x/);
     expect(within(entries[3] as HTMLElement).queryByText('Internally verified')).not.toBeInTheDocument();
-    expect(entries[5]).toHaveTextContent('The organization submitted supplementary proof (bundle #1).');
-    expect(entries[6]).toHaveTextContent(/A second internal verifier \(0x\w{4}…\w{4}\) confirmed the proof\./);
-    expect(entries[11]).toHaveTextContent('The Accreditation Authority dismissed the dispute: the claim stays verified.');
-    expect(entries[12]).toHaveTextContent(/The contract credited a payout to 0x\w{4}…\w{4}\./);
-    expect(within(history).getAllByRole('button', { name: 'Copy transaction' })).toHaveLength(14);
+    expect(entries[4]).toHaveTextContent(/Auditor 0x\w{4}…\w{4} gave the final approval\./);
+    expect(entries[4]).toHaveTextContent('Verified');
+    expect(entries[8]).toHaveTextContent('The Accreditation Authority dismissed the dispute: the claim stays verified.');
+    expect(entries[9]).toHaveTextContent(/The contract credited a payout to 0x\w{4}…\w{4}\./);
+    expect(within(history).getAllByRole('button', { name: 'Copy transaction' })).toHaveLength(11);
     expect(within(history).getByText('Demo data: sample records, not read from a blockchain.')).toBeInTheDocument();
   });
 
@@ -63,7 +61,8 @@ describe('PublicClaimPage (demo data)', () => {
     await openFullStory();
     const summary = section('Verification checks');
     expect(summary).toHaveTextContent(/Internal check \(checkpoint 1\)Approved by internal verifier 0x/);
-    expect(summary).toHaveTextContent(/assigned by the Accreditation Authority on .*More proof requested once\./);
+    expect(summary).toHaveTextContent(/assigned by the Accreditation Authority on .*\./);
+    expect(summary).not.toHaveTextContent(/More proof requested/);
     expect(summary).toHaveTextContent(/Final decision \(checkpoint 2\)Approved by auditor 0x/);
     expect(summary).toHaveTextContent(/Dismissed, so the claim stays verified/);
   });
@@ -75,16 +74,16 @@ describe('PublicClaimPage (demo data)', () => {
     expect(deposits).toHaveTextContent(/Disputes open until|Dispute window closed/);
   });
 
-  it('lists each evidence bundle with its fingerprint, public downloads and private entries', async () => {
+  it('lists the evidence bundle with its fingerprint, public downloads and private entries', async () => {
     await openFullStory();
     const evidence = section('Evidence');
     expect(within(evidence).getByRole('heading', { level: 3, name: 'Original evidence' })).toBeInTheDocument();
-    expect(within(evidence).getByRole('heading', { level: 3, name: 'Supplementary proof #1' })).toBeInTheDocument();
+    expect(within(evidence).queryByRole('heading', { level: 3, name: 'Supplementary proof #1' })).not.toBeInTheDocument();
     expect(within(evidence).getByRole('link', { name: 'Download receipt-001.txt' })).toHaveAttribute(
       'href',
       '/demo-evidence/receipt-001.txt',
     );
-    expect(within(evidence).getAllByText('The published file list matches this fingerprint, so its entries can be trusted.')).toHaveLength(2);
+    expect(within(evidence).getAllByText('The published file list matches this fingerprint, so its entries can be trusted.')).toHaveLength(1);
     expect(
       within(evidence).getByText('This file is private to protect beneficiaries. Only its fingerprint is public.'),
     ).toBeInTheDocument();
@@ -109,22 +108,6 @@ describe('PublicClaimPage (demo data)', () => {
     expect(results).toHaveTextContent('A file named “receipt-001.txt” is listed in the original evidence, but its content is different.');
     // Files are hashed locally: nothing, and certainly not their contents, goes over the network.
     expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('checks a complete bundle without any file list', async () => {
-    const user = userEvent.setup();
-    await openFullStory();
-    await user.click(screen.getByRole('radio', { name: 'Supplementary proof #1' }));
-    await user.click(screen.getByRole('radio', { name: /^A complete bundle/ }));
-    const input = screen.getByLabelText('Choose files to check');
-
-    await user.upload(input, [textFile(deliverySummary, 'delivery-summary.csv'), textFile(stockCount, 'stock-count.txt')]);
-    expect(await screen.findByText(/^These files are exactly the ones recorded on 17 Sept? 2026/)).toBeInTheDocument();
-
-    await user.upload(input, [textFile(deliverySummary, 'delivery-summary.csv')]);
-    expect(
-      await screen.findByText('This file does not match the recorded evidence. It was changed or is a different file.'),
-    ).toBeInTheDocument();
   });
 
   it('refuses the same file twice in a bundle with a plain explanation', async () => {
@@ -155,11 +138,11 @@ describe('PublicClaimPage (demo data)', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows a claim that is still waiting for proof, and what has not happened yet', async () => {
+  it('shows a claim that is still waiting for the final decision, and what has not happened yet', async () => {
     renderRoute('/claims/0x82d7d0558f02cc464b6a7ea582b1b419d4b5fbde2722a96b33b24c62fc980b3c');
     const status = await screen.findByRole('heading', { level: 2, name: 'Current status' });
-    expect(status.closest('section')).toHaveTextContent('Proof requested');
-    expect(section('History')).toHaveTextContent(/A second internal verifier \(0x\w{4}…\w{4}\) sent the proof back to the organization\./);
+    expect(status.closest('section')).toHaveTextContent('Internally verified');
+    expect(section('History')).toHaveTextContent(/The Accreditation Authority assigned auditor 0x\w{4}…\w{4}\./);
     expect(section('Verification checks')).toHaveTextContent(/Final decision \(checkpoint 2\)Pending\./);
     expect(section('Deposits')).toHaveTextContent('0.0101 ETH');
     expect(section('Deposits')).not.toHaveTextContent(/Dispute window|Disputes open/);

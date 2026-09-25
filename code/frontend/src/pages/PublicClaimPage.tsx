@@ -69,6 +69,36 @@ function ClaimRecord({ claim }: { claim: ClaimView }) {
   );
 }
 
+const CLAIM_SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'verify', label: 'Verify' },
+  { id: 'evidence', label: 'Evidence' },
+  { id: 'history', label: 'History' },
+  { id: 'deposits', label: 'Deposits' },
+  { id: 'reviewer', label: 'Reviewer' },
+] as const;
+
+function ClaimSubnav() {
+  return (
+    <nav className="claim-subnav" aria-label="Claim sections">
+      {CLAIM_SECTIONS.map((item) => (
+        <a key={item.id} href={`#${item.id}`}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function DepositsSection({ claim, chainNow }: { claim: ClaimView; chainNow: number | undefined }) {
+  return (
+    <div id="deposits" className="deposits-stack">
+      <EscrowStatus escrow={claim.escrow} now={chainNow} />
+      <SettlePanel claim={claim} />
+    </div>
+  );
+}
+
 function ClaimDetails({ claim }: { claim: ClaimView }) {
   // The dispute window is judged on the chain's clock when it can be read (anvil can run ahead).
   const chainNow = useChainTime(claim.source !== 'demo' && claim.escrow?.disputeWindowClosesAt !== undefined);
@@ -81,17 +111,23 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
   }, [claim]);
   return (
     <>
-      <div className="claim-overview">
+      <ClaimSubnav />
+      <div id="overview" className="claim-overview">
         <ClaimRecord claim={claim} />
         <ClaimMetadata claim={claim} />
       </div>
       <VerificationSummary claim={claim} />
-      <EscrowStatus escrow={claim.escrow} now={chainNow === undefined ? undefined : Number(chainNow)} />
-      <SettlePanel claim={claim} />
-      <Timeline entries={claim.timeline} source={claim.source} />
-      <EvidenceSection claim={claim} manifests={manifests} />
-      <AuthorizedEvidence claim={claim} />
       <EvidenceVerifier claim={claim} manifests={manifests} />
+      <div id="evidence" className="claim-anchor">
+        <EvidenceSection claim={claim} manifests={manifests} />
+      </div>
+      <div id="history" className="claim-anchor">
+        <Timeline entries={claim.timeline} source={claim.source} />
+      </div>
+      <DepositsSection claim={claim} chainNow={chainNow === undefined ? undefined : Number(chainNow)} />
+      <div id="reviewer" className="claim-anchor">
+        <AuthorizedEvidence claim={claim} />
+      </div>
     </>
   );
 }
@@ -161,6 +197,9 @@ export function PublicClaimPage() {
   return (
     <div className="page">
       <div className="page__header">
+        <p className="caption claim-crumb">
+          <Link to="/">Dashboard</Link> · <Link to="/claims">Claims</Link> · Claim record
+        </p>
         <p className="eyebrow">Public claim record</p>
         <h1>Claim record</h1>
         <p className="page__lead">

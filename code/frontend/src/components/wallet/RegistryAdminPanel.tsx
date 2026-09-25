@@ -25,7 +25,7 @@ export function RegistryAdminPanel({ registries }: { registries: RegistryAddress
       <p className="caption">Accredit the organizations and their internal verifiers. Auditors are accredited by the Accreditation Authority.</p>
       <AddressActionForm
         title="Register an organization"
-        description={`The organization can record claims once it has at least two internal verifiers. ${ONE_ROLE}`}
+        description={`The organization can record claims once it has at least one active internal verifier. ${ONE_ROLE}`}
         inputs={[{ label: 'Organization wallet' }]}
         submitLabel="Register organization"
         buildCall={(addresses) => registerOrganizationCall(registries, addressAt(addresses, 0))}

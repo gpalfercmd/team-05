@@ -229,13 +229,25 @@ pre {
 
 /* Hero: pill tag, headline, lead, two actions and a stat row below a hairline. */
 .hero {
-  padding-block: var(--space-xl);
+  padding-block: var(--space-xl) var(--space-lg);
 }
 
 @media (min-width: 768px) {
   .hero {
-    padding-block: var(--space-xxl);
+    padding-block: var(--space-xxl) var(--space-xl);
   }
+}
+
+/* About the project: short context band, tighter than the full sections. */
+.about-grid {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 44rem;
+}
+
+.about-grid p {
+  margin: 0;
+  color: var(--color-on-neutral);
 }
 
 /* The headline grows with the width only here; the type scale elsewhere is unchanged. */
@@ -758,5 +770,99 @@ pre {
     gap: var(--space-md);
     margin-top: var(--space-lg);
     padding-top: var(--space-md);
+  }
+}
+
+/* ---------------------------------------------------------------- layout reorg (2026-09-25): structure only, tokens unchanged */
+
+/* Claim page: sticky section nav + anchored sections. */
+.claim-subnav {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+}
+
+.claim-subnav a {
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 4px 2px;
+}
+
+.claim-subnav a:hover {
+  text-decoration: underline;
+}
+
+.claim-anchor,
+.deposits-stack {
+  display: grid;
+  gap: var(--space-lg);
+  scroll-margin-top: 140px;
+}
+
+#overview {
+  scroll-margin-top: 140px;
+}
+
+.deposits-stack > .card {
+  margin: 0;
+}
+
+.claim-crumb {
+  margin: 0;
+}
+
+/* Workspace: to-do + role screens side by side on wide screens. */
+.workspace-grid {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 960px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+  }
+}
+
+/* Site footer: quiet closing band, same container width. */
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  margin-top: var(--space-xl);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-lg);
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+}
+
+/* Sticky header on all widths (condensed on phones). */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+@media (max-width: 767px) {
+  .site-header__inner {
+    min-height: 56px;
+    padding-block: 8px;
   }
 }

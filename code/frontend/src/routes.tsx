@@ -7,6 +7,7 @@
 
 import type { RouteObject } from 'react-router';
 import { AppLayout } from './components/AppLayout';
+import { ClaimsIndexPage } from './pages/ClaimsIndexPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PublicClaimPage } from './pages/PublicClaimPage';
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'claims', element: <ClaimsIndexPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
       { path: 'claims/:claimId', element: <PublicClaimPage /> },
       { path: '*', element: <NotFoundPage /> },

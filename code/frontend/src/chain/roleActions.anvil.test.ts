@@ -35,6 +35,7 @@ import {
   attestInternalCall,
   confirmProofCall,
   openDisputeCall,
+  registerInternalVerifierCall,
   registerOrganizationCall,
   requestProofCall,
   revokeAuditorCall,
@@ -54,7 +55,7 @@ import { readClaimActionState, readCredits, readEscrowParams, readRoleFlags, typ
 // With ANVIL_E2E_API (the backend on that chain, indexed after DemoLifecycle) the organization
 // also records its claim and its proof through the evidence service, exactly like the screen.
 // Each call is simulated, signed and mined with the builders the screens use; the wallets are
-// anvil's public development accounts (the RUNBOOK's test mnemonic), never real keys.
+// the demo mnemonic's accounts (index 3 verifier, 4 auditor, 5 disputant, 6 stranger), never real keys.
 const processEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 const RPC = processEnv.ANVIL_E2E_RPC;
 const API = processEnv.ANVIL_E2E_API;
@@ -64,11 +65,12 @@ const account = (index: number) => mnemonicToAccount(MNEMONIC, { addressIndex: i
 const admin = account(0);
 const authority = account(1);
 const organization = account(2);
-const verifier1 = account(3);
-const verifier2 = account(4);
-const auditor = account(5);
-const disputant = account(6);
-const stranger = account(7);
+// The demo script registers a single verifier and skips the proof loop; the proof-loop
+// test below registers its own second verifier to keep covering the four-eyes path.
+const verifier = account(3);
+const auditor = account(4);
+const disputant = account(5);
+const stranger = account(6);
 
 const registries: RegistryAddresses = {
   claimRegistry: getAddress(anvilDeployment.claimRegistry),
@@ -158,8 +160,7 @@ describe.skipIf(RPC === undefined)('role screens’ calls against the local anvi
     expect(await roleOf(admin.address)).toBe('registryAdmin');
     expect(await roleOf(authority.address)).toBe('accreditationAuthority');
     expect(await roleOf(organization.address)).toBe('organization');
-    expect(await roleOf(verifier1.address)).toBe('internalVerifier');
-    expect(await roleOf(verifier2.address)).toBe('internalVerifier');
+    expect(await roleOf(verifier.address)).toBe('internalVerifier');
     expect(await roleOf(auditor.address)).toBe('auditor');
     expect(await roleOf(disputant.address)).toBe('auditor');
     expect(await roleOf(stranger.address)).toBe('public');
@@ -215,8 +216,8 @@ describe.skipIf(RPC === undefined)('role screens’ calls against the local anvi
   });
 
   it('internal verifier attests checkpoint 1; the Authority assigns the auditor', async () => {
-    expect(await kinds('internalVerifier', verifier1.address, claim.claimId)).toEqual(['attestInternal']);
-    await send(verifier1, attestInternalCall(registries, claim.claimId, true, note('receipts match')));
+    expect(await kinds('internalVerifier', verifier.address, claim.claimId)).toEqual(['attestInternal']);
+    await send(verifier, attestInternalCall(registries, claim.claimId, true, note('receipts match')));
     expect(await kinds('accreditationAuthority', authority.address, claim.claimId)).toEqual(['assignAuditor']);
     await send(authority, assignAuditorCall(registries, claim.claimId, auditor.address));
     expect(await kinds('auditor', auditor.address, claim.claimId)).toEqual(['requestProof', 'attestFinal']);
@@ -224,6 +225,11 @@ describe.skipIf(RPC === undefined)('role screens’ calls against the local anvi
   });
 
   it('proof loop: auditor requests, organization submits bundle #1, a second verifier confirms', async () => {
+    // The single-verifier demo skips this loop; register a second verifier here so the
+    // four-eyes path (same-verifier refusal, other-verifier confirmation) stays covered.
+    const secondVerifier = privateKeyToAccount(generatePrivateKey());
+    await testClient.setBalance({ address: secondVerifier.address, value: 10n ** 17n });
+    await send(admin, registerInternalVerifierCall(registries, secondVerifier.address, organization.address));
     await send(auditor, requestProofCall(registries, claim.claimId, note('stock count please')));
     const organizationPlan = await plan('organization', organization.address, claim.claimId);
     expect(organizationPlan.actions).toEqual([{ kind: 'submitProof', rootIndex: 1 }]);
@@ -235,12 +241,12 @@ describe.skipIf(RPC === undefined)('role screens’ calls against the local anvi
       proofRoot = bundle.ok ? bundle.value.evidenceRoot : proofRoot;
     }
     await send(organization, submitProofCall(registries, claim.claimId, proofRoot));
-    expect(await kinds('internalVerifier', verifier1.address, claim.claimId)).toEqual([]);
-    expect(await refusal(verifier1, confirmProofCall(registries, claim.claimId, true, note('ok')))).toBe(
+    expect(await kinds('internalVerifier', verifier.address, claim.claimId)).toEqual([]);
+    expect(await refusal(verifier, confirmProofCall(registries, claim.claimId, true, note('ok')))).toBe(
       'A different internal verifier must confirm this proof.',
     );
-    expect(await kinds('internalVerifier', verifier2.address, claim.claimId)).toEqual(['confirmProof']);
-    await send(verifier2, confirmProofCall(registries, claim.claimId, true, note('stock count matches')));
+    expect(await kinds('internalVerifier', secondVerifier.address, claim.claimId)).toEqual(['confirmProof']);
+    await send(secondVerifier, confirmProofCall(registries, claim.claimId, true, note('stock count matches')));
   });
 
   it('auditor approves, locking auditorDeposit(); disputes are open to others only', async () => {

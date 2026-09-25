@@ -10,11 +10,11 @@ After severe flooding in Valencia, the fictional Alimentos del Levante Foundatio
 500 food kits to 500 families, but its strongest evidence (delivery lists, photos) holds the
 families' personal data. The foundation anchors salted fingerprints of its encrypted evidence onchain
 and pays a deposit; its internal verifier Laura approves checkpoint 1; the auditor AuditAid Iberia,
-accredited and assigned by the Regional Aid Oversight Authority, asks for more proof, which a second
-verifier, Miguel, must confirm before the auditor approves with its own deposit. Any donor can then
+accredited and assigned by the Regional Aid Oversight Authority, approves with its own deposit. Any
+donor can then
 re-check the published files against the chain in a browser, and for 60 days an accredited
 participant other than the foundation or its auditor can dispute the claim by posting a bond. The
-twelve-step walkthrough, its flowchart and the pitch message: [Appendix → A.1 The case in full](#a1-the-case-in-full).
+nine-step walkthrough, its flowchart and the pitch message: [Appendix → A.1 The case in full](#a1-the-case-in-full).
 
 ## Vision and actors
 
@@ -50,8 +50,8 @@ confirmation are designed only. The ten steps: [Appendix → A.4 End-to-end flow
 
 `ClaimRegistry` enforces the claim's states (`Anchored`, `InternallyVerified`, `ProofRequested`,
 `ProofSubmitted`, `Verified`, `Rejected`, `Disputed`), and any other transition reverts. In the case,
-the foundation's `anchorClaim` creates the claim, Laura's `attestInternal` and Miguel's
-`confirmProof` carry it through the internal checks, AuditAid Iberia's `attestFinal` verifies it, and
+the foundation's `anchorClaim` creates the claim, Laura's `attestInternal` carries it through
+the internal check, AuditAid Iberia's `attestFinal` verifies it, and
 an upheld dispute would end it as `Rejected`, which is final. The state diagram, the order in which
 guards are checked, and each function's caller, events and ETH movements: [Appendix → A.5 Claim lifecycle (enforced onchain)](#a5-claim-lifecycle-enforced-onchain).
 
@@ -65,7 +65,7 @@ Deposits make fraud and frivolous disputes cost money
 - **The foundation** deposits a penalty plus the auditor's reward when it anchors the claim
   (1.01 ETH at the reference amounts; 0.0101 ETH on Arbitrum Sepolia).
 - **AuditAid Iberia** deposits 0.1 ETH (0.001) when it approves. **A disputant** posts a 0.1 ETH
-  (0.001) bond. Laura and Miguel put in nothing.
+   (0.001) bond. Laura puts in nothing.
 - **Rejected** at checkpoint 1 or by the auditor: the foundation gets its whole deposit back.
 - **Dispute dismissed:** the disputant loses its bond, split half to the foundation and half to
   AuditAid Iberia.
@@ -115,7 +115,7 @@ projections. Interfaces and every table: [Appendix → A.10 Data model](#a10-dat
 ## Roles and permissions
 
 Onchain, each function has a fixed set of callers: in the case, only the Registry Admin can register
-the foundation, Laura and Miguel; only the Oversight Authority can accredit and assign AuditAid
+the foundation and Laura; only the Oversight Authority can accredit and assign AuditAid
 Iberia and resolve disputes; only the assigned auditor can request proof or give the final
 decision. In the backend API, private files are readable only by the claim's organization, its
 verifiers and its assigned auditor, notes also by their own author, and a denied read of a private
@@ -126,7 +126,7 @@ file looks like a missing one. Both permission matrices: [Appendix → A.11 Role
 Every upload is cleaned of metadata (images re-encoded, PDFs rewritten), committed with a random
 salt as SHA-256(salt ‖ file) and encrypted with AES-256-GCM under a per-claim key; the Merkle root
 of the bundle is what the organization anchors. In the case, the foundation's seven files form
-bundle 0 and the three supplementary files bundle 1. The upload steps and the frozen recipes for the
+bundle 0. The upload steps and the frozen recipes for the
 Merkle tree, manifests, `metadataHash`, the reviewer view and notes: [Appendix → A.12 Evidence pipeline](#a12-evidence-pipeline).
 
 ## Public verification algorithm
@@ -179,7 +179,7 @@ Keys, contract hardening, confidentiality, web settings and residual risks: [App
 Some situations are allowed by the rules but may surprise a reader: an organization revoked
 mid-review leaves its claim stuck with the deposit locked, a revoked auditor must be reassigned,
 internal verifiers may dispute their own organization's claim, and a dispute opened in time can be
-resolved after the window. In the case, Laura or Miguel could therefore dispute the foundation's
+resolved after the window. In the case, Laura could therefore dispute the foundation's
 claim. The full list: [Appendix → A.19 Known edge cases](#a19-known-edge-cases).
 
 ## Technical appendix
@@ -209,7 +209,7 @@ addresses or identifiable photographs.
 | In the case | Role in Proof of Aid |
 | --- | --- |
 | Alimentos del Levante Foundation | Aid Organization |
-| Laura and Miguel | Internal Verifiers of the foundation, each with their own wallet |
+| Laura | Internal Verifier of the foundation |
 | AuditAid Iberia | External Auditor |
 | Regional Aid Oversight Authority | Accreditation Authority: accredits auditors, assigns one to each claim, resolves disputes |
 | The platform operator | Registry Admin: registers organizations and their internal verifiers |
@@ -219,9 +219,9 @@ addresses or identifiable photographs.
 ### The claim, step by step
 
 **1. Accreditation.** The Registry Admin registers the foundation's wallet as an organization and
-Laura's and Miguel's wallets as its internal verifiers; the Oversight Authority accredits AuditAid
-Iberia as an auditor. The foundation can anchor a claim only while it has at least two active
-internal verifiers, and each wallet holds one participant role for life, so the wallet that submits
+Laura's wallet as its internal verifier; the Oversight Authority accredits AuditAid
+Iberia as an auditor. The foundation can anchor a claim only while it has at least one active
+internal verifier, and each wallet holds one participant role for life, so the wallet that submits
 a claim can never approve it. The chain records which wallet may do what, never who the person is
 ([Roles and permissions](#roles-and-permissions), [Components](#components)).
 *Virtue demonstrated:* separation of duties; no single person can invent an auditor or approve their
@@ -271,39 +271,19 @@ fingerprint, `keccak256(salt ‖ text)`, goes onchain ([Note recipe](#note-recip
 Had she rejected it, the claim would end `Rejected` and the foundation's deposit would be refunded.
 *Virtue demonstrated:* the organization cannot approve its own claim.
 
-**6. The auditor asks for more.** The Oversight Authority assigns AuditAid Iberia with
+**6. Final approval (checkpoint 2).** The Oversight Authority assigns AuditAid Iberia with
 `assignAuditor(claimId, auditor)`; from then on only that auditor can act on the claim, and it can
-open the private files. It finds that the distribution report confirms 500 kits but does not tie
-each distribution point to a date. Instead of approving blindly or rejecting, it signs
-`requestProof(claimId, requestHash)`, asking for confirmation from the coordinators of the three
-distribution points: `InternallyVerified → ProofRequested`. The request text stays offchain;
-`requestHash` is its salted fingerprint, so it cannot be rewritten later.
-*Virtue demonstrated:* targeted evidence requests, all on the record.
-
-**7. Supplementary evidence.** The foundation uploads three more files as bundle 1 (coordinators'
-confirmations, a warehouse time log and a transport report for the three routes), cleaned, salted
-and encrypted in the same way, and anchors their root with `submitProof(claimId, supplementaryRoot)`:
-`ProofRequested → ProofSubmitted`. The original root is never replaced: `evidenceRoots(claimId)` now
-returns two roots, the original evidence first and the supplementary evidence second.
-*Virtue demonstrated:* corrections and additions are append-only.
-
-**8. Second internal review.** Miguel reviews the new bundle. The contract would refuse Laura here
-(`SameVerifierAsCheckpoint1`): supplementary proof must be confirmed by a different verifier than
-the one who approved checkpoint 1. Miguel signs `confirmProof(claimId, true, justificationHash)`:
-`ProofSubmitted → InternallyVerified`, back to the auditor. With `accept = false` the claim would
-return to `ProofRequested`.
-*Virtue demonstrated:* the four-eyes principle, even when answering an auditor.
-
-**9. Final approval (checkpoint 2).** AuditAid Iberia reviews both bundles, the internal
-justifications and the wallets' roles, then signs `attestFinal(claimId, true, justificationHash)`
+open the private files. It reviews the bundle, the internal justification and the wallets' roles,
+then signs `attestFinal(claimId, true, justificationHash)`
 and locks its own deposit: `InternallyVerified → Verified`. The approval starts a 60-day dispute
 window. A rejection would pay nothing in and refund the foundation's deposit. The public page now
 shows the claim as verified, with its internal check, independent auditor, final decision, dispute
 state and the deposits held, and without any name, ID number, address, signature or private file.
 *Virtue demonstrated:* trust rests on an attributable chain of responsibilities, not on the
-organization's word.
+organization's word. (If the evidence had been insufficient, the auditor could have opened a proof
+request instead; answering one needs a second internal verifier — see [Claim lifecycle](#claim-lifecycle-enforced-onchain). The demo story takes the direct path.)
 
-**10. Public verification.** A donor opens the claim page with no wallet and no login. The browser
+**7. Public verification.** A donor opens the claim page with no wallet and no login. The browser
 reads the status, the roots and the full history directly from `ClaimRegistry`
 ([Public verification algorithm](#public-verification-algorithm)); the [Indexer](#indexer) API is
 only a speed-up, used when it provably matches the chain. The donor sees who signed each step and
@@ -316,18 +296,18 @@ the private database. The title and description are shown only when they reprodu
 are visible.
 *Virtue demonstrated:* independent verification; nobody has to trust the backend's word.
 
-**11. A later dispute.** Two weeks later an accredited participant, for example another accredited
+**8. A later dispute.** Two weeks later an accredited participant, for example another accredited
 auditor, has evidence that one distribution point received only 480 kits. Within the 60-day window
 it signs `openDispute(claimId, counterEvidenceHash)` and posts the dispute bond:
 `Verified → Disputed`. The foundation's wallet and AuditAid Iberia cannot dispute their own claim
-(`CannotDisputeOwnClaim`); Laura and Miguel, as accredited verifiers, could
+(`CannotDisputeOwnClaim`); Laura, as an accredited verifier, could
 ([Known edge cases](#known-edge-cases)). The Oversight Authority reviews the counter-evidence and
 signs `resolveDispute(claimId, upheld, justificationHash)`: upheld → `Rejected`, which is final;
 dismissed → `Verified` again. The approval, the dispute and the ruling all stay in the public
 history.
 *Virtue demonstrated:* transparency also applies when something goes wrong.
 
-**12. Settlement.** Once 60 days have passed since the approval with no dispute open, anyone may call
+**9. Settlement.** Once 60 days have passed since the approval with no dispute open, anyone may call
 `settle(claimId)`: the deposits are credited, and each party collects its money with `withdraw()`.
 A settled claim can never be disputed again.
 
@@ -338,26 +318,20 @@ not a status: the claim stays `Verified` and is marked settled.
 
 ```mermaid
 flowchart TD
-  A["1. Accreditation: foundation, Laura, Miguel, AuditAid Iberia"] --> B["2. Claim record + metadataHash"]
+  A["1. Accreditation: foundation, Laura, AuditAid Iberia"] --> B["2. Claim record + metadataHash"]
   B --> C["3. Evidence upload: strip metadata, salt, fingerprint, encrypt"]
   C --> D["4. anchorClaim + anchor deposit: Anchored"]
   D --> E{"5. Laura: attestInternal"}
   E -- approve --> F["InternallyVerified"]
   E -- "reject: deposit refunded" --> R["Rejected"]
-  F --> G["6. Authority: assignAuditor"]
-  G --> H{"AuditAid Iberia"}
-  H -- requestProof --> I["ProofRequested"]
-  I -- "7. submitProof: bundle 1" --> J["ProofSubmitted"]
-  J --> K{"8. Miguel: confirmProof"}
-  K -- "accept: InternallyVerified" --> H
-  K -- return --> I
-  H -- "9. attestFinal approve + auditor deposit" --> V["Verified"]
-  H -- "attestFinal reject: deposit refunded" --> R
-  V --> P["10. Public verification"]
-  V -- "11. openDispute + bond, within 60 days" --> X["Disputed"]
+  F --> G["6. Authority: assignAuditor, then AuditAid Iberia: attestFinal + auditor deposit"]
+  G --> V["Verified"]
+  G -- "attestFinal reject: deposit refunded" --> R
+  V --> P["7. Public verification"]
+  V -- "8. openDispute + bond, within 60 days" --> X["Disputed"]
   X -- dismissed --> V
   X -- upheld --> R
-  V -- "12. after 60 days: settle, then withdraw" --> S["Settled, still Verified"]
+  V -- "9. after 60 days: settle, then withdraw" --> S["Settled, still Verified"]
 ```
 
 > Proof of Aid does not prove that a photograph is inherently truthful. It proves that the evidence
@@ -389,7 +363,7 @@ verifier and finally approved by an officially accredited external auditor, **wi
 | **Registry Admin** | Registers organizations and their internal verifier accounts (maps wallets to real-world entities). A platform or consortium operator role. |
 | **Accreditation Authority** | Official body that approves external auditors onchain, assigns one auditor to each internally verified claim, and resolves disputes. Deliberately a separate role from the Registry Admin (e.g. a public audit oversight body), so no single party both registers organizations and chooses their auditors. |
 | **Aid Organization** | Registers needs and aid claims, uploads evidence, anchors evidence hashes onchain, answers auditors' proof requests. |
-| **Internal Verifier** | Verified account belonging to the organization. First checkpoint: promptly confirms (or rejects) that the aid was provided correctly. When the auditor requests proof, a **second** internal verifier (different from the one who approved at checkpoint 1) confirms the supplementary proof before it returns to the auditor. Always a different wallet from the one that submitted the claim (separation of duties), so each organization registers at least two internal verifiers. |
+| **Internal Verifier** | Verified account belonging to the organization. First checkpoint: promptly confirms (or rejects) that the aid was provided correctly. When the auditor requests proof, a **second** internal verifier (different from the one who approved at checkpoint 1) confirms the supplementary proof before it returns to the auditor, so answering a proof request needs two verifiers. Always a different wallet from the one that submitted the claim (separation of duties). Anchoring itself needs at least one active internal verifier. |
 | **External Auditor** | Independent auditor approved by the Accreditation Authority and assigned to the claim by it. Can request additional proof from the organization and gives the final confirmation (or rejection). |
 | **Beneficiary** | Receives aid. Personal data is protected; in the future (Delivery & Impact) can confirm or challenge receipt. |
 | **Donor / Public Auditor** | Unauthenticated third party that inspects a claim's timeline and verifies evidence integrity and attestations. |
@@ -432,7 +406,7 @@ The rest of the flow (Need, Funding, Delivery, Outcome) is designed below but **
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Anchored: anchorClaim - active org with 2+ active verifiers, pays anchorDeposit
+  [*] --> Anchored: anchorClaim - active org with 1+ active verifier, pays anchorDeposit
   Anchored --> InternallyVerified: attestInternal approve - active verifier of the org
   Anchored --> Rejected: attestInternal reject - deposit refunded to org
   InternallyVerified --> ProofRequested: requestProof - assigned active auditor, org active
@@ -454,7 +428,7 @@ caller → claim's organization still active (only where the action can lead to 
 
 | Function | Caller and guards | Status | Events | ETH |
 | --- | --- | --- | --- | --- |
-| `anchorClaim(claimId, evidenceRoot, metadataHash)` payable | claim ID unused (`ClaimAlreadyExists`); caller is an active organization (`NotActiveOrganization`) with ≥ 2 active internal verifiers (`InsufficientInternalVerifiers`); non-zero ID, root and hash; `msg.value == anchorDeposit()` | `None → Anchored` | `ClaimAnchored`, `DepositLocked`, `StatusChanged` | organization pays penalty + reward |
+| `anchorClaim(claimId, evidenceRoot, metadataHash)` payable | claim ID unused (`ClaimAlreadyExists`); caller is an active organization (`NotActiveOrganization`) with ≥ 1 active internal verifier (`InsufficientInternalVerifiers`); non-zero ID, root and hash; `msg.value == anchorDeposit()` | `None → Anchored` | `ClaimAnchored`, `DepositLocked`, `StatusChanged` | organization pays penalty + reward |
 | `attestInternal(claimId, approve, justificationHash)` | `organizationOf(caller) == claim.organization` (`NotOrganizationVerifier`; zero for a revoked verifier or a verifier of a revoked organization); non-zero justification. Records `claim.internalVerifier` | `Anchored → InternallyVerified` / `Rejected` | `InternalAttestation`, (`Credited`), `StatusChanged` | reject: organization credited its whole deposit |
 | `assignAuditor(claimId, auditor)` | status `InternallyVerified`, `ProofRequested` or `ProofSubmitted`; caller is an Accreditation Authority (`NotAccreditationAuthority`); `auditor` is an active auditor (`NotActiveAuditor`). Reassignment allowed | unchanged | `AuditorAssigned(claimId, auditor, previousAuditor)` | none |
 | `requestProof(claimId, requestHash)` | caller is `claim.auditor` (`NotAssignedAuditor`) and still accredited (`NotActiveAuditor`); claim's organization active; non-zero hash | `InternallyVerified → ProofRequested` | `ProofRequested`, `StatusChanged` | none |
@@ -474,7 +448,7 @@ Views: `participantRegistry()`, `getClaim`, `statusOf`, `evidenceRoots`, the par
 ### A.6 Incentives: deposits, rewards and penalties (P9)
 
 Fraud has to cost more than it pays, and a dispute must not be free. `ClaimRegistry` therefore holds
-native ETH in escrow per claim. The two internal verifiers stay out of it: checkpoint 1 involves no
+native ETH in escrow per claim. The internal verifiers stay out of it: checkpoint 1 involves no
 money. Payouts are pull-only: the contract credits an address and the owner calls `withdraw()`.
 
 | Parameter (immutable, non-zero) | Reference | Arbitrum Sepolia and deploy scripts (1/100) |
@@ -1013,7 +987,7 @@ Full log with dates: [`dbv-specs-ops/memory.md`](../dbv-specs-ops/memory.md) (se
 | --- | --- |
 | Contracts first | The state machine is every layer's dependency and hardest to change once deployed; built and frozen first. |
 | Merkle construction (P1) | SHA-256 file hash, keccak256 leaf, sorted leaves and pairs, odd node promoted, duplicates rejected; three implementations must pass the shared vectors. |
-| ≥ 2 internal verifiers | The four-eyes proof rule deadlocks an organization with one verifier; anchoring requires two. Small organizations cannot use the system alone (accepted). |
+| ≥ 1 internal verifier to anchor | Anchoring needs one active internal verifier (`MIN_INTERNAL_VERIFIERS = 1`, lowered from 2 so single-verifier organizations and demos work); answering a proof request still needs two different verifiers (four eyes). |
 | Auditor reassignment | The Authority can reassign in `InternallyVerified`, `ProofRequested`, `ProofSubmitted` (e.g. auditor revoked mid-audit); old attestations stay in history. |
 | Claim ID | `keccak256(uuid)` from the backend: no counter, reveals no ordering; fixed format, not secrecy. |
 | Soldeer | Dependencies pinned with checksums in `soldeer.lock`, restored with one command. |
@@ -1065,7 +1039,7 @@ Full log with dates: [`dbv-specs-ops/memory.md`](../dbv-specs-ops/memory.md) (se
 - **Auditor revoked while assigned.** `requestProof` and `attestFinal` revert `NotActiveAuditor`; the
   Authority reassigns. A revoked approving auditor still receives its share on dismissal or
   settlement.
-- **Verifier revoked.** If the organization falls below two active verifiers it cannot anchor new
+- **Verifier revoked.** If the organization falls below one active verifier it cannot anchor new
   claims; if only the checkpoint-1 verifier remains, submitted proof waits until the Registry Admin
   registers another verifier.
 - **Internal verifiers may dispute their own organization's claim.** Only the organization wallet and

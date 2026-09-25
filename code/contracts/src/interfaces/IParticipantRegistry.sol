@@ -71,7 +71,8 @@ interface IParticipantRegistry {
     ///         if `verifier` is not an active internal verifier.
     function organizationOf(address verifier) external view returns (address organization);
 
-    /// @notice Active internal verifiers of `organization`; anchoring needs at least 2.
+    /// @notice Active internal verifiers of `organization`; anchoring needs at least
+    ///         MIN_INTERNAL_VERIFIERS (see IClaimRegistry).
     function activeVerifierCount(address organization) external view returns (uint256);
 
     function isAuditor(address account) external view returns (bool);

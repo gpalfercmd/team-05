@@ -108,11 +108,21 @@ describe('organization: record a claim', () => {
     expect(requests.filter((request) => request.method === 'POST' && request.url === `${API}/claims`)).toHaveLength(1);
   });
 
-  it('warns and blocks recording while the organization has fewer than two internal verifiers', async () => {
-    withApi(demoChainState({ params, verifiers: { [WALLETS.verifier1]: WALLETS.organization } }));
+  it('warns and blocks recording while the organization has no active internal verifier', async () => {
+    withApi(demoChainState({ params, verifiers: {} }));
     const form = await screen.findByRole('form', { name: 'Record a new claim' });
-    expect(await within(form).findByText(/fewer than two active internal verifiers/)).toBeInTheDocument();
+    expect(await within(form).findByText(/no active internal verifier/)).toBeInTheDocument();
     expect(within(form).getByRole('button', { name: /Record claim/ })).toBeDisabled();
+  });
+
+  it('lets a single-verifier organization record (one active verifier is enough to anchor)', async () => {
+    withApi(demoChainState({ params, verifiers: { [WALLETS.verifier1]: WALLETS.organization } }));
+    // The button names the deposit once the contract reads resolve; only then is the
+    // verifier check meaningful.
+    const button = await screen.findByRole('button', { name: /Record claim and lock/ });
+    expect(button).not.toBeDisabled();
+    const form = await screen.findByRole('form', { name: 'Record a new claim' });
+    expect(within(form).queryByText(/no active internal verifier/)).not.toBeInTheDocument();
   });
 
   it('lists its own claims from the indexer', async () => {

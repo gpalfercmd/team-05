@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { Outlet } from 'react-router';
+import { Footer } from './Footer';
 import { Header } from './Header';
 import { RoleBanner } from './RoleBanner';
 
@@ -20,6 +21,7 @@ export function AppLayout() {
       <main id="main" className="container app-main">
         <Outlet />
       </main>
+      <Footer />
     </>
   );
 }

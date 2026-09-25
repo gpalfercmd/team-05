@@ -190,8 +190,8 @@ function AnchorForm({ apiUrl, registries, organization }: { apiUrl: string; regi
       </p>
       {tooFewVerifiers && (
         <p className="notice" role="alert">
-          Your organization has fewer than two active internal verifiers, so the contract will not accept a claim yet. Ask the
-          Registry Admin to register them first.
+          Your organization has no active internal verifier, so the contract will not accept a claim yet. Ask the
+          Registry Admin to register one first.
         </p>
       )}
       {field({ name: 'title', label: 'Title' })}

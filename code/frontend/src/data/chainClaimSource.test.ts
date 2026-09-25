@@ -126,7 +126,7 @@ describe('ChainClaimSource', () => {
     const { client } = stubNode({ extraLogs: [...stray, ...removed] });
     const source = new ChainClaimSource(client, { address: REGISTRY, fromBlock: FIRST_BLOCK, chunkSize: 1_000_000n });
     const result = await source.getClaim(fullStory.claimId);
-    expect(result.ok && result.value.timeline).toHaveLength(14);
+    expect(result.ok && result.value.timeline).toHaveLength(11);
   });
 });
 

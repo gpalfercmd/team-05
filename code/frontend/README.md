@@ -137,13 +137,12 @@ page silently falls back to the chain. Public reads are sent without cookies.
 
 ### Demo flow for the jury
 
-In demo mode, open the first sample claim from the dashboard (full lifecycle, including a proof
-round and a dismissed dispute). Its evidence files live in `public/demo-evidence/` (made-up, no
+In demo mode, open the first sample claim from the dashboard (full lifecycle with a single
+verifier and a dismissed dispute). Its evidence files live in `public/demo-evidence/` (made-up, no
 personal data; one private entry is listed by fingerprint only). Download `receipt-001.txt`, drop
-it into **Verify it yourself** → *Match*; change one character, drop it again → *No match*. For
-bundle mode, pick *Supplementary proof #1* and drop both `delivery-summary.csv` and
-`stock-count.txt`. A test recomputes the demo roots from these files, so the demo cannot silently
-drift: if you edit a demo file, update its manifest and the roots in `src/mocks/claims.ts`.
+it into **Verify it yourself** → *Match*; change one character, drop it again → *No match*.
+A test recomputes the demo root from these files, so the demo cannot silently
+drift: if you edit a demo file, update its manifest and the root in `src/mocks/claims.ts`.
 
 ## Role screens (P5.3)
 

@@ -25,8 +25,7 @@ const demoWallet = (role: string): Address => getAddress(slice(demoHash(`wallet 
 
 const ORGANIZATION = demoWallet('organization A');
 const OTHER_ORGANIZATION = demoWallet('organization B');
-const VERIFIER_1 = demoWallet('internal verifier 1');
-const VERIFIER_2 = demoWallet('internal verifier 2');
+const VERIFIER = demoWallet('internal verifier');
 const AUDITOR = demoWallet('auditor');
 const AUTHORITY = demoWallet('accreditation authority');
 const DISPUTANT = demoWallet('disputing auditor');
@@ -129,13 +128,15 @@ function demoMetadata(claimId: Hex, text: ClaimMetadataFields): DemoMetadata {
   return metadata;
 }
 
-// Claim 1 — the whole lifecycle, including a proof round and a dismissed dispute.
+// Claim 1 — the whole lifecycle with a single verifier: anchor, internal check,
+// auditor assignment, final approval and a dismissed dispute. No proof round:
+// the auditor approved directly, so one verifier is enough.
 const FULL_STORY_ANCHORED_AT = '2026-09-14T09:00:00Z';
 const FULL_STORY_VERIFIED_AT = '2026-09-18T16:20:00Z';
 const FULL_STORY_METADATA = demoMetadata(FULL_STORY_CLAIM_ID, {
   title: '500 food kits delivered in district X',
   description:
-    'Food kits (rice, oil, lentils) for 500 households, handed out at the district X warehouse.\nThe signed distribution list stays private; a delivery summary and a stock count were added when the auditor asked for more proof.',
+    'Food kits (rice, oil, lentils) for 500 households, handed out at the district X warehouse.\nThe signed distribution list stays private.',
   locationRegion: 'District X',
   claimDate: '2026-09-12',
 });
@@ -144,17 +145,14 @@ const fullStory: ClaimSnapshot = {
   status: 'Verified',
   record: {
     organization: ORGANIZATION,
-    internalVerifier: VERIFIER_1,
+    internalVerifier: VERIFIER,
     auditor: AUDITOR,
     anchoredAt: seconds(FULL_STORY_ANCHORED_AT),
     metadataHash: FULL_STORY_METADATA.hash,
   },
-  evidenceRoots: [DEMO_ORIGINAL_ROOT, DEMO_PROOF_ROOT],
+  evidenceRoots: [DEMO_ORIGINAL_ROOT],
   metadata: FULL_STORY_METADATA.lookup,
-  published: new Map([
-    [0, demoFiles('manifest.json', ['receipt-001.txt', 'invoice-7781.txt'])],
-    [1, demoFiles('manifest-proof-1.json', ['delivery-summary.csv', 'stock-count.txt'])],
-  ]),
+  published: new Map([[0, demoFiles('manifest.json', ['receipt-001.txt', 'invoice-7781.txt'])]]),
   // Still holds the organization's penalty and prepaid reward plus the auditor's deposit; the
   // dispute bond was paid out. Disputes stay open for 60 days after the final approval.
   escrow: {
@@ -184,7 +182,7 @@ const fullStory: ClaimSnapshot = {
       events: [
         {
           eventName: 'InternalAttestation',
-          args: { claimId: FULL_STORY_CLAIM_ID, verifier: VERIFIER_1, approved: true, justificationHash: demoHash('claim 1 checkpoint 1') },
+          args: { claimId: FULL_STORY_CLAIM_ID, verifier: VERIFIER, approved: true, justificationHash: demoHash('claim 1 checkpoint 1') },
         },
         statusChanged(FULL_STORY_CLAIM_ID, 'Anchored', 'InternallyVerified'),
       ],
@@ -193,33 +191,6 @@ const fullStory: ClaimSnapshot = {
       at: '2026-09-15T10:00:00Z',
       events: [
         { eventName: 'AuditorAssigned', args: { claimId: FULL_STORY_CLAIM_ID, auditor: AUDITOR, previousAuditor: zeroAddress } },
-      ],
-    },
-    {
-      at: '2026-09-16T11:15:00Z',
-      events: [
-        { eventName: 'ProofRequested', args: { claimId: FULL_STORY_CLAIM_ID, auditor: AUDITOR, requestHash: demoHash('claim 1 request 1') } },
-        statusChanged(FULL_STORY_CLAIM_ID, 'InternallyVerified', 'ProofRequested'),
-      ],
-    },
-    {
-      at: '2026-09-17T09:40:00Z',
-      events: [
-        {
-          eventName: 'ProofSubmitted',
-          args: { claimId: FULL_STORY_CLAIM_ID, organization: ORGANIZATION, supplementaryRoot: DEMO_PROOF_ROOT, rootIndex: 1n },
-        },
-        statusChanged(FULL_STORY_CLAIM_ID, 'ProofRequested', 'ProofSubmitted'),
-      ],
-    },
-    {
-      at: '2026-09-17T14:05:00Z',
-      events: [
-        {
-          eventName: 'ProofReviewed',
-          args: { claimId: FULL_STORY_CLAIM_ID, verifier: VERIFIER_2, accepted: true, justificationHash: demoHash('claim 1 proof review') },
-        },
-        statusChanged(FULL_STORY_CLAIM_ID, 'ProofSubmitted', 'InternallyVerified'),
       ],
     },
     {
@@ -260,7 +231,7 @@ const fullStory: ClaimSnapshot = {
   ]),
 };
 
-// Claim 2 — still in the proof loop: the second verifier sent the first proof back.
+// Claim 2 — internally verified and assigned, waiting for the auditor's final decision.
 const PROOF_LOOP_CLAIM_ID: Hex = '0x82d7d0558f02cc464b6a7ea582b1b419d4b5fbde2722a96b33b24c62fc980b3c';
 const PROOF_LOOP_ANCHORED_AT = '2026-09-19T08:00:00Z';
 const PROOF_LOOP_METADATA = demoMetadata(PROOF_LOOP_CLAIM_ID, {
@@ -269,13 +240,13 @@ const PROOF_LOOP_METADATA = demoMetadata(PROOF_LOOP_CLAIM_ID, {
   locationRegion: 'Camp B',
   claimDate: '2026-09-17',
 });
-const PROOF_LOOP_ROOTS = [demoHash('claim 2 original evidence'), demoHash('claim 2 proof 1')] as const;
+const PROOF_LOOP_ROOTS = [demoHash('claim 2 original evidence')] as const;
 const proofLoop: ClaimSnapshot = {
   claimId: PROOF_LOOP_CLAIM_ID,
-  status: 'ProofRequested',
+  status: 'InternallyVerified',
   record: {
     organization: ORGANIZATION,
-    internalVerifier: VERIFIER_1,
+    internalVerifier: VERIFIER,
     auditor: AUDITOR,
     anchoredAt: seconds(PROOF_LOOP_ANCHORED_AT),
     metadataHash: PROOF_LOOP_METADATA.hash,
@@ -306,7 +277,7 @@ const proofLoop: ClaimSnapshot = {
       events: [
         {
           eventName: 'InternalAttestation',
-          args: { claimId: PROOF_LOOP_CLAIM_ID, verifier: VERIFIER_1, approved: true, justificationHash: demoHash('claim 2 checkpoint 1') },
+          args: { claimId: PROOF_LOOP_CLAIM_ID, verifier: VERIFIER, approved: true, justificationHash: demoHash('claim 2 checkpoint 1') },
         },
         statusChanged(PROOF_LOOP_CLAIM_ID, 'Anchored', 'InternallyVerified'),
       ],
@@ -315,33 +286,6 @@ const proofLoop: ClaimSnapshot = {
       at: '2026-09-20T09:00:00Z',
       events: [
         { eventName: 'AuditorAssigned', args: { claimId: PROOF_LOOP_CLAIM_ID, auditor: AUDITOR, previousAuditor: zeroAddress } },
-      ],
-    },
-    {
-      at: '2026-09-21T10:30:00Z',
-      events: [
-        { eventName: 'ProofRequested', args: { claimId: PROOF_LOOP_CLAIM_ID, auditor: AUDITOR, requestHash: demoHash('claim 2 request 1') } },
-        statusChanged(PROOF_LOOP_CLAIM_ID, 'InternallyVerified', 'ProofRequested'),
-      ],
-    },
-    {
-      at: '2026-09-22T09:10:00Z',
-      events: [
-        {
-          eventName: 'ProofSubmitted',
-          args: { claimId: PROOF_LOOP_CLAIM_ID, organization: ORGANIZATION, supplementaryRoot: PROOF_LOOP_ROOTS[1], rootIndex: 1n },
-        },
-        statusChanged(PROOF_LOOP_CLAIM_ID, 'ProofRequested', 'ProofSubmitted'),
-      ],
-    },
-    {
-      at: '2026-09-22T15:45:00Z',
-      events: [
-        {
-          eventName: 'ProofReviewed',
-          args: { claimId: PROOF_LOOP_CLAIM_ID, verifier: VERIFIER_2, accepted: false, justificationHash: demoHash('claim 2 proof review') },
-        },
-        statusChanged(PROOF_LOOP_CLAIM_ID, 'ProofSubmitted', 'ProofRequested'),
       ],
     },
   ]),

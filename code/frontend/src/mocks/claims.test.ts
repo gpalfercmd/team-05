@@ -62,15 +62,13 @@ describe('demo evidence under public/demo-evidence', () => {
     expect(servedHashes.filter((hash) => hash !== undefined && privateHashes.includes(hash))).toEqual([]);
   });
 
-  it('matches the onchain roots of the demo claim, recomputed from the manifests', () => {
+  it('matches the onchain root of the demo claim, recomputed from the manifest', () => {
     const roots = MOCK_CLAIMS.find((claim) => claim.claimId === FULL_STORY_CLAIM_ID)?.evidenceRoots ?? [];
-    expect(roots).toEqual([DEMO_ORIGINAL_ROOT, DEMO_PROOF_ROOT]);
-    for (const manifest of Object.values(DEMO_MANIFESTS)) {
-      const parsed = parseManifest(manifest);
-      expect(parsed.ok).toBe(true);
-      const check = parsed.ok ? checkManifest(parsed.value, FULL_STORY_CLAIM_ID, roots) : parsed;
-      expect(check.ok, `manifest for root ${manifest.rootIndex}`).toBe(true);
-    }
+    expect(roots).toEqual([DEMO_ORIGINAL_ROOT]);
+    const parsed = parseManifest(DEMO_MANIFESTS['manifest.json']);
+    expect(parsed.ok).toBe(true);
+    const check = parsed.ok ? checkManifest(parsed.value, FULL_STORY_CLAIM_ID, roots) : parsed;
+    expect(check.ok, 'manifest for root 0').toBe(true);
   });
 
   it('lets a visitor re-create the supplementary bundle root from the downloadable files alone', async () => {
@@ -115,9 +113,6 @@ describe('demo claims', () => {
       ['deposit-locked', undefined],
       ['internal-attestation', 'InternallyVerified'],
       ['auditor-assigned', undefined],
-      ['proof-requested', 'ProofRequested'],
-      ['proof-submitted', 'ProofSubmitted'],
-      ['proof-reviewed', 'InternallyVerified'],
       ['final-attestation', 'Verified'],
       ['deposit-locked', undefined],
       ['dispute-opened', 'Disputed'],
@@ -128,7 +123,7 @@ describe('demo claims', () => {
     ]);
   });
 
-  it('includes a claim that is still waiting for proof', () => {
-    expect(MOCK_CLAIMS.some((claim) => claim.status === 'ProofRequested')).toBe(true);
+  it('includes a claim that is still waiting for the final decision', () => {
+    expect(MOCK_CLAIMS.some((claim) => claim.status === 'InternallyVerified')).toBe(true);
   });
 });

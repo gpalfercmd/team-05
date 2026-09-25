@@ -224,7 +224,10 @@ def accredit_cast(chain: FakeChain, admin: str, authority: str, cast: dict[str, 
 
 
 def full_story(chain: FakeChain, claim_id: str, cast: dict[str, str], authority: str) -> None:
-    """The DemoLifecycle story: anchor → … → dispute dismissed; ends Verified with 2 roots."""
+    """A full story with a proof round: anchor → … → dispute dismissed; ends Verified with 2 roots.
+
+    (The scripted DemoLifecycle demo skips the proof loop and anchors a single root; this
+    helper keeps the two-verifier round because the contracts still support it.)"""
     org, auditor = cast["org"], cast["auditor"]
     chain.tx(
         claim_event(

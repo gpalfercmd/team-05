@@ -13,11 +13,12 @@ import { ShieldCheckIcon } from './icons';
 import { ThemeToggle } from './ThemeToggle';
 import './Header.css';
 
-// The first two point at sections of the home page (it scrolls to the hash on arrival); the
-// workspace is its own page, so it is a NavLink that marks itself as the current page.
-const SECTION_LINKS = [
-  { to: '/#how-it-works', label: 'How it works' },
-  { to: '/#claims', label: 'Claims' },
+// Home sections vs. standalone pages: "How it works" scrolls on the dashboard, while the
+// claims index and the workspace are their own pages (NavLinks mark the current page).
+const SECTION_LINKS = [{ to: '/#how-it-works', label: 'How it works' }] as const;
+const PAGE_LINKS = [
+  { to: '/claims', label: 'Claims' },
+  { to: '/workspace', label: 'Workspace' },
 ] as const;
 
 export function Header() {
@@ -35,7 +36,11 @@ export function Header() {
               {link.label}
             </Link>
           ))}
-          <NavLink to="/workspace">Workspace</NavLink>
+          {PAGE_LINKS.map((link) => (
+            <NavLink key={link.to} to={link.to}>
+              {link.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="site-header__actions">
           {contracts.mode === 'mock' && <DemoDataNotice />}

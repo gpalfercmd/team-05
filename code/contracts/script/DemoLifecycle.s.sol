@@ -12,14 +12,16 @@ import {DeploymentFile} from "./DeploymentFile.sol";
 import {IClaimRegistry} from "../src/interfaces/IClaimRegistry.sol";
 import {IParticipantRegistry} from "../src/interfaces/IParticipantRegistry.sol";
 
-/// @notice Seven TEST-ONLY wallets derived from `MNEMONIC` (m/44'/60'/0'/0/i) play every role:
+/// @notice Six TEST-ONLY wallets derived from `MNEMONIC` (m/44'/60'/0'/0/i) play every role:
 ///           0 deployer + Registry Admin   1 Accreditation Authority   2 Organization
-///           3 Internal Verifier 1         4 Internal Verifier 2       5 Auditor
-///           6 Disputant (a second accredited auditor, also the spare for reassignment)
+///           3 Internal Verifier           4 Auditor
+///           5 Disputant (a second accredited auditor, also the spare for reassignment)
 ///         Story, each step signed by its own wallet:
-///           anchor → attestInternal(approve) → assignAuditor → requestProof → submitProof
-///           → confirmProof(accept, verifier 2) → attestFinal(approve) → openDispute
+///           anchor → attestInternal(approve) → assignAuditor
+///           → attestFinal(approve) → openDispute
 ///           → resolveDispute(dismissed). The claim ends Verified.
+///         A single verifier is enough: the demo skips the proof loop (no requestProof /
+///         submitProof / confirmProof), and anchoring needs only MIN_INTERNAL_VERIFIERS (= 1).
 ///         Deposits (P9, read from the deployed registry): the organization sends
 ///         `anchorDeposit()`, the auditor `auditorDeposit()` with its approval and the disputant
 ///         `disputeBond()`. The dismissal credits half the bond to the organization and half to
@@ -43,27 +45,23 @@ contract DemoLifecycle is DeploymentFile {
     ///      top-up of its deposit plus twice the allowance from the deployer.
     uint256 internal constant GAS_ALLOWANCE = 0.001 ether;
 
-    uint256 internal constant ACTOR_COUNT = 7;
+    uint256 internal constant ACTOR_COUNT = 6;
     uint256 internal constant DEPLOYER = 0;
     uint256 internal constant AUTHORITY = 1;
     uint256 internal constant ORGANIZATION = 2;
-    uint256 internal constant VERIFIER_1 = 3;
-    uint256 internal constant VERIFIER_2 = 4;
-    uint256 internal constant AUDITOR = 5;
-    uint256 internal constant DISPUTANT = 6;
+    uint256 internal constant VERIFIER = 3;
+    uint256 internal constant AUDITOR = 4;
+    uint256 internal constant DISPUTANT = 5;
 
     /// @dev Merkle root (shared recipe, `poa_shared.merkle.build_root`) of the files listed in
-    ///      `code/frontend/public/demo-evidence/manifest.json` (rootIndex 0), and of
-    ///      `manifest-proof-1.json` (rootIndex 1, the supplementary proof). Frontend constants
-    ///      `DEMO_ORIGINAL_ROOT` / `DEMO_PROOF_ROOT`; recompute them if the demo files change.
+    ///      `code/frontend/public/demo-evidence/manifest.json` (rootIndex 0, the only bundle:
+    ///      the demo skips the proof loop, so there is no supplementary root). Frontend
+    ///      constant `DEMO_ORIGINAL_ROOT`; recompute it if the demo files change.
     bytes32 internal constant EVIDENCE_ROOT = 0x515344752095a24904ad32a660a1d15ddbf9c49e90f43d58323d76e398548707;
-    bytes32 internal constant SUPPLEMENTARY_ROOT = 0x8e94bc6a483ea396391f77e88e9359003f723d74463a8afef5279ab397612370;
 
     // Deterministic stand-ins for texts the backend would hash offchain.
     bytes32 internal constant METADATA_HASH = keccak256("demo:metadata:v1");
     bytes32 internal constant INTERNAL_JUSTIFICATION = keccak256("demo:internal-justification:v1");
-    bytes32 internal constant PROOF_REQUEST = keccak256("demo:proof-request:v1");
-    bytes32 internal constant PROOF_REVIEW = keccak256("demo:proof-review:v1");
     bytes32 internal constant FINAL_JUSTIFICATION = keccak256("demo:final-justification:v1");
     bytes32 internal constant COUNTER_EVIDENCE = keccak256("demo:counter-evidence:v1");
     bytes32 internal constant RESOLUTION_JUSTIFICATION = keccak256("demo:dispute-resolution:v1");
@@ -92,7 +90,7 @@ contract DemoLifecycle is DeploymentFile {
         string memory mnemonic = vm.envOr("MNEMONIC", string(""));
         require(bytes(mnemonic).length > 0, "MNEMONIC is not set (use a TEST-ONLY mnemonic)");
         string[ACTOR_COUNT] memory labels =
-            ["deployer/registryAdmin", "authority", "organization", "verifier1", "verifier2", "auditor", "disputant"];
+            ["deployer/registryAdmin", "authority", "organization", "verifier", "auditor", "disputant"];
         for (uint256 i = 0; i < ACTOR_COUNT; i++) {
             keys[i] = vm.deriveKey(mnemonic, uint32(i));
             wallets[i] = vm.addr(keys[i]);
@@ -145,11 +143,9 @@ contract DemoLifecycle is DeploymentFile {
             vm.broadcast(keys[DEPLOYER]);
             participants.registerOrganization(organization);
         }
-        for (uint256 i = VERIFIER_1; i <= VERIFIER_2; i++) {
-            if (participants.organizationOf(wallets[i]) != organization) {
-                vm.broadcast(keys[DEPLOYER]);
-                participants.registerInternalVerifier(wallets[i], organization);
-            }
+        if (participants.organizationOf(wallets[VERIFIER]) != organization) {
+            vm.broadcast(keys[DEPLOYER]);
+            participants.registerInternalVerifier(wallets[VERIFIER], organization);
         }
         for (uint256 i = AUDITOR; i <= DISPUTANT; i++) {
             if (!participants.isAuditor(wallets[i])) {
@@ -180,37 +176,25 @@ contract DemoLifecycle is DeploymentFile {
         claims.anchorClaim{value: anchorDeposit}(claimId, EVIDENCE_ROOT, METADATA_HASH);
         _logStep("1. organization anchors the evidence root", claims, claimId);
 
-        vm.broadcast(keys[VERIFIER_1]);
+        vm.broadcast(keys[VERIFIER]);
         claims.attestInternal(claimId, true, INTERNAL_JUSTIFICATION);
-        _logStep("2. verifier 1 approves (checkpoint 1)", claims, claimId);
+        _logStep("2. verifier approves (checkpoint 1)", claims, claimId);
 
         vm.broadcast(keys[AUTHORITY]);
         claims.assignAuditor(claimId, wallets[AUDITOR]);
         _logStep("3. authority assigns the auditor", claims, claimId);
 
         vm.broadcast(keys[AUDITOR]);
-        claims.requestProof(claimId, PROOF_REQUEST);
-        _logStep("4. auditor requests proof", claims, claimId);
-
-        vm.broadcast(keys[ORGANIZATION]);
-        claims.submitProof(claimId, SUPPLEMENTARY_ROOT);
-        _logStep("5. organization submits supplementary evidence", claims, claimId);
-
-        vm.broadcast(keys[VERIFIER_2]);
-        claims.confirmProof(claimId, true, PROOF_REVIEW);
-        _logStep("6. verifier 2 confirms the proof (four eyes)", claims, claimId);
-
-        vm.broadcast(keys[AUDITOR]);
         claims.attestFinal{value: auditorDeposit}(claimId, true, FINAL_JUSTIFICATION);
-        _logStep("7. auditor approves (checkpoint 2, final)", claims, claimId);
+        _logStep("4. auditor approves (checkpoint 2, final)", claims, claimId);
 
         vm.broadcast(keys[DISPUTANT]);
         claims.openDispute{value: disputeBond}(claimId, COUNTER_EVIDENCE);
-        _logStep("8. disputant opens a dispute", claims, claimId);
+        _logStep("5. disputant opens a dispute", claims, claimId);
 
         vm.broadcast(keys[AUTHORITY]);
         claims.resolveDispute(claimId, false, RESOLUTION_JUSTIFICATION);
-        _logStep("9. authority dismisses the dispute", claims, claimId);
+        _logStep("6. authority dismisses the dispute", claims, claimId);
 
         require(claims.statusOf(claimId) == IClaimRegistry.ClaimStatus.Verified, "demo claim did not end Verified");
         console2.log("evidence roots onchain:", claims.evidenceRoots(claimId).length);

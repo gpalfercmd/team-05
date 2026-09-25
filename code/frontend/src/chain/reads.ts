@@ -111,7 +111,7 @@ export async function readCredits(client: ReadClient, registry: RegistryAddresse
   return credits;
 }
 
-/** `activeVerifierCount(organization)`: anchoring needs at least `MIN_INTERNAL_VERIFIERS` (2). */
+/** `activeVerifierCount(organization)`: anchoring needs at least `MIN_INTERNAL_VERIFIERS` (1). */
 export async function readActiveVerifierCount(
   client: ReadClient,
   registry: RegistryAddresses,
@@ -124,8 +124,8 @@ export async function readActiveVerifierCount(
   return count;
 }
 
-/** IClaimRegistry's `MIN_INTERNAL_VERIFIERS`: checkpoint 1 and proof confirmation need two different verifiers. */
-export const MIN_INTERNAL_VERIFIERS = 2n;
+/** IClaimRegistry's `MIN_INTERNAL_VERIFIERS`: a single active verifier is enough to anchor. */
+export const MIN_INTERNAL_VERIFIERS = 1n;
 
 // --- Claim state for the action planner ---------------------------------------------------------
 

@@ -16,16 +16,16 @@ and 31337 would overwrite the committed `anvil.json`. With 31338 they write a
 throwaway `31338.json`, which is copied to the test's temp dir and deleted
 (`anvil.json` is also checked byte-for-byte afterwards).
 
-Expected events: the demo sends 16 registry transactions (2 contract
-creations + 14 lifecycle calls). The creations emit no interface event (only
-OpenZeppelin bookkeeping). The 5 accreditation calls emit one interface event
-each; `assignAuditor` emits one and the other 8 claim actions emit two (the
-action event + `StatusChanged`): 5 + 1 + 16 = 22 interface events, plus the P9
-escrow events (3 `DepositLocked`, 2 `Credited`): 27. The raw logs of both
-contracts are 39: those 27 plus 12 OpenZeppelin `AccessControl` logs
-(5 `RoleAdminChanged` + 2 `RoleGranted` in the ParticipantRegistry
-constructor, 5 `RoleGranted` for the accredited participants). The indexer
-requests only the 20 interface topics, so those 12 never reach it.
+Expected events: the demo sends 12 registry transactions (2 contract
+creations + 10 lifecycle calls). The creations emit no interface event (only
+OpenZeppelin bookkeeping). The 4 accreditation calls emit one interface event
+each; `assignAuditor` emits one and the other 5 claim actions emit two (the
+action event + `StatusChanged`): 4 + 1 + 10 = 15 interface events, plus the P9
+escrow events (3 `DepositLocked`, 2 `Credited`): 20. The raw logs of both
+contracts are 31: those 20 plus 11 OpenZeppelin `AccessControl` logs
+(5 `RoleAdminChanged` + 2 `RoleGranted` in the constructors,
+4 `RoleGranted` for the accredited participants). The indexer
+requests only the 20 interface topics, so those 11 never reach it.
 
 Skipped automatically when `anvil`/`forge` are not on PATH or the Soldeer
 dependencies are not installed.
@@ -64,23 +64,22 @@ REGISTRY_ADMIN: Final[str] = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 ACCREDITATION_AUTHORITY: Final[str] = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 DEMO_CLAIM: Final[str] = "0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28"
 ORIGINAL_ROOT: Final[str] = "0x515344752095a24904ad32a660a1d15ddbf9c49e90f43d58323d76e398548707"
-PROOF_ROOT: Final[str] = "0x8e94bc6a483ea396391f77e88e9359003f723d74463a8afef5279ab397612370"
+# The demo mnemonic's accounts: 2 organization, 3 verifier, 4 auditor, 5 disputant.
 CAST: Final[dict[str, str]] = {
     "organization": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
-    "verifier1": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
-    "verifier2": "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65",
-    "auditor": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
-    "disputant": "0x976ea74026e726554db657fa54763abd0c3a0aa9",
+    "verifier": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+    "auditor": "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65",
+    "disputant": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
 }
-# 17 claim events (9 story steps) + 5 participant events, plus the P9 escrow events of the
+# 11 claim events (6 story steps) + 4 participant events, plus the P9 escrow events of the
 # story: 3 DepositLocked (anchor, approval, dispute bond) and 2 Credited (the dismissal's split).
 MONEY_EVENTS: Final[dict[str, int]] = {"DepositLocked": 3, "Credited": 2}
-CLAIM_TIMELINE_EVENTS: Final[int] = 17 + sum(MONEY_EVENTS.values())
-INTERFACE_EVENTS: Final[int] = CLAIM_TIMELINE_EVENTS + 5
+CLAIM_TIMELINE_EVENTS: Final[int] = 11 + sum(MONEY_EVENTS.values())
+INTERFACE_EVENTS: Final[int] = CLAIM_TIMELINE_EVENTS + 4
 # OpenZeppelin AccessControl logs that are not part of the frozen interface.
 ACCESS_CONTROL_LOGS: Final[dict[str, int]] = {
     "RoleAdminChanged(bytes32,bytes32,bytes32)": 5,
-    "RoleGranted(bytes32,address,address)": 7,
+    "RoleGranted(bytes32,address,address)": 6,
 }
 SCRIPT_TIMEOUT: Final[int] = 600
 
@@ -183,7 +182,7 @@ def test_indexer_against_anvil_demo(anvil_url: str, tmp_path: Path) -> None:
     _run([sys.executable, "-m", "app.indexer", "--once"], BACKEND_DIR, env)
 
     assert _scalar(database, "SELECT count(*) FROM chain_events") == INTERFACE_EVENTS
-    assert _scalar(database, "SELECT count(*) FROM chain_events WHERE claim_id_hex IS NULL") == 5
+    assert _scalar(database, "SELECT count(*) FROM chain_events WHERE claim_id_hex IS NULL") == 4
     for name, expected in MONEY_EVENTS.items():
         assert _scalar(database, f"SELECT count(*) FROM chain_events WHERE event_name = '{name}'") == expected
     status, roots, auditor, verifier, organization = sqlite3.connect(database).execute(
@@ -192,9 +191,9 @@ def test_indexer_against_anvil_demo(anvil_url: str, tmp_path: Path) -> None:
         (DEMO_CLAIM,),
     ).fetchone()
     assert status == "Verified"
-    assert roots.replace(" ", "") == f'["{ORIGINAL_ROOT}","{PROOF_ROOT}"]'
+    assert roots.replace(" ", "") == f'["{ORIGINAL_ROOT}"]'
     assert (auditor, verifier, organization) == (
-        CAST["auditor"], CAST["verifier1"], CAST["organization"],
+        CAST["auditor"], CAST["verifier"], CAST["organization"],
     )
     with sqlite3.connect(database) as connection:
         participants = dict(
@@ -207,8 +206,7 @@ def test_indexer_against_anvil_demo(anvil_url: str, tmp_path: Path) -> None:
         }
     assert participants == {
         CAST["organization"]: "organization",
-        CAST["verifier1"]: "internal_verifier",
-        CAST["verifier2"]: "internal_verifier",
+        CAST["verifier"]: "internal_verifier",
         CAST["auditor"]: "auditor",
         CAST["disputant"]: "auditor",
     }

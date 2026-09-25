@@ -18,7 +18,7 @@ describe('Header', () => {
     const links = within(await nav()).getAllByRole('link');
     expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
       ['How it works', '/#how-it-works'],
-      ['Claims', '/#claims'],
+      ['Claims', '/claims'],
       ['Workspace', '/workspace'],
     ]);
     expect(screen.queryByRole('link', { name: 'Your wallet' })).not.toBeInTheDocument();

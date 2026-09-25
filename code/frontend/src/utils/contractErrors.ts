@@ -18,7 +18,7 @@ export const CONTRACT_ERROR_MESSAGES = {
   InvalidStatus: 'This action is not allowed at the claim’s current stage.',
   NotClaimOrganization: 'Only the organization that recorded this claim can do this.',
   InsufficientInternalVerifiers:
-    'The organization needs at least two active internal verifiers before it can record a claim.',
+    'The organization needs at least one active internal verifier before it can record a claim.',
   NotOrganizationVerifier: 'Only an active internal verifier of this claim’s organization can do this.',
   SameVerifierAsCheckpoint1: 'A different internal verifier must confirm this proof.',
   NotAssignedAuditor: 'Only the auditor assigned to this claim can do this.',

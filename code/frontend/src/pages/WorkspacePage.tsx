@@ -5,7 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { isHex, type Hex } from 'viem';
 import { ConnectButton } from '../components/ConnectButton';
 import { ActionList } from '../components/wallet/ActionList';
@@ -34,6 +34,9 @@ export function WorkspacePage() {
   return (
     <div className="page">
       <div className="page__header">
+        <p className="caption claim-crumb">
+          <Link to="/">Dashboard</Link> · Workspace
+        </p>
         <p className="eyebrow">Workspace</p>
         <h1>Your workspace</h1>
         <p className="page__lead">
@@ -42,21 +45,23 @@ export function WorkspacePage() {
         </p>
       </div>
 
-      {ready && wallet.status === 'connected' && (
-        <section className="card" aria-labelledby="needs-action-heading">
-          <ActionList role={role.role} viewer={wallet.address} verifierOrganization={role.verifierOrganization} />
-        </section>
-      )}
-
-      <section className="card wallet-stack" aria-labelledby="role-screens-heading">
-        <h2 id="role-screens-heading">Role screens</h2>
-        <WalletPanel initialClaim={linkedClaim} />
-        {registries !== undefined && wallet.status === 'disconnected' && (
-          <div>
-            <ConnectButton />
-          </div>
+      <div className="workspace-grid">
+        {ready && wallet.status === 'connected' && (
+          <section className="card" aria-labelledby="needs-action-heading">
+            <ActionList role={role.role} viewer={wallet.address} verifierOrganization={role.verifierOrganization} />
+          </section>
         )}
-      </section>
+
+        <section className="card wallet-stack" aria-labelledby="role-screens-heading">
+          <h2 id="role-screens-heading">Role screens</h2>
+          <WalletPanel initialClaim={linkedClaim} />
+          {registries !== undefined && wallet.status === 'disconnected' && (
+            <div>
+              <ConnectButton />
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -48,7 +48,7 @@ role-admin isolation, revoked wallets, separation of duties (including role-swit
 revoked organizations (never `Verified` again: every action × status × actor × decision, and an
 invariant counting transitions into `Verified`), event payloads, stored roots, fuzzed callers and
 inputs, and invariants over random call sequences (`[invariant]` in `foundry.toml`). The
-deployment/demo scripts use seven test-only wallets and produce:
+deployment/demo scripts use six test-only wallets and produce:
 
 ```text
 .env.example                          # variable names only
@@ -153,26 +153,27 @@ deployment and that every receipt succeeded, and merges:
 Entries are deduplicated by `txHash`, so running it twice is harmless and demo replays accumulate.
 Wallet top-ups are not lifecycle steps and are skipped.
 
-`DemoLifecycle.s.sol` derives seven **test-only** wallets from `MNEMONIC` (index 0 deployer and
-Registry Admin, 1 Accreditation Authority, 2 Organization, 3–4 Internal Verifiers, 5 Auditor,
-6 Disputant, a second accredited auditor), tops up each wallet from the deployer when it holds
+`DemoLifecycle.s.sol` derives six **test-only** wallets from `MNEMONIC` (index 0 deployer and
+Registry Admin, 1 Accreditation Authority, 2 Organization, 3 Internal Verifier, 4 Auditor,
+5 Disputant, a second accredited auditor), tops up each wallet from the deployer when it holds
 less than its deposit (organization `anchorDeposit`, auditor `auditorDeposit`, disputant
 `disputeBond`, others nothing) plus 0.001 ETH for gas (top-up: deposit + 0.002 ETH),
 deploys (or reuses the deployment file with `USE_EXISTING=true`), accredits the cast (skipping
-wallets already accredited) and runs: anchor → attestInternal → assignAuditor → requestProof →
-submitProof → confirmProof (verifier 2) → attestFinal → openDispute → resolveDispute (dismissed),
+wallets already accredited) and runs: anchor → attestInternal → assignAuditor →
+attestFinal → openDispute → resolveDispute (dismissed),
 sending the exact deposits read from the deployed registry. The claim ends `Verified`, with
 `anchorDeposit + auditorDeposit` still locked until it is settled 60 days later, and the bond
 credited half to the organization and half to the auditor.
 
 The demo claim is the frontend's demo claim, so the public page shows a genuine match:
-claimId `0xfedebf75…a79b28` (`FULL_STORY_CLAIM_ID`), original root `0x51534475…548707` (Merkle root
-of `code/frontend/public/demo-evidence/manifest.json`) and supplementary root `0x8e94bc6a…612370`
-(root of `manifest-proof-1.json`). If the demo files change, recompute both roots with
-`poa_shared.merkle.build_root` and update the constants in `DemoLifecycle.s.sol`.
+claimId `0xfedebf75…a79b28` (`FULL_STORY_CLAIM_ID`) and original root `0x51534475…548707` (Merkle root
+of `code/frontend/public/demo-evidence/manifest.json`; the demo skips the proof loop, so there
+is no supplementary root).
+If the demo files change, recompute the root with
+`poa_shared.merkle.build_root` and update the constant in `DemoLifecycle.s.sol`.
 
 **Initial state and reset.** After the demo, the chain holds the accredited cast and one `Verified`
-claim with two evidence roots and a dismissed dispute in its history. The demo claim can be
+claim with a single evidence root and a dismissed dispute in its history. The demo claim can be
 anchored only once per chain (`ClaimAlreadyExists` afterwards). To run the story again, either
 restart anvil and repeat the commands below (same addresses, `deployBlock` 1), or keep the chain
 and set `DEMO_CLAIM_UUID=<any uuid>` (claimId = `keccak256(bytes(uuid))`) with `USE_EXISTING=true`.

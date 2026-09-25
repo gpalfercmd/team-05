@@ -95,14 +95,26 @@ describe('routes', () => {
     expect(screen.queryByText('Sample claims')).not.toBeInTheDocument();
   });
 
-  it('offers the demo claim and a claim lookup on a real chain', async () => {
+  it('offers the demo claim on the dashboard and the claim lookup on the claims page', async () => {
     renderRoute('/', chainEnv);
     const demoLinks = await screen.findAllByRole('link', { name: /demo claim/i });
     expect(demoLinks.length).toBeGreaterThan(0);
     for (const link of demoLinks) {
       expect(link).toHaveAttribute('href', '/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28');
     }
+    expect(screen.queryByRole('textbox', { name: 'Look up a claim by its ID' })).not.toBeInTheDocument();
+  });
+
+  it('offers the claim lookup on the claims page on a real chain', async () => {
+    renderRoute('/claims', chainEnv);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Claims' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Look up a claim by its ID' })).toBeInTheDocument();
+  });
+
+  it('renders the claims index with the sample claims', async () => {
+    renderRoute('/claims');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Claims' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Open and verify' })).toHaveLength(MOCK_CLAIMS.length);
   });
 
   it('renders the not-found page for unknown routes', async () => {

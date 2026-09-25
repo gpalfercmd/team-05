@@ -10,13 +10,11 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Sticky from tablet up; on phones the header wraps to two rows and would eat the viewport. */
-@media (min-width: 768px) {
-  .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-  }
+/* Sticky on all widths; condensed on phones via global.css. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
 .site-header__inner {

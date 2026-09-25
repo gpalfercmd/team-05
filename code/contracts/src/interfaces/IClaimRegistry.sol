@@ -9,9 +9,11 @@ pragma solidity ^0.8.24;
 
 import {IParticipantRegistry} from "./IParticipantRegistry.sol";
 
-/// @dev An organization needs this many active internal verifiers to anchor a claim:
-///      checkpoint 1 and the supplementary-proof confirmation must be different people.
-uint256 constant MIN_INTERNAL_VERIFIERS = 2;
+/// @dev An organization needs this many active internal verifiers to anchor a claim.
+///      Lowered from 2 to 1: demos run with a single verifier and skip the proof loop
+///      (when proof is requested, checkpoint 1 and the confirmation must still be
+///      different people — SameVerifierAsCheckpoint1 is unchanged).
+uint256 constant MIN_INTERNAL_VERIFIERS = 1;
 
 /// @title IClaimRegistry
 /// @notice Evidence anchoring and the two-stage verification state machine (spec F4, F5a, F5b, F7).

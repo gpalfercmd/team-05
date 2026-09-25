@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Home (`/`): the public story, sample claims (demo) or demo claim + lookup (chain), workspace link
+// Proof of Aid — Team 05 — Home (`/`): the public story, project context, sample claims (demo), workspace link
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -7,7 +7,6 @@
 
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ClaimLookup } from '../components/ClaimLookup';
 import { HashDisplay } from '../components/HashDisplay';
 import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
 import { StatusBadge } from '../components/StatusBadge';
@@ -73,6 +72,9 @@ export function DashboardPage() {
               See the demo claim
             </Link>
           )}
+          <Link className="btn btn-secondary" to="/claims">
+            Browse claims
+          </Link>
           <a className="btn btn-secondary" href="#how-it-works">
             How tracking works
           </a>
@@ -87,7 +89,59 @@ export function DashboardPage() {
         </ul>
       </div>
 
-      <section className="band band--alt" id="how-it-works" aria-labelledby="how-heading">
+      <section className="band band--compact" aria-labelledby="about-heading">
+        <div className="section-head">
+          <p className="eyebrow">The project</p>
+          <h2 id="about-heading">What is Proof of Aid?</h2>
+        </div>
+        <div className="about-grid">
+          <p>
+            Proof of Aid lets anyone check that an aid claim is backed by real evidence — without
+            seeing the private data inside that evidence. No account, no special access: the checks
+            run in your browser against fingerprints recorded on the Arbitrum blockchain.
+          </p>
+          <p>
+            For example, a foundation reports delivering 500 food kits after the Valencia floods.
+            Its strongest proof — signed delivery lists, photos of families — cannot be published,
+            so the files stay offchain, encrypted, while their fingerprints are anchored onchain and
+            every verification step is signed by independent, accredited reviewers.
+          </p>
+          <p>
+            <a href="#how-it-works">See how tracking works</a>
+          </p>
+        </div>
+      </section>
+
+      {contracts.mode === 'mock' && (
+        <section className="band band--alt" id="claims" aria-labelledby="demo-claims-heading">
+          <div className="section-head">
+            <p className="eyebrow">Public records</p>
+            <h2 id="demo-claims-heading">Sample claims</h2>
+            <p className="muted">
+              Real claim shapes with made-up evidence. Open one and try the check yourself.{' '}
+              <Link to="/claims">Browse all claims</Link>.
+            </p>
+          </div>
+          <ul className="claim-cards">
+            {MOCK_CLAIMS.map((claim) => (
+              <li key={claim.claimId} className="claim-card">
+                <StatusBadge status={claim.status} />
+                <p className="claim-card__id">
+                  Claim <HashDisplay value={claim.claimId} label="claim ID" />
+                </p>
+                <p className="caption">
+                  {claim.evidenceRoots.length} evidence bundle{claim.evidenceRoots.length === 1 ? '' : 's'}
+                </p>
+                <Link className="btn btn-secondary claim-card__open" to={`/claims/${claim.claimId}`}>
+                  Open and verify
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="band" id="how-it-works" aria-labelledby="how-heading">
         <div className="section-head">
           <p className="eyebrow">How it works</p>
           <h2 id="how-heading">How tracking works</h2>
@@ -127,51 +181,6 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {contracts.mode === 'chain' && (
-        <section className="band band--alt" id="claims" aria-labelledby="find-claim-heading">
-          <div className="section-head">
-            <p className="eyebrow">Public records</p>
-            <h2 id="find-claim-heading">Find a claim</h2>
-            <p className="muted">
-              Open the demo claim recorded on the blockchain, or paste the ID of any other claim.
-            </p>
-          </div>
-          <div className="card">
-            <p>
-              <Link to={`/claims/${FULL_STORY_CLAIM_ID}`}>Demo claim</Link>{' '}
-              <HashDisplay value={FULL_STORY_CLAIM_ID} label="demo claim ID" />: verified after a proof request and a
-              dismissed dispute.
-            </p>
-            <ClaimLookup />
-          </div>
-        </section>
-      )}
-
-      {contracts.mode === 'mock' && (
-        <section className="band band--alt" id="claims" aria-labelledby="demo-claims-heading">
-          <div className="section-head">
-            <p className="eyebrow">Public records</p>
-            <h2 id="demo-claims-heading">Sample claims</h2>
-            <p className="muted">Real claim shapes with made-up evidence. Open one and try the check yourself.</p>
-          </div>
-          <ul className="claim-cards">
-            {MOCK_CLAIMS.map((claim) => (
-              <li key={claim.claimId} className="claim-card">
-                <StatusBadge status={claim.status} />
-                <p className="claim-card__id">
-                  Claim <HashDisplay value={claim.claimId} label="claim ID" />
-                </p>
-                <p className="caption">
-                  {claim.evidenceRoots.length} evidence bundle{claim.evidenceRoots.length === 1 ? '' : 's'}
-                </p>
-                <Link className="btn btn-secondary claim-card__open" to={`/claims/${claim.claimId}`}>
-                  Open and verify
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }

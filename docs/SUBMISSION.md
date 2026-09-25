@@ -41,7 +41,7 @@ Two contracts enforce accreditation, evidence anchoring, the two-stage verificat
 requests, disputes and a per-claim ETH escrow. A FastAPI backend cleans, salts, fingerprints and
 encrypts every file, serves privacy-safe views and indexes the chain; a React app lets each role sign
 its own step and lets anyone re-check evidence in the browser. In the case, that is the foundation
-anchoring its evidence, Laura and Miguel confirming, AuditAid Iberia approving and a donor matching
+anchoring its evidence, Laura confirming checkpoint 1, AuditAid Iberia approving and a donor matching
 the published invoice against the chain. The nine mechanisms, each linked to its ARCHITECTURE
 section: [Appendix → A.3 What works and how](#a3-what-works-and-how).
 
@@ -83,14 +83,14 @@ and tests: [Appendix → A.7 Security fixes](#a7-security-fixes-from-the-logic-r
 
 ## 3. Demo and validation
 
-The demo proves that a claim which went through the full two-stage verification, a proof request and
+The demo proves that a claim which went through the full two-stage verification and
 a bonded, dismissed dispute on Arbitrum Sepolia can be checked by anyone in a browser: a genuine
 evidence file matches the root recorded onchain, a one-character change is detected, and no private
 file name or content is exposed. It runs the onchain steps of the Valencia case, up to a dismissed
-dispute, on made-up receipts.
-Reproduce it with [RUNBOOK.md](RUNBOOK.md) (paths A–D and the 12-step demo table). Contract
-addresses, the 14 demo transactions and the test results (contracts 168 passed with 100% coverage,
-shared 34, backend 128, frontend 511 passed and 8 skipped) are in
+dispute, on made-up receipts, with a single internal verifier and no proof round.
+Reproduce it with [RUNBOOK.md](RUNBOOK.md) (paths A–D and the 10-step demo table). Contract
+addresses, the demo transactions and the test results (contracts 168 passed with 100% coverage,
+shared 34, backend 128, frontend 512 passed and 8 skipped) are in
 [Appendix → A.8 Demo and validation](#a8-demo-and-validation).
 
 ### Mock demonstration
@@ -107,19 +107,18 @@ changed character and gets **No match**.
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/public-visitor.mp4`.
 
 **2. Organization.** The foundation signs in with its wallet, records the 500-kit claim with its
-evidence files and anchors it, paying the anchor deposit; after the auditor's request it uploads the
-supplementary files and presses **Submit proof**.
+evidence files and anchors it, paying the anchor deposit.
 
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/organization.mp4`.
 
 **3. Internal verifier.** Laura checks a downloaded private file in *Evidence files (authorized)*
-(**Match**) and approves checkpoint 1 with **Approve evidence**; later Miguel accepts the supplementary
-proof with **Accept proof**, while Laura is refused because she did checkpoint 1.
+(**Match**) and approves checkpoint 1 with **Approve evidence**. The four-eyes refusal is shown on
+a second claim with two verifiers: Laura is refused **Accept proof** there because she did
+checkpoint 1, and the other verifier accepts it.
 
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/internal-verifier.mp4`.
 
-**4. Auditor.** AuditAid Iberia requests proof about the three distribution points with **Request
-proof**, then approves the claim and locks its deposit.
+**4. Auditor.** AuditAid Iberia reviews the evidence, then approves the claim and locks its deposit.
 
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/auditor.mp4`.
 
@@ -130,7 +129,7 @@ with **Uphold dispute** or **Dismiss dispute**.
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/accreditation-authority.mp4`.
 
 **6. Registry Admin.** The platform operator registers the foundation's wallet with **Register
-organization** and Laura's and Miguel's wallets with **Register internal verifier**.
+organization** and Laura's wallet with **Register internal verifier**.
 
 > **TODO (team):** add video link. Suggested file: `docs/evidence/videos/registry-admin.mp4`.
 
@@ -143,7 +142,7 @@ the claim with **Settle deposits**, and the foundation and AuditAid Iberia colle
 ## 4. Limitations and next step
 
 Integrity is not truth: the chain proves that the foundation's files have not changed since they
-were anchored, not that 500 kits were really delivered; that still rests on Laura, Miguel, AuditAid
+were anchored, not that 500 kits were really delivered; that still rests on Laura, AuditAid
 Iberia and anyone who disputes. The main trust assumptions are a single Accreditation Authority (it
 assigns auditors and judges disputes), one auditor per claim, wallets that do not prove distinct
 people, and a backend operator trusted for confidentiality; claims recorded before the salting
@@ -269,8 +268,8 @@ status change and ETH movement in
 [ARCHITECTURE.md → Claim lifecycle](ARCHITECTURE.md#claim-lifecycle-enforced-onchain).
 
 The Arbitrum Sepolia demo, executed by `DemoLifecycle.s.sol`, runs from accreditation to the
-dismissed dispute (transactions in section 3). It anchored the demo claim directly, so the wallet
-login, the claim record and the backend uploads did not happen on it: its roots are the Merkle roots
+dismissed dispute (transactions in section 3) with a single verifier and no proof round. It anchored the demo claim directly, so the wallet
+login, the claim record and the backend uploads did not happen on it: its root is the Merkle root
 of the committed demo files. The whole flow, including settlement and withdrawal, runs from the role
 screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
@@ -533,7 +532,7 @@ Each limitation with the concrete scenario it allows:
     bundle that holds one. Since P10.2 the claim's reviewers download and check private files on the
     claim page; manifests served by the API still carry no download links, and the app has no
     per-file visibility switch.
-13. **Operational constraints.** Each organization needs at least two internal verifiers; a revoked
+13. **Operational constraints.** Each organization needs at least one active internal verifier; a revoked
     participant needs a new wallet (identity is permanent by design); the backend session cookie
     works same-site only (`localhost` for page and API), so a cross-site deployment would need
     `SameSite=None; Secure` cookies; the indexer has no reorg rollback beyond its confirmation margin
