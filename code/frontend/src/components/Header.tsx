@@ -1,11 +1,11 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Site header: brand left, section links, demo notice, theme toggle and wallet right
+// Proof of Aid — Team 05 — Site header: brand left, section links + workspace, demo notice, theme toggle and wallet right
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { Link } from 'react-router';
+import { Link, NavLink } from 'react-router';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { ConnectButton } from './ConnectButton';
 import { DemoDataNotice } from './DemoDataNotice';
@@ -13,11 +13,11 @@ import { ShieldCheckIcon } from './icons';
 import { ThemeToggle } from './ThemeToggle';
 import './Header.css';
 
-// Every link points at a section of the dashboard; the dashboard scrolls to the hash on arrival.
-const NAV_LINKS = [
+// The first two point at sections of the home page (it scrolls to the hash on arrival); the
+// workspace is its own page, so it is a NavLink that marks itself as the current page.
+const SECTION_LINKS = [
   { to: '/#how-it-works', label: 'How it works' },
   { to: '/#claims', label: 'Claims' },
-  { to: '/#wallet', label: 'Your wallet' },
 ] as const;
 
 export function Header() {
@@ -30,11 +30,12 @@ export function Header() {
           <span>Proof of Aid</span>
         </Link>
         <nav className="site-header__nav" aria-label="Main">
-          {NAV_LINKS.map((link) => (
+          {SECTION_LINKS.map((link) => (
             <Link key={link.to} to={link.to}>
               {link.label}
             </Link>
           ))}
+          <NavLink to="/workspace">Workspace</NavLink>
         </nav>
         <div className="site-header__actions">
           {contracts.mode === 'mock' && <DemoDataNotice />}

@@ -198,3 +198,36 @@
 .evidence-steps__state {
   color: var(--color-on-neutral);
 }
+
+/* "What needs your action" (workspace page): one row per claim or payout waiting for this wallet. */
+.action-list {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  min-width: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-neutral);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.action-list__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.action-list__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}

@@ -21,6 +21,8 @@ type ClaimWorkbenchProps = {
   registries: RegistryAddresses;
   /** The organization's submit-proof form (needs the evidence API); others never get that action. */
   renderSubmitProof?: (claimId: Hex, rootIndex: number, onConfirmed: (hash: Hash) => void) => ReactNode;
+  /** A claim to open straight away (the workspace's "Open actions" link, `?claim=`). */
+  initialClaim?: Hex | undefined;
 };
 
 export const NO_API_QUEUE_NOTE =
@@ -28,9 +30,24 @@ export const NO_API_QUEUE_NOTE =
 
 const noSubmitProof = (): ReactNode => null;
 
-export function ClaimWorkbench({ role, viewer, verifierOrganization, registries, renderSubmitProof = noSubmitProof }: ClaimWorkbenchProps) {
+export function ClaimWorkbench({
+  role,
+  viewer,
+  verifierOrganization,
+  registries,
+  renderSubmitProof = noSubmitProof,
+  initialClaim,
+}: ClaimWorkbenchProps) {
   const { apiUrl } = useAppConfig();
-  const [selected, setSelected] = useState<Hex | undefined>();
+  const [selected, setSelected] = useState<Hex | undefined>(initialClaim);
+  // A new `?claim=` (another "Open actions" link) replaces the open claim, during render (no effect).
+  const [openedFromLink, setOpenedFromLink] = useState(initialClaim);
+  if (initialClaim !== openedFromLink) {
+    setOpenedFromLink(initialClaim);
+    if (initialClaim !== undefined) {
+      setSelected(initialClaim);
+    }
+  }
   return (
     <section className="wallet-stack" aria-labelledby="work-heading">
       <h3 id="work-heading">Claims to act on</h3>

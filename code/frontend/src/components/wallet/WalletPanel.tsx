@@ -1,12 +1,12 @@
 // =============================================================================
-// Proof of Aid — Team 05 — "Your wallet": role read from the chain, then that role's actions
+// Proof of Aid — Team 05 — Role screens (workspace page): role read from the chain, then that role's actions
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
 import type { ReactNode } from 'react';
-import type { Address } from 'viem';
+import type { Address, Hex } from 'viem';
 import type { RegistryAddresses } from '../../chain/calls';
 import { useRole, type RoleState } from '../../hooks/useRole';
 import { useRegistries, useWallet } from '../../hooks/useWallet';
@@ -21,9 +21,9 @@ import { WithdrawCard } from './WithdrawCard';
 import { WrongNetworkNotice } from './WrongNetworkNotice';
 import './wallet.css';
 
-type RoleActionsProps = { role: RoleState; viewer: Address; registries: RegistryAddresses };
+type RoleActionsProps = { role: RoleState; viewer: Address; registries: RegistryAddresses; initialClaim: Hex | undefined };
 
-function RoleActions({ role, viewer, registries }: RoleActionsProps) {
+function RoleActions({ role, viewer, registries, initialClaim }: RoleActionsProps) {
   // Each role sees only the actions the contracts let it take (DESIGN.md: hidden, not disabled).
   const workbench = (
     <ClaimWorkbench
@@ -31,6 +31,7 @@ function RoleActions({ role, viewer, registries }: RoleActionsProps) {
       viewer={viewer}
       verifierOrganization={role.verifierOrganization}
       registries={registries}
+      initialClaim={initialClaim}
       renderSubmitProof={(claimId, rootIndex, onConfirmed) => (
         <SubmitProofForm registries={registries} claimId={claimId} rootIndex={rootIndex} onConfirmed={onConfirmed} />
       )}
@@ -60,7 +61,12 @@ function RoleActions({ role, viewer, registries }: RoleActionsProps) {
 export const DEMO_ACTIONS_NOTE =
   'Demo data: role actions need a real chain. Configure the contract addresses (see the runbook) to sign actions with your wallet.';
 
-export function WalletPanel() {
+type WalletPanelProps = {
+  /** A claim to open in the workbench straight away (the workspace's `?claim=` link). */
+  initialClaim?: Hex | undefined;
+};
+
+export function WalletPanel({ initialClaim }: WalletPanelProps = {}) {
   const wallet = useWallet();
   const role = useRole();
   const registries = useRegistries();
@@ -86,7 +92,7 @@ export function WalletPanel() {
         </p>
       );
     } else if (role.status === 'ready') {
-      body = <RoleActions role={role} viewer={wallet.address} registries={registries} />;
+      body = <RoleActions role={role} viewer={wallet.address} registries={registries} initialClaim={initialClaim} />;
     } else {
       body = (
         <p className="muted" role="status">

@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Dashboard (`/`): wallet and role actions, sample claims (demo) or demo claim + lookup (chain)
+// Proof of Aid — Team 05 — Home (`/`): the public story, sample claims (demo) or demo claim + lookup (chain), workspace link
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -8,12 +8,11 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ClaimLookup } from '../components/ClaimLookup';
+import { HashDisplay } from '../components/HashDisplay';
 import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
 import { StatusBadge } from '../components/StatusBadge';
-import { WalletPanel } from '../components/wallet/WalletPanel';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
-import { truncateMiddle } from '../utils/format';
 
 const HERO_BADGES = [
   { icon: LockIcon, title: 'Private by design', text: 'Evidence stays offchain, encrypted. Only fingerprints are public.' },
@@ -114,13 +113,16 @@ export function DashboardPage() {
         </ul>
       </section>
 
-      <section className="band" id="wallet" aria-labelledby="wallet-heading">
-        <div className="section-head">
-          <p className="eyebrow">Role screens</p>
-          <h2 id="wallet-heading">Your wallet</h2>
-        </div>
-        <div className="card">
-          <WalletPanel />
+      {/* The role screens live on their own page; home keeps only the public story. */}
+      <section className="band band--compact" aria-labelledby="workspace-heading">
+        <div className="card workspace-teaser">
+          <div>
+            <h2 id="workspace-heading">Working on claims?</h2>
+            <p className="muted">Organizations, verifiers, auditors and the Authority act on claims from their workspace.</p>
+          </div>
+          <Link className="btn btn-secondary" to="/workspace">
+            Open your workspace
+          </Link>
         </div>
       </section>
 
@@ -136,7 +138,7 @@ export function DashboardPage() {
           <div className="card">
             <p>
               <Link to={`/claims/${FULL_STORY_CLAIM_ID}`}>Demo claim</Link>{' '}
-              <code>{truncateMiddle(FULL_STORY_CLAIM_ID)}</code>: verified after a proof request and a
+              <HashDisplay value={FULL_STORY_CLAIM_ID} label="demo claim ID" />: verified after a proof request and a
               dismissed dispute.
             </p>
             <ClaimLookup />
@@ -156,7 +158,7 @@ export function DashboardPage() {
               <li key={claim.claimId} className="claim-card">
                 <StatusBadge status={claim.status} />
                 <p className="claim-card__id">
-                  Claim <code>{truncateMiddle(claim.claimId)}</code>
+                  Claim <HashDisplay value={claim.claimId} label="claim ID" />
                 </p>
                 <p className="caption">
                   {claim.evidenceRoots.length} evidence bundle{claim.evidenceRoots.length === 1 ? '' : 's'}

@@ -40,20 +40,26 @@
   text-decoration: none;
 }
 
-/* Section links sit between brand and actions; they collapse on narrow screens, where the
-   dashboard itself links to every section. Primary is the navigation colour (DESIGN.md). */
+/* Section links + Workspace sit between brand and actions from 960px; below that they form their
+   own full-width row under the brand, so the workspace stays one tap away on phones.
+   Primary is the navigation colour (DESIGN.md). */
 .site-header__nav {
-  display: none;
+  display: flex;
+  flex-wrap: wrap;
+  order: 3;
+  flex-basis: 100%;
+  gap: var(--space-xs) var(--space-lg);
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
 }
 
 @media (min-width: 960px) {
   .site-header__nav {
-    display: flex;
+    order: 0;
     flex: 1;
+    flex-basis: auto;
     justify-content: center;
     gap: var(--space-xl);
-    font-size: var(--text-label-size);
-    font-weight: var(--text-label-weight);
   }
 }
 
@@ -62,8 +68,13 @@
   text-decoration: none;
 }
 
-.site-header__nav a:hover {
+.site-header__nav a:hover,
+.site-header__nav a[aria-current='page'] {
   text-decoration: underline;
+}
+
+.site-header__nav a[aria-current='page'] {
+  text-underline-offset: 6px;
 }
 
 .site-header__actions {

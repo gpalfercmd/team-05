@@ -163,6 +163,28 @@ pre {
   }
 }
 
+/* A short band with a single line (the home page's link to the workspace). */
+.band.band--compact {
+  padding-block: var(--space-lg);
+}
+
+.workspace-teaser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.workspace-teaser h2,
+.workspace-teaser p {
+  margin: 0;
+}
+
+.workspace-teaser h2 {
+  font-size: var(--text-subheading-size);
+}
+
 /* Section head: eyebrow, title, one muted line, then the section's content. */
 .section-head {
   display: grid;
@@ -460,6 +482,10 @@ pre {
 .skeleton__block--title {
   height: 24px;
   width: 60%;
+}
+
+.skeleton__block--row {
+  height: 40px;
 }
 
 .skeleton__block--short {

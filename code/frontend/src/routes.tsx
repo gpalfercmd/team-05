@@ -10,6 +10,7 @@ import { AppLayout } from './components/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PublicClaimPage } from './pages/PublicClaimPage';
+import { WorkspacePage } from './pages/WorkspacePage';
 
 export const routes: RouteObject[] = [
   {
@@ -17,6 +18,7 @@ export const routes: RouteObject[] = [
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'workspace', element: <WorkspacePage /> },
       { path: 'claims/:claimId', element: <PublicClaimPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

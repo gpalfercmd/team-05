@@ -54,6 +54,20 @@ describe('routes', () => {
     expect(screen.getAllByRole('link', { name: 'Open and verify' })).toHaveLength(MOCK_CLAIMS.length);
   });
 
+  it('keeps the role screens off the home page and links to the workspace instead', async () => {
+    renderRoute('/');
+    await screen.findByRole('heading', { level: 1, name: 'Check aid claims without exposing people' });
+    expect(screen.queryByRole('heading', { name: 'Your wallet' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Demo data: role actions need a real chain/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open your workspace' })).toHaveAttribute('href', '/workspace');
+  });
+
+  it('renders the workspace page with the role screens', async () => {
+    renderRoute('/workspace');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your workspace' })).toBeInTheDocument();
+    expect(screen.getByText(/Demo data: role actions need a real chain/)).toBeInTheDocument();
+  });
+
   it('shows a demo claim on its public page with its status and fingerprints', async () => {
     renderRoute(`/claims/${verifiedClaim.claimId}`);
     expect(await screen.findByRole('heading', { level: 1, name: 'Claim record' })).toBeInTheDocument();
