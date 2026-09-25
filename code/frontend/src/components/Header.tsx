@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Site header: brand left, section links + workspace, demo notice, theme toggle and wallet right
+// Proof of Aid — Team 05 — Site header: cleartrust brand left, section links + workspace, demo notice, theme toggle and wallet right
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -7,9 +7,9 @@
 
 import { Link, NavLink } from 'react-router';
 import { useAppConfig } from '../hooks/useAppConfig';
+import { CleartrustMark } from './CleartrustMark';
 import { ConnectButton } from './ConnectButton';
 import { DemoDataNotice } from './DemoDataNotice';
-import { ShieldCheckIcon } from './icons';
 import { ThemeToggle } from './ThemeToggle';
 import './Header.css';
 
@@ -26,9 +26,11 @@ export function Header() {
   return (
     <header className="site-header">
       <div className="container site-header__inner">
-        <Link to="/" className="site-header__brand">
-          <ShieldCheckIcon size={22} />
-          <span>Proof of Aid</span>
+        <Link to="/" className="site-header__brand" aria-label="cleartrust home">
+          <CleartrustMark size={26} />
+          <span className="brand__word" aria-hidden="true">
+            clear<span className="brand__trust">trust</span>
+          </span>
         </Link>
         <nav className="site-header__nav" aria-label="Main">
           {SECTION_LINKS.map((link) => (

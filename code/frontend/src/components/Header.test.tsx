@@ -13,6 +13,13 @@ import { renderRoute } from '../test/renderRoute';
 const nav = async () => screen.findByRole('navigation', { name: 'Main' });
 
 describe('Header', () => {
+  it('shows the cleartrust brand linking home', async () => {
+    renderRoute('/');
+    const brand = await screen.findByRole('link', { name: 'cleartrust home' });
+    expect(brand).toHaveAttribute('href', '/');
+    expect(brand).toHaveTextContent('cleartrust');
+  });
+
   it('links to the home sections and to the workspace page, no longer to a wallet section', async () => {
     renderRoute('/');
     const links = within(await nav()).getAllByRole('link');

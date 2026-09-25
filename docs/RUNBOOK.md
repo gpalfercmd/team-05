@@ -65,7 +65,7 @@ run the `anvil` and deploy snippets of B before C.
 This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
 
 ```bash
-cd backend
+cd code/backend
 docker compose up -d        # Postgres 16, role poa / db proof_of_aid, port 5432
 ```
 
@@ -77,30 +77,31 @@ uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_n
 
 This section is technically explained at [code/README.md → C. Backend and indexer, note 3](../code/README.md#c-backend-and-indexer-note-3).
 
-```bash
-# 1. API (terminal 1)
-DEPLOYMENT_FILE=../shared/deployments/anvil.json \
-uv run uvicorn app.main:create_app --factory --port 8000     # Ctrl+C to stop
+The API:
 
-# 2. Indexer (terminal 2)
-DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545 \
-INDEXER_CONFIRMATIONS=0 uv run python -m app.indexer --once
+```bash
+cd code/backend && uv run uvicorn app.main:create_app --factory --port 8000
 ```
+
+The indexer, which keeps reading new blockchain events:
+
+```bash
+cd code/backend && uv run python -m app.indexer
+```
+
+Then reload http://localhost:5173/workspace. Use `localhost`, not `127.0.0.1`.
 
 This section is technically explained at [code/README.md → C. Backend and indexer, note 4](../code/README.md#c-backend-and-indexer-note-4).
 
-**Expected result:**
+**Check it's up:**
 
 ```bash
-curl -s localhost:8000/health                       # {"status":"ok"}
-curl -s localhost:8000/public/indexer/status        # chainId, both registries, indexedToBlock, lag
-curl -s localhost:8000/public/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28/timeline
-                                                    # the demo claim's events, status "Verified", 2 evidence roots
+curl localhost:8000/public/indexer/status
 ```
 
 This section is technically explained at [code/README.md → C. Backend and indexer, note 5](../code/README.md#c-backend-and-indexer-note-5).
 
-The indexer's `--once` run exits 0; a second run adds no events (idempotent). To let the page use
+The indexer keeps running and polls for new blocks (Ctrl+C to stop); `--once` indexes up to the current block and exits 0, and a second run adds no events (idempotent). To let the page use
 the API, add `VITE_API_URL=http://localhost:8000` to the frontend command of path A or B; the page
 then says "History from the indexer API" and still reads status and roots from the contract. The
 backend's `CORS_ORIGINS` (default `http://localhost:5173`) must list the page's exact origin.

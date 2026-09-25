@@ -89,7 +89,13 @@ export function DashboardPage() {
         </ul>
       </div>
 
-      <section className="band band--compact" aria-labelledby="about-heading">
+      {/* Band colour follows its neighbours so sections alternate: in demo mode the sample
+          claims below are on neutral, so About takes surface; on a real chain How-it-works
+          below needs surface for its step cards, so About stays neutral. */}
+      <section
+        className={contracts.mode === 'mock' ? 'band band--compact band--alt' : 'band band--compact'}
+        aria-labelledby="about-heading"
+      >
         <div className="section-head">
           <p className="eyebrow">The project</p>
           <h2 id="about-heading">What is Proof of Aid?</h2>
@@ -113,7 +119,7 @@ export function DashboardPage() {
       </section>
 
       {contracts.mode === 'mock' && (
-        <section className="band band--alt" id="claims" aria-labelledby="demo-claims-heading">
+        <section className="band" id="claims" aria-labelledby="demo-claims-heading">
           <div className="section-head">
             <p className="eyebrow">Public records</p>
             <h2 id="demo-claims-heading">Sample claims</h2>
@@ -141,7 +147,7 @@ export function DashboardPage() {
         </section>
       )}
 
-      <section className="band" id="how-it-works" aria-labelledby="how-heading">
+      <section className="band band--alt" id="how-it-works" aria-labelledby="how-heading">
         <div className="section-head">
           <p className="eyebrow">How it works</p>
           <h2 id="how-heading">How tracking works</h2>
