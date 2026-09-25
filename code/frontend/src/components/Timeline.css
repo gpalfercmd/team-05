@@ -9,9 +9,11 @@
   display: grid;
   gap: var(--space-lg);
   margin: var(--space-md) 0;
+  margin-left: 13px;
   padding: 0 0 0 var(--space-lg);
   list-style: none;
   border-left: 2px solid var(--color-border);
+  counter-reset: timeline-step;
 }
 
 .timeline__entry {
@@ -20,20 +22,34 @@
   justify-items: start;
   gap: var(--space-xs);
   min-width: 0;
+  counter-increment: timeline-step;
   animation: timeline-appear var(--duration-panel) var(--ease-standard);
 }
 
-/* Marker on the line; decorative, the order of the list carries the meaning. */
+/* Numbered step circle on the line; the latest step is filled. Decorative: the order of the
+   list (an <ol>) already carries the numbering for assistive technology. */
 .timeline__entry::before {
-  content: '';
+  content: counter(timeline-step);
+  content: counter(timeline-step) / '';
   position: absolute;
-  top: 0.45em;
-  left: calc(-1 * var(--space-lg) - 7px);
-  width: 12px;
-  height: 12px;
+  top: 0;
+  left: calc(-1 * var(--space-lg) - 15px);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: var(--text-caption-size);
+  font-weight: 600;
+  color: var(--color-on-neutral);
   background: var(--color-surface);
   border: 2px solid var(--color-secondary);
   border-radius: var(--radius-full);
+}
+
+.timeline__entry:last-child::before {
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 .timeline__sentence {

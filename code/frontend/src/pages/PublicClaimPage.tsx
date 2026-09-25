@@ -79,8 +79,10 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
   }, [claim]);
   return (
     <>
-      <ClaimRecord claim={claim} />
-      <ClaimMetadata claim={claim} />
+      <div className="claim-overview">
+        <ClaimRecord claim={claim} />
+        <ClaimMetadata claim={claim} />
+      </div>
       <VerificationSummary claim={claim} />
       <EscrowStatus escrow={claim.escrow} now={chainNow === undefined ? undefined : Number(chainNow)} />
       <SettlePanel claim={claim} />
@@ -146,7 +148,8 @@ export function PublicClaimPage() {
 
   return (
     <div className="page">
-      <div>
+      <div className="page__header">
+        <p className="eyebrow">Public claim record</p>
         <h1>Claim record</h1>
         <p className="page__lead">
           Anyone can check this claim. Its evidence stays private; only its fingerprints are public.

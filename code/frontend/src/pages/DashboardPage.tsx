@@ -5,7 +5,8 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { Link } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router';
 import { ClaimLookup } from '../components/ClaimLookup';
 import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
 import { StatusBadge } from '../components/StatusBadge';
@@ -20,19 +21,41 @@ const HERO_BADGES = [
   { icon: ShieldCheckIcon, title: 'Re-verify yourself', text: 'Drop a file in your browser. Nothing leaves your device.' },
 ] as const;
 
+// Facts about how the system works, not usage numbers: every value must stay true.
+const HERO_STATS = [
+  { value: 'Onchain', label: 'Evidence fingerprints' },
+  { value: '0', label: 'Personal data onchain' },
+  { value: '2-stage', label: 'Verification' },
+  { value: 'Arbitrum', label: 'Ethereum layer 2' },
+] as const;
+
 const HOW_IT_WORKS = [
   { title: 'Open a sample claim', text: 'See its status, checks and full history read from the blockchain.' },
   { title: 'Download a receipt', text: 'Public evidence files are free to download from the Evidence section.' },
   { title: 'Drop it to verify', text: 'Your browser re-hashes it and compares it with the onchain fingerprint.' },
 ] as const;
 
+/** Header links point at `/#section`; a client-side navigation does not scroll there by itself. */
+function useScrollToHash() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash.length > 1) {
+      document.getElementById(hash.slice(1))?.scrollIntoView();
+    }
+  }, [hash]);
+}
+
 export function DashboardPage() {
   const { contracts } = useAppConfig();
   const featuredClaim = MOCK_CLAIMS[0];
+  useScrollToHash();
   return (
-    <div className="page">
-      <div className="hero">
-        <p className="hero__eyebrow">Open verification · No login needed</p>
+    <div className="page page--bands">
+      <div className="band hero">
+        <p className="pill-tag">
+          <span className="dot" aria-hidden="true" />
+          Open verification · No login needed
+        </p>
         <h1>Check aid claims without exposing people</h1>
         <p className="page__lead">
           Record aid evidence, have it checked, and let anyone confirm it was not changed — without
@@ -54,19 +77,21 @@ export function DashboardPage() {
             How tracking works
           </a>
         </div>
-        <ul className="hero__badges">
-          {HERO_BADGES.map((badge) => (
-            <li key={badge.title} className="hero__badge">
-              <badge.icon size={20} className="hero__badge-icon" aria-hidden="true" />
-              <p className="hero__badge-title">{badge.title}</p>
-              <p className="hero__badge-text">{badge.text}</p>
+        <ul className="stats">
+          {HERO_STATS.map((stat) => (
+            <li key={stat.label}>
+              <span className="stats__value">{stat.value}</span>
+              <span className="stats__label">{stat.label}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      <section className="card" id="how-it-works" aria-labelledby="how-heading">
-        <h2 id="how-heading">How tracking works</h2>
+      <section className="band band--alt" id="how-it-works" aria-labelledby="how-heading">
+        <div className="section-head">
+          <p className="eyebrow">How it works</p>
+          <h2 id="how-heading">How tracking works</h2>
+        </div>
         <ol className="steps">
           {HOW_IT_WORKS.map((step, index) => (
             <li key={step.title} className="steps__item">
@@ -78,32 +103,54 @@ export function DashboardPage() {
             </li>
           ))}
         </ol>
+        <ul className="principles">
+          {HERO_BADGES.map((badge) => (
+            <li key={badge.title} className="principles__item">
+              <badge.icon size={20} className="principles__icon" aria-hidden="true" />
+              <p className="principles__title">{badge.title}</p>
+              <p className="principles__text">{badge.text}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <section className="card" aria-labelledby="wallet-heading">
-        <h2 id="wallet-heading">Your wallet</h2>
-        <WalletPanel />
+      <section className="band" id="wallet" aria-labelledby="wallet-heading">
+        <div className="section-head">
+          <p className="eyebrow">Role screens</p>
+          <h2 id="wallet-heading">Your wallet</h2>
+        </div>
+        <div className="card">
+          <WalletPanel />
+        </div>
       </section>
 
       {contracts.mode === 'chain' && (
-        <section className="card" aria-labelledby="find-claim-heading">
-          <h2 id="find-claim-heading">Find a claim</h2>
-          <p className="muted">
-            Open the demo claim recorded on the blockchain, or paste the ID of any other claim.
-          </p>
-          <p>
-            <Link to={`/claims/${FULL_STORY_CLAIM_ID}`}>Demo claim</Link>{' '}
-            <code>{truncateMiddle(FULL_STORY_CLAIM_ID)}</code>: verified after a proof request and a
-            dismissed dispute.
-          </p>
-          <ClaimLookup />
+        <section className="band band--alt" id="claims" aria-labelledby="find-claim-heading">
+          <div className="section-head">
+            <p className="eyebrow">Public records</p>
+            <h2 id="find-claim-heading">Find a claim</h2>
+            <p className="muted">
+              Open the demo claim recorded on the blockchain, or paste the ID of any other claim.
+            </p>
+          </div>
+          <div className="card">
+            <p>
+              <Link to={`/claims/${FULL_STORY_CLAIM_ID}`}>Demo claim</Link>{' '}
+              <code>{truncateMiddle(FULL_STORY_CLAIM_ID)}</code>: verified after a proof request and a
+              dismissed dispute.
+            </p>
+            <ClaimLookup />
+          </div>
         </section>
       )}
 
       {contracts.mode === 'mock' && (
-        <section className="card" aria-labelledby="demo-claims-heading">
-          <h2 id="demo-claims-heading">Sample claims</h2>
-          <p className="muted">Real claim shapes with made-up evidence. Open one and try the check yourself.</p>
+        <section className="band band--alt" id="claims" aria-labelledby="demo-claims-heading">
+          <div className="section-head">
+            <p className="eyebrow">Public records</p>
+            <h2 id="demo-claims-heading">Sample claims</h2>
+            <p className="muted">Real claim shapes with made-up evidence. Open one and try the check yourself.</p>
+          </div>
           <ul className="claim-cards">
             {MOCK_CLAIMS.map((claim) => (
               <li key={claim.claimId} className="claim-card">

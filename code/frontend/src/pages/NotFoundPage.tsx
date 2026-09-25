@@ -10,12 +10,15 @@ import { Link } from 'react-router';
 export function NotFoundPage() {
   return (
     <div className="page">
-      <div>
+      <div className="page__header">
+        <p className="eyebrow">Error 404</p>
         <h1>Page not found</h1>
         <p className="page__lead">This address does not match any page.</p>
       </div>
       <p>
-        <Link to="/">Go to the dashboard</Link>
+        <Link className="btn btn-primary" to="/">
+          Go to the dashboard
+        </Link>
       </p>
     </div>
   );
