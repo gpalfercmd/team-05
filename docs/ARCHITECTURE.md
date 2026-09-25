@@ -418,7 +418,10 @@ whitelist.
 3. Per file (≤ 25 MiB):
    1. **Sanitize:** Pillow opens the bytes; JPEG, PNG and WebP are re-encoded in their own format
       without EXIF/GPS, ancillary chunks or ICC profile (JPEG with alpha converted to RGB, other image
-      formats to PNG); non-images pass through unchanged.
+      formats to PNG). PDFs (detected by their `%PDF-` header, never by file name) are rewritten
+      without the `/Info` dictionary, XMP `/Metadata`, page `/PieceInfo` and unreferenced objects
+      (earlier incremental revisions); an encrypted or unparseable PDF is rejected with HTTP 422.
+      Every other type passes through unchanged.
    2. **Salt and fingerprint:** `salt` = 32 random bytes; `commitment = SHA-256(salt ‖ sanitized)`,
       stored in `sha256_hex` (the Merkle leaf input).
    3. **Derive the claim key:** `HKDF-SHA256(EVIDENCE_ENCRYPTION_KEY, salt = claimId (32 bytes),
