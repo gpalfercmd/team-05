@@ -42,14 +42,13 @@ separate *what is proven* (the evidence is unchanged since it was anchored, who 
 whether it was disputed) from *what is shown* (nothing personal: fingerprints, roots, wallet
 addresses, status).
 
-**The area's questions, answered by the prototype:**
-
-| Question | Answer |
-| --- | --- |
-| Who verifies claims? | An internal verifier of the organization (never the submitting wallet), then the external auditor the Accreditation Authority assigned (final). Supplementary proof is confirmed by a second internal verifier, different from the checkpoint-1 verifier. |
-| How is evidence checked? | Every file is fingerprinted after metadata stripping as a salted commitment SHA-256(salt ‖ bytes); the bundle's Merkle root is anchored onchain before review. Anyone recomputes the root in the browser; any change after anchoring is a mismatch. |
-| How is it disputed? | Any accredited wallet other than the claim's organization and its approving auditor can dispute a `Verified` claim within 60 days of the approval, posting a bond and a counter-evidence hash; the Accreditation Authority upholds or dismisses it; deposits move accordingly. |
-| How is it kept private? | Files are encrypted at rest with a per-claim key and decrypted only for the organization, its active internal verifiers and the assigned auditor. Outsiders see private files as a fingerprint only (no name, type, size or uploader). Nothing personal goes onchain. |
+**The area's questions** (who verifies claims, how evidence is checked, how it is disputed, how it
+is kept private) are answered in
+[ARCHITECTURE.md → Implementation focus](ARCHITECTURE.md#implementation-focus). In short: an
+internal verifier and then an independently accredited, assigned auditor verify; salted file
+fingerprints are checked against a Merkle root anchored onchain; accredited third parties dispute
+with a bond within 60 days; files stay offchain and encrypted, and outsiders see private files as a
+fingerprint only.
 
 **Where it fits.** It covers the *Verification* step of
 `Need → Verification → Funding → Delivery → Outcome → Transparent history`, and feeds *Transparent
@@ -59,84 +58,65 @@ but not implemented. The P9 escrow is not donor funding: it holds the participan
 
 ### What works and how
 
+Each item is a short summary; the linked ARCHITECTURE section has the full mechanics.
+
 1. **Accreditation (`ParticipantRegistry`).** The Registry Admin registers organizations and their
-   internal verifiers; a separate Accreditation Authority accredits auditors (OpenZeppelin
-   `AccessControl`, each admin role administers only its own participant roles, nobody holds
-   `DEFAULT_ADMIN_ROLE`). A wallet holds one participant role **for life**: a wallet that was ever an
-   organization, internal verifier or auditor can never be registered again in any role
-   (`AlreadyAccredited`). While building we found that "one role at a time" let a revoked verifier be
-   re-accredited as auditor and sign both checkpoints of the same claim.
+   internal verifiers; a separate Accreditation Authority accredits auditors. A wallet holds one
+   participant role **for life**, which closes an attack found while building (a revoked verifier
+   re-accredited as auditor signing both checkpoints of the same claim). See
+   [ARCHITECTURE.md → Roles and permissions](ARCHITECTURE.md#roles-and-permissions).
 2. **Verification state machine (`ClaimRegistry`).** `Anchored → InternallyVerified →
    (ProofRequested ⇄ ProofSubmitted) → Verified | Rejected`, then `Verified → Disputed → Verified |
-   Rejected`. Every other call reverts (`InvalidStatus`). The contract enforces separation of duties
-   (submitter ≠ checkpoint-1 verifier ≠ proof confirmer), that only the auditor the Authority
-   assigned can act, that an organization needs two active verifiers to anchor, that evidence roots
-   are append-only, and that a revoked organization's claim can be rejected but never (re)verified.
-   Every transition emits `StatusChanged` plus an action event.
-3. **Evidence pipeline (FastAPI backend).** Wallet-signature login (EIP-191 over a single-use nonce,
-   10-minute expiry) opens a session. `POST /claims` stores the title, description, region and date
-   and returns the claim ID (`keccak256` of a random UUID) and the `metadataHash` to anchor. Uploads
-   (max 25 MiB per file) are sanitized (JPEG/PNG/WebP re-encoded without EXIF/GPS or ICC data; other
-   files pass through unchanged), committed as SHA-256(random 32-byte salt ‖ sanitized bytes),
-   checked for duplicates with a per-claim HMAC, and encrypted with AES-256-GCM under a per-claim key
-   derived by HKDF from the master key. Files are grouped into bundles (0 = original evidence,
-   n = answer to proof request n) and the upload returns that bundle's Merkle root, which equals the
-   root the organization anchors.
-4. **Access control follows the chain.** With `ROLE_SOURCE=chain` (the default when a deployment
-   file is configured) the backend decides who may decrypt from the indexed registries: the
-   organization that created the claim, its active internal verifiers while the organization is
-   active, and the auditor assigned onchain, only if the claim was anchored by the organization that
-   created it. Denied private reads answer 404, like a missing file.
-5. **Public verification (React, no wallet, no login).** The claim page reads status, claim record,
-   evidence roots, escrow and full history **directly from `ClaimRegistry`** (views plus
-   `eth_getLogs` filtered by claim ID). A visitor drops a file: the browser computes its SHA-256 (and,
-   for salted public files, SHA-256(salt ‖ file)) and checks it against a bundle file list that is
-   accepted only if its recomputed root equals the onchain root, or drops a whole bundle and compares
-   its root directly. Files never leave the browser. With the API configured, the page also shows
-   the claim's title and description, only after recomputing `metadataHash` and matching the chain.
+   Rejected`; every other call reverts, and the contract enforces separation of duties (submitter ≠
+   checkpoint-1 verifier ≠ proof confirmer) and that only the Authority-assigned auditor can act.
+   Guards, events and ETH per function:
+   [ARCHITECTURE.md → Claim lifecycle](ARCHITECTURE.md#claim-lifecycle-enforced-onchain).
+3. **Evidence pipeline (FastAPI backend).** After a wallet-signature login, uploads are stripped of
+   image metadata, committed as SHA-256(random salt ‖ sanitized bytes), encrypted with AES-256-GCM
+   under a per-claim key and grouped into bundles whose Merkle root is the root the organization
+   anchors. Step by step: [ARCHITECTURE.md → Evidence pipeline](ARCHITECTURE.md#evidence-pipeline).
+4. **Access control follows the chain.** With `ROLE_SOURCE=chain` only the organization, its active
+   internal verifiers and the auditor assigned onchain can decrypt a claim's private files; denied
+   reads answer 404, like a missing file. Access matrix:
+   [ARCHITECTURE.md → Backend API](ARCHITECTURE.md#backend-api).
+5. **Public verification (React, no wallet, no login).** The claim page reads status, roots, escrow
+   and history **directly from `ClaimRegistry`** and checks a dropped file or a whole bundle against
+   the onchain root in the browser; files never leave it, and the claim's title and description are
+   shown only when their hash matches `metadataHash`. Algorithm:
+   [ARCHITECTURE.md → Public verification algorithm](ARCHITECTURE.md#public-verification-algorithm).
 6. **Role screens (React + wagmi/viem, MetaMask).** The dashboard reads the connected wallet's role
-   from `ParticipantRegistry` and offers only the actions `ClaimRegistry` would accept on each claim.
-   Every call is simulated first (reverts explained in plain English), then signed; payable amounts
-   are read from the contract, never typed.
+   and offers only the actions `ClaimRegistry` would accept; every call is simulated first (reverts
+   explained in plain English), then signed, with payable amounts read from the contract. See
+   [ARCHITECTURE.md → Components](ARCHITECTURE.md#components).
 7. **Fraud costs money (P9).** `ClaimRegistry` escrows ETH per claim: the organization deposits a
-   penalty plus the auditor's reward when anchoring, the auditor deposits when approving, and a
-   disputant posts a bond. Payouts are credited and pulled with `withdraw()`. See *Incentives* below.
+   penalty plus the auditor's reward when anchoring, the auditor deposits when approving and a
+   disputant posts a bond; payouts are credited and pulled with `withdraw()`. Amounts and who gets
+   what in each outcome:
+   [ARCHITECTURE.md → Incentives](ARCHITECTURE.md#incentives-deposits-rewards-and-penalties-p9).
 8. **Chain indexer (optional speed-up).** A web3.py poller copies both registries' events into
-   PostgreSQL (idempotent, restart-safe, 5-block confirmation margin by default), projects
-   participants and claims for the access rules, and serves a public timeline API. The page uses the
-   API history only when it provably ends in the contract's current state; otherwise it reads the chain.
-9. **One recipe, three implementations.** The Merkle recipe and the metadata recipe are implemented in
-   Python (`code/shared/poa_shared`), TypeScript (browser) and, for Merkle, Solidity tests with
-   OpenZeppelin `MerkleProof`; all pass the same committed vectors byte for byte.
+   PostgreSQL, feeds the backend's access rules and serves a public timeline API; the page uses it
+   only when it provably matches the contract. See [ARCHITECTURE.md → Indexer](ARCHITECTURE.md#indexer).
+9. **One recipe, three implementations.** The Merkle and metadata recipes are implemented in Python,
+   TypeScript and (Merkle) Solidity tests, and all pass the same committed vectors byte for byte. See
+   [ARCHITECTURE.md → Merkle recipe](ARCHITECTURE.md#merkle-recipe-frozen-in-p1-codesharedpoa_sharedmerklepy)
+   and [→ `metadataHash` recipe](ARCHITECTURE.md#metadatahash-recipe-p84-codesharedpoa_sharedmetadatapy).
 
 ### End-to-end flow
 
-Amounts: Sepolia deployment (1/100 scale), then the production reference in brackets. "Credited"
-means added to `credits(account)`; ETH leaves the contract only through `withdraw()`.
+Accreditation → wallet login and claim record → evidence upload (bundle 0) → `anchorClaim` with
+the organization's deposit → checkpoint 1 (`attestInternal`) → auditor assignment → optional proof
+loop (`requestProof`, `submitProof`, `confirmProof` by a second verifier) → `attestFinal` with the
+auditor's deposit → optional dispute within 60 days (`openDispute`, `resolveDispute`) → `settle` and
+`withdraw` → public verification. The full flow is in
+[ARCHITECTURE.md → End-to-end flow](ARCHITECTURE.md#end-to-end-flow); each function's caller,
+status change and ETH movement in
+[ARCHITECTURE.md → Claim lifecycle](ARCHITECTURE.md#claim-lifecycle-enforced-onchain).
 
-| # | Actor (wallet) | Action (backend call or contract function) | Status before → after | Money |
-| ---: | --- | --- | --- | --- |
-| 0 | Registry Admin; Accreditation Authority | `registerOrganization(org)`, `registerInternalVerifier(v, org)` ×2; `accreditAuditor(a)` | — (no claim yet) | none |
-| 1 | Organization | `POST /auth/challenge` → sign the message in the wallet → `POST /auth/verify` (session cookie) | — | none |
-| 2 | Organization | `POST /claims` (title, description, region, date) → `claim_id_hex`, `metadata_hash_hex` | — (backend record only) | none |
-| 3 | Organization | `POST /claims/{id}/evidence` with `root_index=0` → sanitize, salt, fingerprint, encrypt → `evidence_root` | — | none |
-| 4 | Organization | `anchorClaim(claimId, evidenceRoot, metadataHash)` | `None → Anchored` | organization pays `anchorDeposit()` = 0.0101 ETH (1.01) |
-| 5 | Internal verifier 1 | `attestInternal(claimId, approve, justificationHash)` | `Anchored → InternallyVerified` (approve) or `→ Rejected` (reject) | reject: organization credited 0.0101 (1.01) |
-| 6 | Accreditation Authority | `assignAuditor(claimId, auditor)` (also reassignment) | no change; allowed in `InternallyVerified`, `ProofRequested`, `ProofSubmitted` | none |
-| 7 | Assigned auditor | `requestProof(claimId, requestHash)` | `InternallyVerified → ProofRequested` | none |
-| 8 | Organization | `POST /claims/{id}/evidence` with `root_index=n`, then `submitProof(claimId, supplementaryRoot)` | `ProofRequested → ProofSubmitted`; `evidenceRoots[n]` appended | none |
-| 9 | Internal verifier 2 (≠ verifier 1) | `confirmProof(claimId, accept, justificationHash)` | `ProofSubmitted → InternallyVerified` (accept) or `→ ProofRequested` (return) | none |
-| 10 | Assigned auditor | `attestFinal(claimId, approve, justificationHash)` | `InternallyVerified → Verified` (approve) or `→ Rejected` (reject) | approve: auditor pays `auditorDeposit()` = 0.001 (0.1), `verifiedAt` set; reject: pays 0, organization credited 0.0101 (1.01) |
-| 11 | Accredited third party (not the organization, not the approving auditor) | `openDispute(claimId, counterEvidenceHash)` before `verifiedAt + 60 days` | `Verified → Disputed` | disputant pays `disputeBond()` = 0.001 (0.1) |
-| 12 | Accreditation Authority | `resolveDispute(claimId, upheld, justificationHash)` | `Disputed → Verified` (dismissed) or `→ Rejected` (upheld) | dismissed: organization 0.0005 (0.05), auditor 0.0005 (0.05); upheld: disputant 0.0121 (1.21) |
-| 13 | Anyone | `settle(claimId)` once `verifiedAt + 60 days` has passed | stays `Verified`; `settled = true`, never disputable again | organization credited 0.01 (1), auditor 0.0011 (0.11) |
-| 14 | Anyone with credits | `withdraw()` | — | all of the caller's credits sent |
-| 15 | Anyone | Public claim page: read the chain, drop a file or bundle, compare roots in the browser | — | none |
-
-Steps 0 and 4–12 (dismissed branch) are the Arbitrum Sepolia demo, executed by
-`DemoLifecycle.s.sol` (transactions in section 3). On the demo claim, which the script anchored
-directly, steps 1–3 and the backend upload of step 8 did not happen: its roots are the Merkle roots of
-the committed demo files. Steps 1–15 all run from the role screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
+The Arbitrum Sepolia demo, executed by `DemoLifecycle.s.sol`, runs from accreditation to the
+dismissed dispute (transactions in section 3). It anchored the demo claim directly, so the wallet
+login, the claim record and the backend uploads did not happen on it: its roots are the Merkle roots
+of the committed demo files. The whole flow, including settlement and withdrawal, runs from the role
+screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
 ### Implementation boundary
 
@@ -183,42 +163,6 @@ Percentages describe implementation effort, must total **100%**, and have no ide
 | Real-world connection | 30% | Evidence privacy pipeline (image metadata strip, salted fingerprints of cleaned files, per-claim encryption, access control), wallet login, bundles and manifests, chain indexer and chain-driven access, accreditation of real-world entities |
 | Blockchain | 40% | Accreditation registry, claim state machine, disputes, escrow with rewards and penalties, events, 100%-coverage test suite with fuzzing and invariants, deployment and full lifecycle on Arbitrum Sepolia |
 
-### Incentives: who pays whom
-
-Parameters are immutable constructor arguments of `ClaimRegistry` (all non-zero), readable with
-getters of the same name. Sepolia uses 1/100 of the reference amounts and the real 60-day window.
-
-| Parameter | Reference | Arbitrum Sepolia |
-| --- | ---: | ---: |
-| `organizationPenalty` | 1 ETH | 0.01 ETH |
-| `auditorReward` | 0.01 ETH | 0.0001 ETH |
-| `anchorDeposit()` = penalty + reward | 1.01 ETH | 0.0101 ETH |
-| `auditorDeposit` | 0.1 ETH | 0.001 ETH |
-| `disputeBond` | 0.1 ETH | 0.001 ETH |
-| `disputeWindow` | 60 days (5,184,000 s) | 60 days |
-
-| Moment | Caller | Pays in (reference / Sepolia) | Credited (reference / Sepolia) | Escrow still held for the claim (`lockedOf`, Sepolia) |
-| --- | --- | --- | --- | --- |
-| **Anchor** `anchorClaim` | Organization | 1.01 / 0.0101 (exact `msg.value`) | — | 0.0101 |
-| **Approve at checkpoint 1** `attestInternal(true)` | Internal verifier | nothing | — | 0.0101 |
-| **Reject** at checkpoint 1 (`attestInternal(false)`) or by the auditor (`attestFinal(false)`, `msg.value` 0) | Verifier / auditor | nothing | organization: 1.01 / 0.0101 (its whole deposit) | 0 |
-| **Approve** `attestFinal(true)` | Assigned auditor | 0.1 / 0.001 | — | 0.0111 |
-| **Dispute** `openDispute` (only before `verifiedAt + 60 days`) | Accredited third party | 0.1 / 0.001 | — | 0.0121 |
-| **Uphold** `resolveDispute(true)` | Authority | — | disputant: bond + penalty + auditor deposit + reward = 1.21 / 0.0121 | 0 (claim `Rejected`) |
-| **Dismiss** `resolveDispute(false)` | Authority | — | auditor: half the bond 0.05 / 0.0005; organization: the rest (with any odd wei) 0.05 / 0.0005 | 0.0111 (claim `Verified`, same window) |
-| **Settle** `settle` (window closed, not `Disputed`, not settled) | Anyone | — | organization: penalty 1 / 0.01; auditor: deposit + reward 0.11 / 0.0011 | 0 |
-| **Withdraw** `withdraw()` | Anyone with credits | — | sends all of the caller's credits; `NothingToWithdraw` when zero | unchanged |
-
-Rules the table does not show: the prepaid reward goes to the disputant, not back to the
-organization, when fraud is proven (the organization caused it). The window starts once, at the
-approval, and a dismissal does not restart it, so each repeat dispute costs a bond and every claim is
-free of disputes 60 days after its approval. The organization and the approving auditor cannot
-dispute their own claim (`CannotDisputeOwnClaim`): an upheld self-dispute would pay the forfeited
-deposits back to the wrongdoers. `withdraw` is the only function that sends ETH (checks-effects-
-interactions plus OpenZeppelin `ReentrancyGuard`); no function loops over claims; the contract has
-no `receive`. A fuzzed invariant checks `contract balance == Σ credits + Σ lockedOf == Σ paid in − Σ
-withdrawn`.
-
 ### Security fixes from the logic review
 
 A logic review of the verification flow on 2026-09-24 produced four fixes, each with its own tests.
@@ -227,8 +171,8 @@ A logic review of the verification flow on 2026-09-24 produced four fixes, each 
 | --- | --- | --- | --- |
 | **P8.1** Revoked organization | An auditor could still approve, or the Authority dismiss a dispute on, the claim of an organization the Registry Admin had revoked (for example for fraud), so the claim ended `Verified`. | `attestFinal(approve)`, `requestProof` and `resolveDispute(dismiss)` revert `NotActiveOrganization(claim.organization)` when the claim's organization is revoked; reject, dispute and uphold stay allowed. Contracts redeployed. | Commit `8dfae6b` (+ redeploy `c766986`, superseded by the P9 redeploy `b780756`). Tests in `code/contracts/test/ClaimRegistry.t.sol`: `test_AttestFinal_RevokedOrganizationCannotBeVerified`, `test_ResolveDispute_RevokedOrganizationCannotBeDismissed`, `test_RequestProof_RevokedOrganizationCannotBeAskedForProof`, `test_RevokedOrganizationClaimNeverBecomesVerified_AllActionsActorsAndDecisions` (every action × status × actor × decision), and the invariant `invariant_RevokedOrganizationNeverBecomesVerified`. |
 | **P8.2** Salted commitments | A public fingerprint SHA-256(file) lets anyone who can guess a private file (a standard form, a known photo) confirm it is part of a claim. | Every new upload is committed as SHA-256(salt ‖ sanitized bytes) with a random 32-byte salt, sealed with the claim key; public files publish their salt (claim view, manifest v2); duplicates are detected with a per-claim HMAC. The Merkle recipe and the contracts are unchanged (the commitment is the leaf input). | Commits `e73f0b8` (shared helper + salted vectors), `2b0e510` (backend + migration 0004 + manifest v2), `3dc40c2` (browser verifier), `dfc3b02` (docs). Tests: `code/backend/tests/test_salted_commitments.py` (10), the salted cases of `code/shared/tests/test_merkle.py`, and `code/frontend/src/evidence/verification.test.ts` (*never matches a private salted file from a guessed copy*, *matches a public salted file through SHA-256(salt ‖ file)*). |
-| **P8.4** Metadata check | The title and description live only in the backend; a server could show donors a different text than the one the organization anchored. | `metadataHash` = keccak256 of the UTF-8 fields joined by a line feed (recipe below), frozen by `code/shared/metadata-vectors.json`; the API rejects line breaks in the title and region; the public page recomputes the hash over the onchain claim ID and shows the text only on a match. | Commit `17171ac`. Tests: `code/shared/tests/test_metadata.py`, `code/backend/tests/test_metadata.py`, `code/frontend/src/utils/metadata.test.ts`, `src/data/claimMetadata.test.ts`, `src/components/ClaimMetadata.test.tsx`. |
-| **P9** Incentives | Fraud and disputes were free: an organization or colluding auditor risked nothing, and any accredited wallet could dispute the same claim over and over. | Per-claim ETH escrow (tables above), 60-day window set once at approval, bond per dispute, no self-dispute, pull payments. Interface extended; contracts redeployed. | Commits `7c0d842` (contract + tests), `691717c` (scripts, ABI, indexer), `7fdfb5b` (Deposits card), `e4180a9` (docs), `b780756` (Sepolia redeploy). Tests: `code/contracts/test/ClaimRegistryIncentives.t.sol` (37: every path, window boundary with `vm.warp`, odd bond, reentrant and rejecting receivers) and the invariants `invariant_BalanceEqualsCreditsPlusLockedEscrow`, `invariant_SettledClaimsArePastTheirWindow`. |
+| **P8.4** Metadata check | The title and description live only in the backend; a server could show donors a different text than the one the organization anchored. | `metadataHash` = keccak256 of the UTF-8 fields joined by a line feed ([recipe](ARCHITECTURE.md#metadatahash-recipe-p84-codesharedpoa_sharedmetadatapy)), frozen by `code/shared/metadata-vectors.json`; the API rejects line breaks in the title and region; the public page recomputes the hash over the onchain claim ID and shows the text only on a match. | Commit `17171ac`. Tests: `code/shared/tests/test_metadata.py`, `code/backend/tests/test_metadata.py`, `code/frontend/src/utils/metadata.test.ts`, `src/data/claimMetadata.test.ts`, `src/components/ClaimMetadata.test.tsx`. |
+| **P9** Incentives | Fraud and disputes were free: an organization or colluding auditor risked nothing, and any accredited wallet could dispute the same claim over and over. | Per-claim ETH escrow ([ARCHITECTURE.md → Incentives](ARCHITECTURE.md#incentives-deposits-rewards-and-penalties-p9)), 60-day window set once at approval, bond per dispute, no self-dispute, pull payments. Interface extended; contracts redeployed. | Commits `7c0d842` (contract + tests), `691717c` (scripts, ABI, indexer), `7fdfb5b` (Deposits card), `e4180a9` (docs), `b780756` (Sepolia redeploy). Tests: `code/contracts/test/ClaimRegistryIncentives.t.sol` (37: every path, window boundary with `vm.warp`, odd bond, reentrant and rejecting receivers) and the invariants `invariant_BalanceEqualsCreditsPlusLockedEscrow`, `invariant_SettledClaimsArePastTheirWindow`. |
 
 Two further findings were kept as documented limitations (section 4): identity/Sybil of attesters
 and claim-ID squatting.
