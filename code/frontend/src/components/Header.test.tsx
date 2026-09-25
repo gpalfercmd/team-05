@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { renderRoute } from '../test/renderRoute';
 
@@ -26,6 +27,18 @@ describe('Header', () => {
   it('marks Workspace as the current page on /workspace only', async () => {
     renderRoute('/workspace');
     expect(within(await nav()).getByRole('link', { name: 'Workspace' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('scrolls to the section again when the same link is clicked a second time', async () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this.id);
+    };
+    renderRoute('/');
+    const link = within(await nav()).getByRole('link', { name: 'How it works' });
+    await userEvent.click(link);
+    await userEvent.click(link);
+    expect(scrolled.filter((id) => id === 'how-it-works')).toHaveLength(2);
   });
 
   it('does not mark Workspace on the home page', async () => {

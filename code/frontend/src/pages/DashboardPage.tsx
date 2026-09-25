@@ -36,12 +36,13 @@ const HOW_IT_WORKS = [
 
 /** Header links point at `/#section`; a client-side navigation does not scroll there by itself. */
 function useScrollToHash() {
-  const { hash } = useLocation();
+  // `key` changes on every navigation, so clicking the same section link again scrolls again.
+  const { hash, key } = useLocation();
   useEffect(() => {
     if (hash.length > 1) {
       document.getElementById(hash.slice(1))?.scrollIntoView();
     }
-  }, [hash]);
+  }, [hash, key]);
 }
 
 export function DashboardPage() {
