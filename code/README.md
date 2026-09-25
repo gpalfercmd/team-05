@@ -59,7 +59,7 @@ code/
 │   ├── docker-compose.yml         PostgreSQL 16 (role poa, db proof_of_aid, host port ${POSTGRES_PORT:-5432})
 │   └── .env.example               database, secrets, CORS, chain settings
 └── frontend/                      Vite app, pnpm
-    ├── src/pages/                 DashboardPage (/), PublicClaimPage (/claims/:claimId), NotFoundPage (*)
+    ├── src/pages/                 DashboardPage (/), WorkspacePage (/workspace), PublicClaimPage (/claims/:claimId), NotFoundPage (*)
     ├── src/data/                  claim sources: ChainClaimSource, ApiClaimSource, MockClaimSource; manifests;
     │                              typed ABI subset; evidence service client (login, create claim, upload)
     ├── src/evidence/              manifest schema (zod) and verification logic
@@ -411,21 +411,21 @@ indexer cursor. Empty the chain tables before indexing again (the evidence table
 
 #### D. Role screens, note 1
 
-The dashboard's **Your wallet** card reads the connected wallet's role from the `ParticipantRegistry`
+The workspace page (`/workspace`, header link **Workspace**) reads the connected wallet's role from the `ParticipantRegistry`
 (the chain is the source of truth) and shows only the actions the contracts allow that role on
 each claim. Every action is first simulated against the contract, so a rule it would break is
 explained in plain English before the wallet asks for a signature; then MetaMask signs it and the
 card shows *Confirm in wallet… → Recording… → Done ✓* with the transaction. Payable amounts
 (anchor deposit, auditor deposit, dispute bond) are read from the contract, never typed in.
 
-| Role | What it can do in the dashboard |
+| Role | What it can do in the workspace |
 | --- | --- |
 | Registry Admin | Register / revoke organizations and internal verifiers |
 | Accreditation Authority | Accredit / revoke auditors; assign an auditor to an internally verified claim; uphold or dismiss a dispute |
 | Organization | Record a claim (details + evidence through the backend, then `anchorClaim` paying `anchorDeposit()`); answer a proof request (upload bundle *n*, then `submitProof`); see its claims (with the API) |
 | Internal verifier | Checkpoint 1 (approve / reject) and confirm submitted proof, on its organization's claims; a different verifier than checkpoint 1 must confirm |
 | Auditor | On claims assigned to it: request proof, approve (locks `auditorDeposit()`) or reject (pays nothing); dispute *another* auditor's verified claim inside the window (locks `disputeBond()`) |
-| Any wallet | **Withdraw** when the contract owes it (`credits > 0`); **Settle** a verified claim once its dispute window has closed (dashboard or claim page) |
+| Any wallet | **Withdraw** when the contract owes it (`credits > 0`); **Settle** a verified claim once its dispute window has closed (workspace or claim page) |
 
 Organizations and internal verifiers may also dispute a claim that is not their own. Without
 `VITE_API_URL` there is no claim list and no evidence storage: paste a claim ID to act on it, and

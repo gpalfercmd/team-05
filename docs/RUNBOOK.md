@@ -7,7 +7,7 @@ This section is technically explained at [code/README.md → Introduction, note 
 | **A. Live Sepolia page** (read-only) | Node + pnpm | The deployed contracts on Arbitrum Sepolia and the demo claim's full history; in-browser evidence checks (match / mismatch). No wallet, no keys, no backend. |
 | **B. Local anvil demo** | + Foundry | The whole lifecycle executed on your machine by `DemoLifecycle.s.sol` (anchor → checkpoint 1 → proof loop → final approval → dispute with bond → dismissal), then the 60-day settlement of the deposits. |
 | **C. Backend + indexer** | + Python/uv + PostgreSQL | The evidence API, database migrations, the chain indexer and the public timeline API that the page can use as a speed-up. |
-| **D. Role screens** (sign from the browser) | + MetaMask (B; C to record claims and proof) | Each role signs its own actions in the dashboard: register participants, record a claim with its evidence, checkpoint 1, assign an auditor, proof loop, final decision, dispute, settle, withdraw. |
+| **D. Role screens** (sign from the browser) | + MetaMask (B; C to record claims and proof) | Each role signs its own actions on the workspace page (`/workspace`): register participants, record a claim with its evidence, checkpoint 1, assign an auditor, proof loop, final decision, dispute, settle, withdraw. |
 
 ## Requirements
 

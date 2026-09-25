@@ -2,7 +2,7 @@
 
 > **Phase:** P5.1 (moved from `/spec`, see `memory.md`)
 > **Status:** Validated baseline — extend, don't replace
-> **Last Review:** 2026-09-25 (layout restyle)
+> **Last Review:** 2026-09-25 (workspace page, skeletons, copy buttons)
 > **Applies to:** `code/frontend/` (React + Vite + TypeScript)
 
 ---
@@ -159,14 +159,15 @@ Cards: surface, radius lg, soft shadow, padding lg. Forms: one column, label abo
 
 The page **layout** follows a reference template the team provided (https://proof-of-aid.lovable.app/). Only the structure was taken; colours, fonts, radii, badges and dark mode are the tokens above, unchanged.
 
-- **Header:** brand left, section links in the middle ("How it works", "Claims", "Your wallet", pointing at dashboard sections; primary colour, as navigation), demo notice + theme toggle + wallet button right. Links hide below 960px; the header is sticky from 768px up (on phones it wraps to two rows and would take too much of the screen).
+- **Header:** brand left, links in the middle ("How it works" and "Claims" pointing at home sections, "Workspace" pointing at `/workspace` and underlined as the current page there; primary colour, as navigation), demo notice + theme toggle + wallet button right. Below 960px the links become their own full-width row under the brand (so the workspace stays one tap away on phones); the header is sticky from 768px up (on phones it wraps and would take too much of the screen).
 - **Bands:** the dashboard is a stack of full-width bands that alternate between `neutral` and `surface` (`.band`, `.band--alt`). The background bleeds to the viewport edges with `box-shadow` + `clip-path` while the content keeps the 1120px container; `body { overflow-x: clip }` guarantees no sideways scroll.
 - **Section head:** eyebrow (caption, uppercase, accent teal: 5.1:1 on neutral) → title at the `heading` size → one muted line → content.
 - **Hero:** pill tag with an accent dot ("Open verification · No login needed") → headline → lead → primary + secondary button → stat row (value in primary, uppercase caption label, hairline above; 2 columns on mobile, 4 on desktop). The stats are facts about the system, never usage numbers: Onchain / evidence fingerprints, 0 / personal data onchain, 2-stage / verification, Arbitrum / Ethereum layer 2. Only the hero headline grows past the type scale: `clamp(1.75rem, 1.25rem + 2.8vw, 3rem)`.
 - **Card grids:** numbered steps (3 columns), a joined principles grid (cells share hairlines, one column on mobile) and the sample claim cards (3 columns, badge left-aligned).
 - **Inner pages:** a page header (eyebrow, h1, lead, hairline below). On the claim page the record and "What was claimed" sit side by side from 960px.
 - **Timeline:** numbered step circles (28px) on the vertical line; the latest step is filled with the accent. The numbers are generated content with empty alt text, since the `<ol>` already numbers the entries for assistive technology.
-- **Spacing rhythm:** bands 48px vertical padding on mobile, 80px from 768px; hero 96px.
+- **Spacing rhythm:** bands 48px vertical padding on mobile, 80px from 768px; hero 96px. At ≤480px bands and hero drop to 24px, cards and grid cells to 16px padding (less empty space on phones, same layout).
+- **Workspace (`/workspace`):** an inner page (page header) with a "What needs your action" card first (one neutral row per claim: StatusBadge, HashDisplay, the action in a sentence, "Open actions" + "Public page"; "Nothing needs your action right now." when empty) and the role screens card below. Home keeps only the public story plus a compact band "Working on claims? → Open your workspace".
 
 ---
 
@@ -198,6 +199,7 @@ The page **layout** follows a reference template the team provided (https://proo
 - **2026-09-24 — "File list altered" state (P5.4):** a fourth VerificationResult state in warning colours (`alert-triangle`) when a manifest's recomputed root differs from the onchain root. It is distinct from a file mismatch: the list, not the file, was tampered with.
 - **2026-09-25 — Role screens (P5.3):** the dashboard's "Your wallet" card holds one action form per allowed action (label above input, caption hint, buttons bottom right; danger buttons for reject / revoke / uphold). A chosen claim opens in a neutral-background panel whose heading takes focus; the panel keeps a "Done ✓ … on {chain}" line with the transaction after the claim moves on and its form disappears. TxStatus is a live region under each form that takes focus when the transaction ends; errors are linked to inputs with `aria-describedby`. Multi-step evidence actions show a numbered step list ("Done ✓" / "In progress…", never colour alone).
 - **2026-09-25 — Layout from the reference template, look unchanged:** the team asked for the template's layout only (header arrangement, hero with stat row, alternating bands, card grids, numbered steps, spacing). A first pass that also took its palette (navy/orange, system font) was reverted before commit, so every token in this file is unchanged. Contrast re-checked for the new uses: accent teal eyebrow on neutral and surface ≥ 5.1:1, primary stat values 10.8:1, the filled timeline number 5.5:1 (white on teal); dark variants ≥ 8.3:1. Page checked at 1280px and 375px in light and dark (no horizontal scroll); screenshots in `docs/evidence/ui-*.png`.
+- **2026-09-25 — Workspace, skeletons and copy buttons (P5.6):** the role screens moved off the home page to `/workspace`, so the home page reads as the public story for donors and the workspace as a to-do list for participants. Loading states are skeletons shaped like the content they stand for (claim page cards, claim queue, workspace list), a busy `role="status"` with a caption label and `aria-hidden` shimmer lines, so nothing jumps when data arrives. Every claim ID, address and hash has a copy button (the shared `CopyButton` in HashDisplay and inline addresses, 24px inside sentences): it copies the full value and shows "Copied" / "Copy failed" in an `aria-live` region. A "No match" now says what it means and what to try next in body text under the verdict; colours and states are unchanged.
 - **2026-09-24 — Notices (P5.4):** "Read directly from the blockchain" / "Demo data" notes use caption text on the neutral surface with an icon; explorer links are hidden in demo mode because demo transaction hashes are not real.
 
 ---

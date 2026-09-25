@@ -4,7 +4,7 @@ React + Vite + TypeScript app for the **Trust, Evidence & Privacy** prototype: a
 where anyone can check a claim's evidence without a wallet and without seeing personal data (P5.4),
 on top of the shell (P5.2: tooling, design tokens from
 [`DESIGN.md`](../../dbv-specs-ops/docs/DESIGN.md), routing, wallet connection, `StatusBadge`,
-`HashDisplay`), and the role screens (P5.3): with a wallet connected, the dashboard reads its role
+`HashDisplay`), and the role screens (P5.3): with a wallet connected, the workspace page (`/workspace`) reads its role
 from the `ParticipantRegistry` and offers only that role's actions, signed with MetaMask (how to
 use them on anvil or Sepolia: [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
@@ -147,7 +147,7 @@ drift: if you edit a demo file, update its manifest and the roots in `src/mocks/
 
 ## Role screens (P5.3)
 
-With contract addresses configured and a wallet connected, the dashboard's **Your wallet** card:
+With contract addresses configured and a wallet connected, the workspace page (`/workspace`, header link **Workspace**) opens with **What needs your action** (the claims waiting for this wallet's role, from the indexer and re-read from the contract) and then the role screens card, which:
 
 - reads the wallet's role from the `ParticipantRegistry` (`useRole`); nothing is inferred locally;
 - lists claims to act on from the indexer (`GET /public/claims`, with `VITE_API_URL`) or takes a
@@ -190,7 +190,7 @@ src/
                       ClaimMetadata, EscrowStatus, Timeline, VerificationSummary, EvidenceSection,
                       EvidenceVerifier, VerificationResult, FileDropZone, SettlePanel, icons/,
                       wallet/ (WalletPanel and the per-role forms, TxButton, TxStatus)
-  pages/              DashboardPage, PublicClaimPage, NotFoundPage
+  pages/              DashboardPage, WorkspacePage, PublicClaimPage, NotFoundPage
   mocks/              demo claims (contract state + events) and demo manifests
   types/              ClaimView (public, onchain-only view of a claim)
   utils/              merkle, claimStatus, contractErrors, format, explorer, clipboard, result, roles,

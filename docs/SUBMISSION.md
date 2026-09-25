@@ -247,7 +247,7 @@ Each item is a short summary; the linked ARCHITECTURE section has the full mecha
    the onchain root in the browser; files never leave it, and the claim's title and description are
    shown only when their hash matches `metadataHash`. Algorithm:
    [ARCHITECTURE.md → Public verification algorithm](ARCHITECTURE.md#public-verification-algorithm).
-6. **Role screens (React + wagmi/viem, MetaMask).** The dashboard reads the connected wallet's role
+6. **Role screens (React + wagmi/viem, MetaMask).** The workspace page (`/workspace`) lists what needs the wallet's action, reads the connected wallet's role
    and offers only the actions `ClaimRegistry` would accept; every call is simulated first (reverts
    explained in plain English), then signed, with payable amounts read from the contract. Notes
    (justifications, proof requests, counter-evidence, dispute decisions) are anchored as salted
@@ -548,7 +548,7 @@ Each limitation with the concrete scenario it allows:
     participant needs a new wallet (identity is permanent by design); the backend session cookie
     works same-site only (`localhost` for page and API), so a cross-site deployment would need
     `SameSite=None; Secure` cookies; the indexer has no reorg rollback beyond its confirmation margin
-    (logs flagged `removed` are skipped); without the API the dashboard lists no claims (paste an ID)
+    (logs flagged `removed` are skipped); without the API the workspace lists no claims (paste an ID)
     and the page cannot check the claim text.
 14. **Validation gaps.** The role screens were checked against real contracts on anvil (automated
     test and a browser run with a scripted test wallet), not with MetaMask and not on Arbitrum
