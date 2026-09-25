@@ -96,7 +96,6 @@ stateDiagram-v2
   Verified --> Disputed: openDispute - accredited, not org or auditor, before window end, pays bond
   Disputed --> Verified: resolveDispute dismiss - Authority, org active, bond split org and auditor
   Disputed --> Rejected: resolveDispute uphold - Authority, disputant takes everything at stake
-  Verified --> Verified: settle - anyone, window closed, not yet settled
   Rejected --> [*]
 ```
 
