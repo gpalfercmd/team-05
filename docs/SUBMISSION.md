@@ -18,6 +18,168 @@
 | **Code & run instructions** | [code/](../code/) ([developer guide](../code/README.md)) · [Setup and demo](RUNBOOK.md) |
 | **Complete system design** | [ARCHITECTURE.md](ARCHITECTURE.md) |
 
+**Summary.** Take the case walked through in
+[ARCHITECTURE.md → The case](ARCHITECTURE.md#the-case-500-food-kits-after-the-valencia-floods): a
+foundation says it delivered 500 food kits after the Valencia floods, but its strongest evidence
+(delivery lists, photos of families) cannot be published. Proof of Aid keeps that evidence offchain,
+cleaned of metadata, salted, fingerprinted and encrypted, and anchors only its Merkle root onchain.
+Two contracts on Arbitrum Sepolia then enforce who may confirm it, from an internal verifier to an
+independently accredited auditor, with bonded disputes and deposits that make fraud cost money, and
+anyone can re-check the claim in their own browser against the chain. Full summary:
+[Appendix → A.1 Project summary](#a1-project-summary).
+
+## 2. Implemented contribution
+
+### Problem and approach
+
+We focus on **Trust, Evidence & Privacy**: how a donor can trust a claim such as the foundation's
+500 food kits when the evidence that proves it contains beneficiaries' personal data. We separate
+*what is proven* (the evidence is unchanged since it was anchored, who approved it and when, whether
+it was disputed) from *what is shown* (fingerprints, roots, wallet addresses, status). The
+contribution covers the *Verification* step and feeds *Transparent history*; donor funding and
+beneficiary confirmation are designed but not built. Scope statement, rationale and fit in the full
+flow: [Appendix → A.2 Problem and approach](#a2-problem-and-approach).
+
+### What works and how
+
+Two contracts enforce accreditation, evidence anchoring, the two-stage verification with proof
+requests, disputes and a per-claim ETH escrow. A FastAPI backend cleans, salts, fingerprints and
+encrypts every file, serves privacy-safe views and indexes the chain; a React app lets each role sign
+its own step and lets anyone re-check evidence in the browser. In the case, that is the foundation
+anchoring its evidence, Laura and Miguel confirming, AuditAid Iberia approving and a donor matching
+the published invoice against the chain. The nine mechanisms, each linked to its ARCHITECTURE
+section: [Appendix → A.3 What works and how](#a3-what-works-and-how).
+
+### End-to-end flow
+
+Accreditation, claim record, evidence upload, anchoring with the organization's deposit,
+checkpoint 1, auditor assignment, an optional proof loop, final approval with the auditor's deposit,
+an optional bonded dispute within 60 days, settlement and withdrawal, and public verification. The
+Arbitrum Sepolia demo was executed by a script from accreditation to a dismissed dispute; the whole
+flow, including settlement, runs from the role screens on local anvil. Details:
+[Appendix → A.4 End-to-end flow](#a4-end-to-end-flow).
+
+### Implementation boundary
+
+**Implemented:** both contracts with deposits (live on Arbitrum Sepolia), the privacy pipeline for
+images and PDFs with role-based access, evidence bundles and manifests, the public verification
+page, the indexer and the role screens for every participant, including the reviewer view and
+salted notes. **Simulated or mocked:** participants' real-world identity, file storage (a local
+encrypted folder), bundle sealing by upload order, and the demo evidence and demo claim text.
+**Designed only:** the donor funding escrow, beneficiary confirmation and Kleros arbitration; KYC,
+mainnet deployment and a contract audit are out of scope. The full table with the four category
+definitions: [Appendix → A.5 Implementation boundary](#a5-implementation-boundary).
+
+### Effort split
+
+> **TODO (team):** the percentages below are the team's estimate, not a measurement (the checkpoint
+> plan said Blockchain 50% · Real-world connection 30% · UX 20%). Replace them with the measured split
+> before submitting; only the team knows it.
+
+Percentages describe implementation effort, must total **100%**, and have no ideal distribution.
+
+Current estimate: UX 30%, Real-world connection 30%, Blockchain 40%. The work behind each share:
+[Appendix → A.6 Effort split](#a6-effort-split).
+
+### Security fixes from the logic review
+
+A logic review of the verification flow on 2026-09-24 produced four fixes: revoked organizations
+can no longer reach `Verified` (P8.1), every file is fingerprinted with a salt (P8.2), the claim text
+is checked against the chain (P8.4), and deposits make fraud cost money (P9). Three privacy follow-ups
+on 2026-09-25 closed further gaps without a contract change: PDF metadata stripping (P10.1), a
+reviewer view of private files (P10.2) and salted, stored notes (P10.3). Each fix with its commits
+and tests: [Appendix → A.7 Security fixes](#a7-security-fixes-from-the-logic-review).
+
+## 3. Demo and validation
+
+The demo proves that a claim which went through the full two-stage verification, a proof request and
+a bonded, dismissed dispute on Arbitrum Sepolia can be checked by anyone in a browser: a genuine
+evidence file matches the root recorded onchain, a one-character change is detected, and no private
+file name or content is exposed. It runs the onchain steps of the Valencia case, up to a dismissed
+dispute, on made-up receipts.
+Reproduce it with [RUNBOOK.md](RUNBOOK.md) (paths A–D and the 12-step demo table). Contract
+addresses, the 14 demo transactions and the test results (contracts 168 passed with 100% coverage,
+shared 34, backend 128, frontend 478 passed and 8 skipped) are in
+[Appendix → A.8 Demo and validation](#a8-demo-and-validation).
+
+### Mock demonstration
+
+Short screen recordings of the web app, one per role, following the Valencia case with the demo
+wallets on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
+The videos are not recorded yet. Commit each one under the suggested path, or, on GitHub, open this
+file in the web editor and drag the video into it to get an embeddable URL.
+
+**1. Public visitor (verify a file).** A donor opens the 500-kit claim page with no wallet, drops the
+published supplier invoice into **Verify it yourself** and gets **Match**, then drops a copy with one
+changed character and gets **No match**.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/public-visitor.mp4`.
+
+**2. Organization.** The foundation signs in with its wallet, records the 500-kit claim with its
+evidence files and anchors it, paying the anchor deposit; after the auditor's request it uploads the
+supplementary files and presses **Submit proof**.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/organization.mp4`.
+
+**3. Internal verifier.** Laura checks a downloaded private file in *Evidence files (authorized)*
+(**Match**) and approves checkpoint 1 with **Approve evidence**; later Miguel accepts the supplementary
+proof with **Accept proof**, while Laura is refused because she did checkpoint 1.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/internal-verifier.mp4`.
+
+**4. Auditor.** AuditAid Iberia requests proof about the three distribution points with **Request
+proof**, then approves the claim and locks its deposit.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/auditor.mp4`.
+
+**5. Accreditation Authority.** The Oversight Authority accredits AuditAid Iberia with **Accredit
+auditor**, assigns it to the claim with **Assign auditor**, and later resolves the 480-kit dispute
+with **Uphold dispute** or **Dismiss dispute**.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/accreditation-authority.mp4`.
+
+**6. Registry Admin.** The platform operator registers the foundation's wallet with **Register
+organization** and Laura's and Miguel's wallets with **Register internal verifier**.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/registry-admin.mp4`.
+
+**7. Withdraw / Settle.** After the 60-day window (anvil's clock moved forward), any wallet settles
+the claim with **Settle deposits**, and the foundation and AuditAid Iberia collect their credits with
+**Withdraw**.
+
+> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/withdraw-settle.mp4`.
+
+## 4. Limitations and next step
+
+Integrity is not truth: the chain proves that the foundation's files have not changed since they
+were anchored, not that 500 kits were really delivered; that still rests on Laura, Miguel, AuditAid
+Iberia and anyone who disputes. The main trust assumptions are a single Accreditation Authority (it
+assigns auditors and judges disputes), one auditor per claim, wallets that do not prove distinct
+people, and a backend operator trusted for confidentiality; claims recorded before the salting
+fixes, including the Sepolia demo claim, keep unsalted fingerprints and notes. The single most
+useful next step is decentralized dispute resolution with Kleros on Arbitrum, which removes the
+Authority as judge. All 14 limitations with their scenarios, the ordered next steps and the Kleros
+design: [Appendix → A.9 Limitations and next step](#a9-limitations-and-next-step).
+
+## 5. AI usage
+
+We used Claude Code (Claude Opus 5.5) with the `dbv-specs-ops` spec-driven workflow for
+specifications, reviews, implementation, tests and documentation, partly through delegated
+sub-agents, and for web research on the Kleros design. Every design decision was taken by the team;
+all test suites were re-run independently after each delegated task, the contract tests were
+mutation-checked, and the public page was checked in a browser against the live deployment. Tool by
+tool: [Appendix → A.10 AI usage](#a10-ai-usage).
+
+> **TODO (team):** add any other AI tool a teammate used (for example an editor assistant) and how its output was checked; only the team knows this.
+
+We confirm that the team can explain and technically defend the submitted work.
+
+## Technical appendix
+
+The full text behind each brief section above, moved here unchanged.
+
+### A.1 Project summary
+
 **Summary.** Aid organizations cannot show donors their strongest evidence (photos of recipients,
 signed delivery lists) because it contains beneficiaries' personal data. We keep that evidence
 offchain, stripped of image metadata, salted, fingerprinted and encrypted, and put only its Merkle
@@ -30,9 +192,7 @@ no wallet and no server in between, reads the claim's status, roots and history 
 and lets anyone check a file or a whole bundle against the onchain root in the browser; the claim's
 title and description are shown only when their hash matches the onchain `metadataHash`.
 
-## 2. Implemented contribution
-
-### Problem and approach
+### A.2 Problem and approach
 
 > Within our complete Proof of Aid design, we focus on **Trust, Evidence & Privacy**, addressing **how a third party can trust an aid claim whose evidence contains beneficiaries' personal data and therefore cannot be published** through **offchain encrypted evidence whose Merkle root is anchored onchain, a contract-enforced two-stage verification (internal verifier → independent, officially accredited auditor with proof requests), accredited disputes, and a public page that re-verifies evidence integrity without revealing personal data**.
 
@@ -56,7 +216,7 @@ history* directly from contract events. *Funding* (donations escrowed and releas
 *Delivery & Impact* (beneficiary confirmation) are designed in [ARCHITECTURE.md](ARCHITECTURE.md#components)
 but not implemented. The P9 escrow is not donor funding: it holds the participants' own deposits.
 
-### What works and how
+### A.3 What works and how
 
 Each item is a short summary; the linked ARCHITECTURE section has the full mechanics.
 
@@ -108,7 +268,7 @@ Each item is a short summary; the linked ARCHITECTURE section has the full mecha
    [ARCHITECTURE.md → Merkle recipe](ARCHITECTURE.md#merkle-recipe-frozen-in-p1-codesharedpoa_sharedmerklepy)
    and [→ `metadataHash` recipe](ARCHITECTURE.md#metadatahash-recipe-p84-codesharedpoa_sharedmetadatapy).
 
-### End-to-end flow
+### A.4 End-to-end flow
 
 Accreditation → wallet login and claim record → evidence upload (bundle 0) → `anchorClaim` with
 the organization's deposit → checkpoint 1 (`attestInternal`) → auditor assignment → optional proof
@@ -125,7 +285,7 @@ login, the claim record and the backend uploads did not happen on it: its roots 
 of the committed demo files. The whole flow, including settlement and withdrawal, runs from the role
 screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
-### Implementation boundary
+### A.5 Implementation boundary
 
 - **Implemented:** working code or another demonstrable technical artifact exists.
 - **Simulated / mocked:** a real component is replaced or simplified.
@@ -156,13 +316,7 @@ screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-rol
 | Decentralized arbitration (Kleros) | Designed only | Section 4, *Next step: Kleros arbitration* |
 | KYC / verifiable credentials, mainnet deployment, contract audit | Out of scope | — |
 
-### Effort split
-
-> **TODO (team):** the percentages below are the team's estimate, not a measurement (the checkpoint
-> plan said Blockchain 50% · Real-world connection 30% · UX 20%). Replace them with the measured split
-> before submitting; only the team knows it.
-
-Percentages describe implementation effort, must total **100%**, and have no ideal distribution.
+### A.6 Effort split
 
 | Dimension | Effort | Work implemented |
 | --- | ---: | --- |
@@ -170,7 +324,7 @@ Percentages describe implementation effort, must total **100%**, and have no ide
 | Real-world connection | 30% | Evidence privacy pipeline (image metadata strip, salted fingerprints of cleaned files, per-claim encryption, access control), wallet login, bundles and manifests, chain indexer and chain-driven access, accreditation of real-world entities |
 | Blockchain | 40% | Accreditation registry, claim state machine, disputes, escrow with rewards and penalties, events, 100%-coverage test suite with fuzzing and invariants, deployment and full lifecycle on Arbitrum Sepolia |
 
-### Security fixes from the logic review
+### A.7 Security fixes from the logic review
 
 A logic review of the verification flow on 2026-09-24 produced four fixes, each with its own tests.
 
@@ -193,7 +347,7 @@ closed without any contract change (no redeploy):
 | **P10.2** Reviewer view | Verifiers and auditors could open private files only through the API. | *Evidence files (authorized)* on the claim page: wallet sign-in, the backend's existing access matrix (now explicit as `viewer_access` in `GET /claims/{id}`), **Download** and **Check this file** against the salted commitment and the onchain root; states for demo, no API, no wallet, signed out, no access, no record ([ARCHITECTURE.md → Reviewer view](ARCHITECTURE.md#reviewer-view-of-private-files-p102)). | Commit `ca48bdb`; `code/frontend/src/components/AuthorizedEvidence.test.tsx`, `code/frontend/src/evidence/authorizedCheck.test.ts`, `code/frontend/src/data/evidenceApi.test.ts`, `code/backend/tests/test_privacy.py`. |
 | **P10.3** Salted, stored notes | Note fingerprints were `keccak256(text)`: a short note ("approved") could be confirmed by guessing, and the text was stored nowhere. | `noteHash = keccak256(salt ‖ utf8(text))` with a random 32-byte salt from the browser; with the backend, `POST /claims/{id}/notes` checks the hash and stores text and salt sealed with the claim key before the transaction (migration 0005); reviewers and each author read them back, verified against the history event ([ARCHITECTURE.md → Note recipe](ARCHITECTURE.md#note-recipe-p103-codesharedpoa_sharednotespy)). | Commit `811d822` (part of the change landed in merge `4d2eaaf`); `code/shared/note-vectors.json` with `code/shared/tests/test_notes.py` and `code/frontend/src/utils/noteHash.test.ts`; `code/backend/tests/test_notes.py`; `code/frontend/src/components/wallet/NoteFlow.test.tsx`, `code/frontend/src/evidence/noteCheck.test.ts`. |
 
-## 3. Demo and validation
+### A.8 Demo and validation
 
 **What the demo proves:** a claim that went through the full two-stage verification, a proof
 request, a dispute with bond and its dismissal on Arbitrum Sepolia can be checked by anyone in a
@@ -318,7 +472,7 @@ permanent-identity rule makes contract tests fail (mutation spot checks during P
   and mnemonic in the repository are Foundry's public anvil development ones, in the local-demo
   instructions and tests.
 
-## 4. Limitations and next step
+### A.9 Limitations and next step
 
 Each limitation with the concrete scenario it allows:
 
@@ -437,7 +591,7 @@ The Authority stays the judge in code today. The designed replacement is decentr
 
 Trade-offs: arbitration fees make disputes more expensive than today's bond alone, rulings take days to weeks, and the revoked-organization rule (a revoked organization can never be dismissed back to `Verified`) must be re-checked inside `rule()`.
 
-## 5. AI usage
+### A.10 AI usage
 
 | Tool | Used for / assisted work | How we reviewed or validated it |
 | --- | --- | --- |
@@ -445,7 +599,3 @@ Trade-offs: arbitration fees make disputes more expensive than today's bond alon
 | Claude Code (Claude Opus 5.5), delegated sub-agent | P5.3 role screens: role detection, transaction flow, per-role forms, withdraw / settle, their tests and the anvil end-to-end test; P5.5 layout restyle (layout only, design tokens unchanged) | All frontend checks re-run (tests, typecheck, lint, build); the calls were executed against real contracts on anvil and the organization and verifier flows clicked through in a browser against anvil with a scripted test wallet; contracts untouched. |
 | Claude Code (Claude Opus 5.5) | Documentation: RUNBOOK, this submission, ARCHITECTURE, READMEs; the fresh-clone dry run, the secret scan, and a final review of these documents against the code | The RUNBOOK was executed step by step from a fresh clone and corrected where a step was unclear; every number quoted here comes from a re-run on 2026-09-25 and every link was generated from the deployment file; the team reviewed and edited all documents. |
 | Claude Code, web research | The Kleros arbitration design (section 4) | Sources linked; items we could not confirm are marked *Not verified*. |
-
-> **TODO (team):** add any other AI tool a teammate used (for example an editor assistant) and how its output was checked; only the team knows this.
-
-We confirm that the team can explain and technically defend the submitted work.
