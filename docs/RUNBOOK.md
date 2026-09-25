@@ -241,7 +241,7 @@ This section is technically explained at [code/README.md → Validate, note 1](.
 (cd contracts && forge fmt --check)              # no output = formatted
 (cd shared && uv run pytest -q)                  # 34 passed
 uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 128 passed
-(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 478 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
+(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 511 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
 ```
 
 This section is technically explained at [code/README.md → Validate, note 2](../code/README.md#validate-note-2).

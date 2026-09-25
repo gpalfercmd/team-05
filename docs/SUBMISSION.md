@@ -99,7 +99,7 @@ file name or content is exposed. It runs the onchain steps of the Valencia case,
 dispute, on made-up receipts.
 Reproduce it with [RUNBOOK.md](RUNBOOK.md) (paths A–D and the 12-step demo table). Contract
 addresses, the 14 demo transactions and the test results (contracts 168 passed with 100% coverage,
-shared 34, backend 128, frontend 478 passed and 8 skipped) are in
+shared 34, backend 128, frontend 511 passed and 8 skipped) are in
 [Appendix → A.8 Demo and validation](#a8-demo-and-validation).
 
 ### Mock demonstration
@@ -417,7 +417,7 @@ The wallet top-ups the script sends are not registry calls and are not recorded.
 | Contract format | `cd contracts && forge fmt --check` | clean |
 | Backend | `uv run --project backend pytest -c backend/pyproject.toml backend/tests` | **128 passed**, 0 skipped (includes the anvil end-to-end indexer test: it starts anvil on chain ID 31338, runs `Deploy` + `DemoLifecycle`, indexes twice); re-run after P10 |
 | Shared recipe | `cd shared && uv run pytest` | **34 passed** (19 Merkle incl. salted, 11 metadata, 4 notes); re-run after P10 |
-| Frontend | `cd frontend && pnpm test` | **478 passed, 8 skipped** (47 files passed, 1 skipped: the opt-in anvil end-to-end file); re-run after P10 |
+| Frontend | `cd frontend && pnpm test` | **511 passed, 8 skipped** (52 files passed, 1 skipped: the opt-in anvil end-to-end file); re-run after P10 |
 | Frontend static checks | `pnpm typecheck`, `pnpm lint`, `pnpm build` | typecheck and oxlint silent; build OK (JS gzip: 69.7 kB app + 95.1 kB React + 105.8 kB web3) |
 | Migration 0005 | `alembic upgrade head`, `downgrade -1`, `upgrade head` on a scratch SQLite file; `alembic check` | 0001–0005 applied, 0005 reverted and re-applied; no drift between models and migrations |
 | Recipes and ABIs are in sync | `uv run python -m poa_shared.gen_vectors`, `… gen_metadata_vectors`, `… gen_note_vectors`, `bash script/export-abi.sh` | regenerated files identical to the committed ones (`git status` clean) |

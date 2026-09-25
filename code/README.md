@@ -13,7 +13,7 @@ install, build, test, run, deploy and regenerate everything, and the traps we hi
 | [`contracts/`](contracts/README.md) | `ParticipantRegistry` (accreditation) and `ClaimRegistry` (evidence anchoring, two-stage verification, proof requests, disputes, deposits/rewards/penalties with settlement); deployment and demo scripts | Solidity 0.8.30, Foundry 1.8.3, OpenZeppelin 5.7.0 (Soldeer) | 168 passed, 100% coverage of `src/` |
 | [`shared/`](shared/) | The cross-layer contract: exported ABIs, deployment files per network, evidence manifest JSON Schema, Merkle, metadata and note test vectors, and the Python reference recipe `poa_shared` | JSON, Python ≥ 3.12 | 34 passed |
 | [`backend/`](backend/README.md) | Evidence pipeline (image and PDF metadata strip, salted SHA-256, AES-256-GCM at rest, role-based access), sealed reviewer notes, wallet-signature login, chain indexer and public API | Python ≥ 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL, web3.py, pypdf | 128 passed (incl. an anvil end-to-end test) |
-| [`frontend/`](frontend/README.md) | Public claim page that re-verifies evidence in the browser against the chain (with a reviewer view of private files and notes), and role screens where each accredited wallet signs its actions | React 19, Vite 8, TypeScript 6, wagmi 3 + viem 2, pnpm 12.6 | 478 passed, 8 skipped (opt-in anvil test) |
+| [`frontend/`](frontend/README.md) | Public claim page that re-verifies evidence in the browser against the chain (with a reviewer view of private files and notes), and role screens where each accredited wallet signs its actions | React 19, Vite 8, TypeScript 6, wagmi 3 + viem 2, pnpm 12.6 | 511 passed, 8 skipped (opt-in anvil test) |
 
 Related documents: [ARCHITECTURE.md](../docs/ARCHITECTURE.md) (design, state machine, data model,
 recipes), [RUNBOOK.md](../docs/RUNBOOK.md) (reproducible setup and demo, step by step with expected
@@ -125,7 +125,7 @@ Opt-in test variables: `ANVIL_E2E_RPC` and `ANVIL_E2E_API` enable the frontend's
 uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 128 passed; run from code/, see Gotchas
 (cd frontend && pnpm typecheck)                       # tsc -b --noEmit, silent
 (cd frontend && pnpm lint)                            # oxlint, silent
-(cd frontend && pnpm test)                            # 478 passed, 8 skipped
+(cd frontend && pnpm test)                            # 511 passed, 8 skipped
 (cd frontend && pnpm build)                           # tsc -b && vite build → frontend/dist/
 ```
 
@@ -301,7 +301,7 @@ On 2026-09-25 all four generators reproduced the committed files byte for byte.
 Re-run on 2026-09-25 on `main`: contracts **168 passed** (ClaimRegistry 82, ParticipantRegistry 45,
 incentives 37, Merkle vectors 3, invariant suite 1 entry holding 9 invariants over 8,192 random
 calls), `forge coverage` 100% lines, statements, branches and functions on `ClaimRegistry.sol` and
-`ParticipantRegistry.sol`; shared **34 passed**; backend **128 passed**; frontend **478 passed, 8
+`ParticipantRegistry.sol`; shared **34 passed**; backend **128 passed**; frontend **511 passed, 8
 skipped**, typecheck, lint and build clean (shared, backend and frontend re-run after the P10 fixes). Details and what each suite covers:
 [SUBMISSION.md §3](../docs/SUBMISSION.md#3-demo-and-validation).
 
