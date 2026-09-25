@@ -12,11 +12,13 @@ import { EscrowStatus } from '../components/EscrowStatus';
 import { EvidenceSection } from '../components/EvidenceSection';
 import { EvidenceVerifier } from '../components/EvidenceVerifier';
 import { HashDisplay } from '../components/HashDisplay';
+import { SettlePanel } from '../components/SettlePanel';
 import { StatusBadge } from '../components/StatusBadge';
 import { Timeline } from '../components/Timeline';
 import { VerificationSummary } from '../components/VerificationSummary';
 import { examineManifest, type ManifestState } from '../evidence/verification';
 import { useAppConfig } from '../hooks/useAppConfig';
+import { useChainTime } from '../hooks/useChainTime';
 import { useClaim, type ClaimLoadError } from '../hooks/useClaim';
 import type { ClaimView } from '../types/claim';
 import { formatTimestamp } from '../utils/format';
@@ -66,6 +68,8 @@ function ClaimRecord({ claim }: { claim: ClaimView }) {
 }
 
 function ClaimDetails({ claim }: { claim: ClaimView }) {
+  // The dispute window is judged on the chain's clock when it can be read (anvil can run ahead).
+  const chainNow = useChainTime(claim.source !== 'demo' && claim.escrow?.disputeWindowClosesAt !== undefined);
   // Published file lists are untrusted: each one is proven against its onchain root here, once.
   const manifests = useMemo(() => {
     const roots = claim.evidence.map((bundle) => bundle.root);
@@ -78,7 +82,8 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
       <ClaimRecord claim={claim} />
       <ClaimMetadata claim={claim} />
       <VerificationSummary claim={claim} />
-      <EscrowStatus escrow={claim.escrow} />
+      <EscrowStatus escrow={claim.escrow} now={chainNow === undefined ? undefined : Number(chainNow)} />
+      <SettlePanel claim={claim} />
       <Timeline entries={claim.timeline} source={claim.source} />
       <EvidenceSection claim={claim} manifests={manifests} />
       <EvidenceVerifier claim={claim} manifests={manifests} />

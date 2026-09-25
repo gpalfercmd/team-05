@@ -17,6 +17,7 @@ import { AuditorAccreditationPanel } from './AuditorAccreditationPanel';
 import { ClaimWorkbench } from './ClaimWorkbench';
 import { RegistryAdminPanel } from './RegistryAdminPanel';
 import { SubmitProofForm } from './SubmitProofForm';
+import { WithdrawCard } from './WithdrawCard';
 import { WrongNetworkNotice } from './WrongNetworkNotice';
 import './wallet.css';
 
@@ -49,6 +50,7 @@ function RoleActions({ role, viewer, registries }: RoleActionsProps) {
   };
   return (
     <>
+      <WithdrawCard registries={registries} />
       {screens[role.role]}
       {workbench}
     </>
