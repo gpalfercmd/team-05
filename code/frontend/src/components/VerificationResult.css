@@ -72,6 +72,25 @@
   margin: 0;
 }
 
+/* "No match" help: what it means and what to try next, in body text on the result's surface. */
+.verification-result__help {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.verification-result__help p,
+.verification-result__help ul {
+  margin: 0;
+}
+
+.verification-result__help ul {
+  padding-left: 1.25rem;
+}
+
+.verification-result__help-title {
+  font-weight: var(--text-label-weight);
+}
+
 .verification-result__hashes {
   display: grid;
   gap: var(--space-xs);

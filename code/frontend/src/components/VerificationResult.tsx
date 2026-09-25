@@ -7,6 +7,7 @@
 
 import type { Hex } from 'viem';
 import { formatTimestamp } from '../utils/format';
+import { MISMATCH_MEANING, MISMATCH_NEXT_STEPS } from '../evidence/labels';
 import { HashDisplay } from './HashDisplay';
 import { ICONS, type IconName } from './icons';
 import './VerificationResult.css';
@@ -51,6 +52,20 @@ function headline(state: VerificationState, plural: boolean, recordedAt: number 
   return sentence;
 }
 
+function MismatchHelp({ plural }: { plural: boolean }) {
+  return (
+    <div className="verification-result__help">
+      <p>{plural ? MISMATCH_MEANING.plural : MISMATCH_MEANING.single}</p>
+      <p className="verification-result__help-title">What to try next</p>
+      <ul>
+        {MISMATCH_NEXT_STEPS.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function VerificationResult({ state, subject, plural = false, recordedAt, detail, computed, expected }: VerificationResultProps) {
   const meta = STATE_META[state];
   const Icon = ICONS[meta.icon];
@@ -65,6 +80,7 @@ export function VerificationResult({ state, subject, plural = false, recordedAt,
       </header>
       <p className="verification-result__headline">{headline(state, plural, recordedAt)}</p>
       {detail !== undefined && <p className="verification-result__detail">{detail}</p>}
+      {state === 'mismatch' && <MismatchHelp plural={plural} />}
       <dl className="verification-result__hashes">
         <div>
           <dt>{computed.label}</dt>

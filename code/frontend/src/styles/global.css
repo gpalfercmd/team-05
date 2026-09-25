@@ -610,10 +610,21 @@ pre {
   list-style: none;
 }
 
-/* A wallet address inside a sentence: short form, never split across lines. */
+/* A wallet address inside a sentence: short form, never split across lines, with a compact
+   copy button (24px, the WCAG 2.2 minimum target) so the sentence keeps its line height. */
 .address-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   white-space: nowrap;
   color: var(--color-on-neutral);
+  vertical-align: bottom;
+}
+
+.address-text .icon-button {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 2px;
 }
 
 /* --------------------------------------------------------------- buttons */
@@ -703,5 +714,49 @@ pre {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Phones (≤480px): less empty space. Bands, hero, cards and grids tighten; the layout is unchanged. */
+@media (max-width: 480px) {
+  .app-main {
+    padding-block: var(--space-md) var(--space-lg);
+  }
+
+  .page {
+    gap: var(--space-md);
+  }
+
+  .band,
+  .hero {
+    padding-block: var(--space-lg);
+  }
+
+  .band.band--compact {
+    padding-block: var(--space-md);
+  }
+
+  .section-head {
+    margin-bottom: var(--space-md);
+  }
+
+  .hero h1 {
+    margin: var(--space-md) 0 var(--space-sm);
+  }
+
+  .card,
+  .claim-card,
+  .principles__item {
+    padding: var(--space-md);
+  }
+
+  .page__header {
+    padding-bottom: var(--space-md);
+  }
+
+  .stats {
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    padding-top: var(--space-md);
   }
 }

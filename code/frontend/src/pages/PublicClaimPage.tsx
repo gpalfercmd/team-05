@@ -14,6 +14,7 @@ import { EvidenceSection } from '../components/EvidenceSection';
 import { EvidenceVerifier } from '../components/EvidenceVerifier';
 import { HashDisplay } from '../components/HashDisplay';
 import { SettlePanel } from '../components/SettlePanel';
+import { SkeletonBlocks } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 import { Timeline } from '../components/Timeline';
 import { VerificationSummary } from '../components/VerificationSummary';
@@ -127,13 +128,22 @@ export function PublicClaimPage() {
       content = <ClaimDetails claim={lookup.claim} />;
       break;
     case 'loading':
+      // Shaped like the loaded page (record + what was claimed, then the deposits card), so the
+      // cards do not jump when the history arrives.
       content = (
-        <div className="card skeleton" role="status" aria-busy="true" aria-label="Reading this claim">
+        <div className="page skeleton" role="status" aria-busy="true" aria-label="Reading this claim">
           <p className="skeleton__text">Reading this claim…</p>
-          <div className="skeleton__block skeleton__block--title" aria-hidden="true" />
-          <div className="skeleton__block" aria-hidden="true" />
-          <div className="skeleton__block" aria-hidden="true" />
-          <div className="skeleton__block skeleton__block--short" aria-hidden="true" />
+          <div className="claim-overview">
+            <div className="card">
+              <SkeletonBlocks rows={4} />
+            </div>
+            <div className="card">
+              <SkeletonBlocks rows={4} />
+            </div>
+          </div>
+          <div className="card">
+            <SkeletonBlocks rows={2} />
+          </div>
         </div>
       );
       break;

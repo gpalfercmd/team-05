@@ -12,6 +12,8 @@ import { browserFetch } from '../../data/httpJson';
 import { useAppConfig } from '../../hooks/useAppConfig';
 import type { Role } from '../../utils/roles';
 import { truncateMiddle } from '../../utils/format';
+import { HashDisplay } from '../HashDisplay';
+import { Skeleton } from '../Skeleton';
 import { StatusBadge } from '../StatusBadge';
 
 type ClaimQueueProps = {
@@ -31,7 +33,7 @@ export function ClaimQueue({ role, viewer, verifierOrganization, onSelect }: Cla
 
   let body;
   if (query.data === undefined) {
-    body = <p role="status">Loading the claim list…</p>;
+    body = <Skeleton label="Loading the claim list" rows={2} title={false} variant="row" />;
   } else if (!query.data.ok) {
     body = (
       <p className="field-error" role="alert">
@@ -46,7 +48,7 @@ export function ClaimQueue({ role, viewer, verifierOrganization, onSelect }: Cla
         {query.data.value.map((item) => (
           <li key={item.claimId} className="claim-queue__item">
             <StatusBadge status={item.status} />
-            <code title={item.claimId}>{truncateMiddle(item.claimId)}</code>
+            <HashDisplay value={item.claimId} label="claim ID" />
             <button
               type="button"
               className="btn btn-secondary"

@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Plain-language labels for evidence bundles and file-list problems
+// Proof of Aid — Team 05 — Plain-language labels for evidence bundles, file-list problems and "No match" help
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -50,3 +50,17 @@ export function fileCheckDetail(check: FileCheck, rootIndex: number): string {
   }
   return detail;
 }
+
+/** Plain-language help under a "No match": what it means, then what to try (the verdict is unchanged). */
+export const MISMATCH_MEANING = {
+  single:
+    'What this means: this file is not one of the files recorded for this claim. Even a one-character change gives a different fingerprint, so this file was changed or it is a different file.',
+  plural:
+    'What this means: together, these files are not the set recorded for this bundle. One of them was changed, or a file was added or left out.',
+} as const;
+
+export const MISMATCH_NEXT_STEPS = [
+  'Check that you chose the right evidence bundle for this file.',
+  'Use the original file as downloaded from this page, not an edited, re-saved or converted copy.',
+  'Private files cannot be checked publicly: only their fingerprints are shown, and only authorized reviewers can check them.',
+] as const;

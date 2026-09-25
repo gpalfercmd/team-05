@@ -9,7 +9,7 @@ import { err, ok, type Result } from './result';
 
 /**
  * Copies text to the clipboard. The API is missing on insecure origins and the browser may deny
- * permission (a DOMException); both become an error result so the UI can say "Copy failed"
+ * permission (a DOMException); every failure become an error result so the UI can say "Copy failed"
  * instead of throwing inside a click handler.
  */
 export async function copyText(text: string): Promise<Result<void, string>> {
@@ -21,10 +21,8 @@ export async function copyText(text: string): Promise<Result<void, string>> {
     await navigator.clipboard.writeText(text);
     result = ok(undefined);
   } catch (error: unknown) {
-    if (!(error instanceof DOMException)) {
-      throw error;
-    }
-    result = err(error.message);
+    // Any failure (denied permission, no focus, a polyfill's own error) is reported, never thrown.
+    result = err(error instanceof Error ? error.message : 'The clipboard refused the copy.');
   }
   return result;
 }

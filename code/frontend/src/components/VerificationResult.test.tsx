@@ -9,6 +9,7 @@ import { screen } from '@testing-library/react';
 import type { Hex } from 'viem';
 import { describe, expect, it } from 'vitest';
 import { renderWithConfig } from '../test/testEnv';
+import { MISMATCH_MEANING, MISMATCH_NEXT_STEPS } from '../evidence/labels';
 import { VerificationResult, type VerificationState } from './VerificationResult';
 
 const COMPUTED = `0x${'1a'.repeat(32)}` as Hex;
@@ -57,5 +58,27 @@ describe('VerificationResult', () => {
     expect(screen.getByTitle(EXPECTED)).toBeInTheDocument();
     expect(screen.getByText('Fingerprint of your file')).toBeInTheDocument();
     expect(screen.getByText('Recorded fingerprint')).toBeInTheDocument();
+  });
+
+  it('explains a "No match" in plain words and says what to try next', () => {
+    renderResult('mismatch');
+    expect(screen.getByText(MISMATCH_MEANING.single)).toBeInTheDocument();
+    expect(screen.getByText('What to try next')).toBeInTheDocument();
+    for (const step of MISMATCH_NEXT_STEPS) {
+      expect(screen.getByText(step)).toBeInTheDocument();
+    }
+    expect(screen.getByText(/right evidence bundle/)).toBeInTheDocument();
+    expect(screen.getByText(/original file/)).toBeInTheDocument();
+    expect(screen.getByText(/Private files cannot be checked publicly/)).toBeInTheDocument();
+  });
+
+  it('explains a bundle "No match" as a changed, added or missing file', () => {
+    renderResult('mismatch', true);
+    expect(screen.getByText(MISMATCH_MEANING.plural)).toBeInTheDocument();
+  });
+
+  it('adds no mismatch help to the other verdicts', () => {
+    renderResult('match');
+    expect(screen.queryByText('What to try next')).not.toBeInTheDocument();
   });
 });
