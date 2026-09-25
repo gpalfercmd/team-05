@@ -175,6 +175,7 @@ Phases below follow README "Start here": **S1 Design → S2 Implement under `cod
 
 - [ ] **P7 — Final submission (S4, before Friday 14:00)**
   - [ ] P7.1 Complete `docs/SUBMISSION.md` (real boundary table, measured effort split, validation evidence: test output + Arbiscan tx links, limitations, next step, AI usage table). *(`e7cb5e1`: everything except the facts only the team knows, left as marked TODOs — measured effort split, exact Team ID, other AI tools used by teammates. Tick after the team fills them.)*
+    - Final review against the code (2026-09-25, `0056e70` SUBMISSION, `0f91db9` ARCHITECTURE, `b7541e3` code/README): suites re-run (contracts 168 + 100% `src/` coverage, backend 111, shared 30, frontend 442 + 8 skipped, typecheck/lint/build clean), links checked, Arbiscan links regenerated from `arbitrum-sepolia.json`; the three team TODOs remain. *Route: inline (docs only).*
   - [x] P7.2 README "Before submitting" checklist; secret scan (`git grep` for keys) before push. *(2026-09-25: no `.env` tracked or ever committed (only `.env.example` ×3 and the public-address `.env.sepolia`); no `PRIVATE_KEY=0x`, PEM keys, API keys in URLs or secret assignments; the only 64-hex key and mnemonic are Foundry's public anvil development key #0 and `test … junk` mnemonic in the local-demo docs and `test_indexer_anvil.py`. Checklist ticked except pitch-in-English (team) and push/form (team).)*
   - [ ] P7.3 **Team** merges `develop` into `main`, pushes `main` and sends Team ID + SHA through the final form.
 
