@@ -515,18 +515,20 @@ Steps 1–8 are executed by `DemoLifecycle.s.sol` (on Sepolia they are the trans
 [SUBMISSION.md](../docs/SUBMISSION.md#3-demo-and-validation)); each appears in the page's history.
 Files are hashed in the browser and never uploaded.
 
-### Runbook: Dependencies and limitations
+## Dependencies and limitations
 
-#### Dependencies and limitations, note 1
+| Dependency | Real / Mock / Simulated / Manual | Setup or availability notes |
+| --- | --- | --- |
+| Arbitrum Sepolia (public RPC `https://sepolia-rollup.arbitrum.io/rpc`) | Real (testnet) | Used by path A and the Sepolia indexer; no key needed. Public RPCs can rate-limit `eth_getLogs`: the page and the indexer halve their block range automatically. |
+| `ParticipantRegistry` / `ClaimRegistry` | Real | Deployed on Arbitrum Sepolia (addresses above); identical bytecode on local anvil. |
+| Local chain (anvil) | Real (local) | Path B and the backend's end-to-end test. |
+| Participants' wallets | Simulated | Seven test-only wallets from a mnemonic; accreditation is a manual admin action, not a real identity check. |
+| Role actions (register, anchor, attest, assign, proof loop, dispute, resolve, settle, withdraw) | Real | Signed in the browser by each role's wallet (path D), or by `DemoLifecycle.s.sol` and `cast` for the scripted demo. Recording a claim or proof from the UI needs the backend (path C). |
+| Deposits and bonds | Real (test ETH) | 1/100 of the reference amounts on Sepolia and in the scripts. |
+| Evidence files | Mock | Made-up text/CSV files in `code/frontend/public/demo-evidence/`; the Sepolia demo claim anchors their real Merkle roots. The EXIF/GPS stripping is proven by a backend test with a synthetic JPEG, the PDF metadata stripping by one with a generated PDF. |
+| Claim metadata (title, description) | Mock | The Sepolia demo claim anchors a stand-in `metadataHash` and has no backend record, so its page says there is nothing to check. |
+| PostgreSQL | Real | Docker Compose or a native server; path C only. Tests use in-memory SQLite. |
+| Evidence storage | Simulated | Local folder (`STORAGE_DIR`), files encrypted with AES-256-GCM, instead of S3/MinIO. |
+| Backend indexer API | Real, optional | The public page works without it and falls back to the chain when it is unreachable or behind. |
+| Reviewer notes (P10.3) | Real with the backend | Stored encrypted by the backend before anchoring; without it, only the author's copy exists. Notes of the Sepolia demo (anchored by the script before P10.3) are unsalted and not stored. |
 
-Known setup limitations and recovery:
-
-- A slow or rate-limited RPC makes the Sepolia history load slowly; lower `VITE_LOG_CHUNK_SIZE`
-  (frontend) or `INDEXER_BLOCK_CHUNK` (indexer), or set your own `VITE_RPC_URL` / `CHAIN_RPC_URL`.
-- `pnpm dev` stops with `Port 5173 is in use`: stop the other server or pass `--port 5174`, and add
-  that origin to the backend's `CORS_ORIGINS` if the API is used.
-- On the Sepolia demo claim the settle step cannot be shown before the dispute window closes
-  (60 days after the approval); use path B, which moves anvil's clock.
-- The API-served manifest of a claim anchored by the script (not through the backend) returns 404;
-  the page then uses the committed demo manifests, which it accepts only because their roots match
-  the chain.
