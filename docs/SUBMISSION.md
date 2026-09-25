@@ -72,13 +72,16 @@ Each item is a short summary; the linked ARCHITECTURE section has the full mecha
    Guards, events and ETH per function:
    [ARCHITECTURE.md → Claim lifecycle](ARCHITECTURE.md#claim-lifecycle-enforced-onchain).
 3. **Evidence pipeline (FastAPI backend).** After a wallet-signature login, uploads are stripped of
-   image metadata, committed as SHA-256(random salt ‖ sanitized bytes), encrypted with AES-256-GCM
+   image and PDF metadata, committed as SHA-256(random salt ‖ sanitized bytes), encrypted with AES-256-GCM
    under a per-claim key and grouped into bundles whose Merkle root is the root the organization
    anchors. Step by step: [ARCHITECTURE.md → Evidence pipeline](ARCHITECTURE.md#evidence-pipeline).
 4. **Access control follows the chain.** With `ROLE_SOURCE=chain` only the organization, its active
    internal verifiers and the auditor assigned onchain can decrypt a claim's private files; denied
-   reads answer 404, like a missing file. Access matrix:
-   [ARCHITECTURE.md → Backend API](ARCHITECTURE.md#backend-api).
+   reads answer 404, like a missing file. Those reviewers open, download and re-check private files
+   on the claim page (*Evidence files (authorized)*): each downloaded file is re-hashed with its salt
+   in the browser and proven against the onchain root. Access matrix:
+   [ARCHITECTURE.md → Backend API](ARCHITECTURE.md#backend-api); view:
+   [→ Reviewer view](ARCHITECTURE.md#reviewer-view-of-private-files-p102).
 5. **Public verification (React, no wallet, no login).** The claim page reads status, roots, escrow
    and history **directly from `ClaimRegistry`** and checks a dropped file or a whole bundle against
    the onchain root in the browser; files never leave it, and the claim's title and description are
@@ -86,8 +89,11 @@ Each item is a short summary; the linked ARCHITECTURE section has the full mecha
    [ARCHITECTURE.md → Public verification algorithm](ARCHITECTURE.md#public-verification-algorithm).
 6. **Role screens (React + wagmi/viem, MetaMask).** The dashboard reads the connected wallet's role
    and offers only the actions `ClaimRegistry` would accept; every call is simulated first (reverts
-   explained in plain English), then signed, with payable amounts read from the contract. See
-   [ARCHITECTURE.md → Components](ARCHITECTURE.md#components).
+   explained in plain English), then signed, with payable amounts read from the contract. Notes
+   (justifications, proof requests, counter-evidence, dispute decisions) are anchored as salted
+   fingerprints and, with the backend, stored encrypted for the claim's reviewers. See
+   [ARCHITECTURE.md → Components](ARCHITECTURE.md#components) and
+   [→ Note recipe](ARCHITECTURE.md#note-recipe-p103-codesharedpoa_sharednotespy).
 7. **Fraud costs money (P9).** `ClaimRegistry` escrows ETH per claim: the organization deposits a
    penalty plus the auditor's reward when anchoring, the auditor deposits when approving and a
    disputant posts a bond; payouts are credited and pulled with `withdraw()`. Amounts and who gets
@@ -96,8 +102,9 @@ Each item is a short summary; the linked ARCHITECTURE section has the full mecha
 8. **Chain indexer (optional speed-up).** A web3.py poller copies both registries' events into
    PostgreSQL, feeds the backend's access rules and serves a public timeline API; the page uses it
    only when it provably matches the contract. See [ARCHITECTURE.md → Indexer](ARCHITECTURE.md#indexer).
-9. **One recipe, three implementations.** The Merkle and metadata recipes are implemented in Python,
-   TypeScript and (Merkle) Solidity tests, and all pass the same committed vectors byte for byte. See
+9. **One recipe, three implementations.** The Merkle, metadata and note recipes are implemented in
+   Python, TypeScript and (Merkle) Solidity tests, and all pass the same committed vectors byte for
+   byte. See
    [ARCHITECTURE.md → Merkle recipe](ARCHITECTURE.md#merkle-recipe-frozen-in-p1-codesharedpoa_sharedmerklepy)
    and [→ `metadataHash` recipe](ARCHITECTURE.md#metadatahash-recipe-p84-codesharedpoa_sharedmetadatapy).
 
@@ -138,8 +145,8 @@ screens on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-rol
 | Event indexer and public timeline API | Implemented | web3.py poller into PostgreSQL (idempotent, restart-safe, confirmation margin, range halving); `GET /public/claims`, `/public/claims/{id}/timeline`, `/public/indexer/status` |
 | Evidence access follows the chain | Implemented | `ROLE_SOURCE=chain`: onchain accreditation, revocation and auditor assignment change decryption rights once indexed. The hand-seeded `participants` table remains a development fallback (`ROLE_SOURCE=local`) |
 | Role screens (sign actions from the UI) | Implemented | Registry Admin, Accreditation Authority, organization (record a claim with its evidence, answer proof requests), internal verifier, auditor, anyone (settle, withdraw). Checked with Vitest (mocked wallet), an anvil end-to-end test with the same calls and a browser run with a scripted test wallet, **not** with MetaMask itself |
-| Reviewing private evidence in the UI | Implemented in the API only | `GET /files/{id}` decrypts for authorized sessions; the app has no screen that lists or downloads private files for verifiers and auditors, and no per-file visibility switch (`PATCH /files/{id}` exists; the upload form sets one public/private flag per batch) |
-| Notes behind justification, proof-request and counter-evidence hashes | Simulated | Only the keccak-256 fingerprint of the note is recorded onchain; the text is not stored anywhere |
+| Reviewing private evidence in the UI | Implemented | *Evidence files (authorized)* on the claim page: wallet sign-in, then every file of the claim for the organization, its verifiers and the assigned auditor, with **Download** (`GET /files/{id}`, decrypted by the backend) and **Check this file** (salted re-hash proven against the onchain root). No per-file visibility switch in the UI (`PATCH /files/{id}` exists; the upload form sets one public/private flag per batch) |
+| Notes behind justification, proof-request, counter-evidence and resolution hashes | Implemented (with the backend) | Anchored as keccak256(random salt ‖ note); with the backend, text and salt are stored encrypted before the transaction and shown to the claim's reviewers and the note's author next to the history event, checked in the browser. Without the backend the note is kept nowhere (the author is shown note and salt to copy). Notes anchored before P10.3 stay unsalted |
 | Bundle sealing by onchain anchoring | Simulated | The backend seals bundle n when bundle n+1 is started (upload order), not when root n is anchored onchain |
 | Real-world identity of participants | Simulated | Accreditation is a manual admin action on test wallets |
 | File storage | Simulated | Local encrypted folder (`STORAGE_DIR`) instead of S3/MinIO |
@@ -176,6 +183,15 @@ A logic review of the verification flow on 2026-09-24 produced four fixes, each 
 
 Two further findings were kept as documented limitations (section 4): identity/Sybil of attesters
 and claim-ID squatting.
+
+**Privacy follow-ups (P10, 2026-09-25).** Three limitations of the first submission draft were
+closed without any contract change (no redeploy):
+
+| Fix | Problem | Fix (details) | Evidence |
+| --- | --- | --- | --- |
+| **P10.1** PDF metadata | PDFs were stored as uploaded, with author, creator tool, dates and XMP metadata. | PDFs (detected by `%PDF-`, not by name) are rewritten with pypdf without `/Info`, XMP `/Metadata`, page `/PieceInfo` and unreferenced objects (older revisions); the salted commitment is computed on the cleaned bytes. An encrypted or unparseable PDF is **rejected with 422**, never stored with its metadata ([ARCHITECTURE.md → Upload](ARCHITECTURE.md#upload-post-claimsidevidence)). | Commit `31e1827`; `code/backend/tests/test_pdf_sanitize.py` (9: generated PDF with author/creator/XMP, incremental revision, header after junk, non-PDF untouched, malformed and encrypted PDFs, commitment on cleaned bytes, API upload/download and 422 with nothing stored). |
+| **P10.2** Reviewer view | Verifiers and auditors could open private files only through the API. | *Evidence files (authorized)* on the claim page: wallet sign-in, the backend's existing access matrix (now explicit as `viewer_access` in `GET /claims/{id}`), **Download** and **Check this file** against the salted commitment and the onchain root; states for demo, no API, no wallet, signed out, no access, no record ([ARCHITECTURE.md → Reviewer view](ARCHITECTURE.md#reviewer-view-of-private-files-p102)). | Commit `ca48bdb`; `code/frontend/src/components/AuthorizedEvidence.test.tsx`, `code/frontend/src/evidence/authorizedCheck.test.ts`, `code/frontend/src/data/evidenceApi.test.ts`, `code/backend/tests/test_privacy.py`. |
+| **P10.3** Salted, stored notes | Note fingerprints were `keccak256(text)`: a short note ("approved") could be confirmed by guessing, and the text was stored nowhere. | `noteHash = keccak256(salt ‖ utf8(text))` with a random 32-byte salt from the browser; with the backend, `POST /claims/{id}/notes` checks the hash and stores text and salt sealed with the claim key before the transaction (migration 0005); reviewers and each author read them back, verified against the history event ([ARCHITECTURE.md → Note recipe](ARCHITECTURE.md#note-recipe-p103-codesharedpoa_sharednotespy)). | Commit `811d822` (part of the change landed in merge `4d2eaaf`); `code/shared/note-vectors.json` with `code/shared/tests/test_notes.py` and `code/frontend/src/utils/noteHash.test.ts`; `code/backend/tests/test_notes.py`; `code/frontend/src/components/wallet/NoteFlow.test.tsx`, `code/frontend/src/evidence/noteCheck.test.ts`. |
 
 ## 3. Demo and validation
 
@@ -245,22 +261,26 @@ The wallet top-ups the script sends are not registry calls and are not recorded.
 | Contracts | `cd contracts && forge test` | **168 passed**, 0 failed: `ClaimRegistryTest` 82 (incl. fuzz), `ParticipantRegistryTest` 45, `ClaimRegistryIncentivesTest` 37, `MerkleVectorsTest` 3, `ClaimRegistryInvariantTest` 1 (forge reports the suite's 9 invariants as one entry: 128 runs × 64 calls = 8,192 random calls, 0 failures) |
 | Contract coverage | `cd contracts && forge coverage --report summary` | `ClaimRegistry.sol` 100% lines (200/200), statements (218/218), branches (39/39), functions (39/39); `ParticipantRegistry.sol` 100% lines (78/78), statements (89/89), branches (11/11), functions (20/20). Scripts are not covered (0%), by design |
 | Contract format | `cd contracts && forge fmt --check` | clean |
-| Backend | `uv run --project backend pytest -c backend/pyproject.toml backend/tests` | **111 passed**, 0 skipped (includes the anvil end-to-end indexer test: it starts anvil on chain ID 31338, runs `Deploy` + `DemoLifecycle`, indexes twice) |
-| Shared recipe | `cd shared && uv run pytest` | **30 passed** (19 Merkle incl. salted, 11 metadata) |
-| Frontend | `cd frontend && pnpm test` | **442 passed, 8 skipped** (42 files passed, 1 skipped: the opt-in anvil end-to-end file) |
-| Frontend static checks | `pnpm typecheck`, `pnpm lint`, `pnpm build` | typecheck and oxlint silent; build OK (JS gzip: 64.9 kB app + 95.1 kB React + 105.8 kB web3) |
-| Recipes and ABIs are in sync | `uv run python -m poa_shared.gen_vectors`, `… gen_metadata_vectors`, `bash script/export-abi.sh` | regenerated files identical to the committed ones (`git status` clean) |
+| Backend | `uv run --project backend pytest -c backend/pyproject.toml backend/tests` | **128 passed**, 0 skipped (includes the anvil end-to-end indexer test: it starts anvil on chain ID 31338, runs `Deploy` + `DemoLifecycle`, indexes twice); re-run after P10 |
+| Shared recipe | `cd shared && uv run pytest` | **34 passed** (19 Merkle incl. salted, 11 metadata, 4 notes); re-run after P10 |
+| Frontend | `cd frontend && pnpm test` | **478 passed, 8 skipped** (47 files passed, 1 skipped: the opt-in anvil end-to-end file); re-run after P10 |
+| Frontend static checks | `pnpm typecheck`, `pnpm lint`, `pnpm build` | typecheck and oxlint silent; build OK (JS gzip: 69.7 kB app + 95.1 kB React + 105.8 kB web3) |
+| Migration 0005 | `alembic upgrade head`, `downgrade -1`, `upgrade head` on a scratch SQLite file; `alembic check` | 0001–0005 applied, 0005 reverted and re-applied; no drift between models and migrations |
+| Recipes and ABIs are in sync | `uv run python -m poa_shared.gen_vectors`, `… gen_metadata_vectors`, `… gen_note_vectors`, `bash script/export-abi.sh` | regenerated files identical to the committed ones (`git status` clean) |
 
 What the suites cover, in short: every valid and invalid transition (the full action × status
 matrix), separation of duties, revoked wallets and organizations, role-admin isolation, deposits and
 payouts, the window boundary, reentrancy, events and stored state (contracts); login and replay,
-claim validation, EXIF/GPS stripping on a synthetic JPEG (`test_sanitize_strips_exif_and_gps`), hash
-of sanitized bytes, encryption round trip and tampering, the access matrix in local and chain mode,
+claim validation, EXIF/GPS stripping on a synthetic JPEG (`test_sanitize_strips_exif_and_gps`), PDF
+metadata stripping and rejection of encrypted or broken PDFs (`test_pdf_sanitize.py`), hash of
+sanitized bytes, sealed notes and who may read them (`test_notes.py`), encryption round trip and tampering, the access matrix in local and chain mode,
 privacy of public views, bundle sealing, manifests, CORS, indexer idempotency, restart,
 confirmations and range halving, and the public API (backend); the Merkle and metadata recipes
 against every shared vector, manifest parsing and verification, the claim page, the Deposits card,
 role detection, the action planner per role and status, payable amounts, the transaction lifecycle,
-decoded reverts and the wrong-network state (frontend). Removing the four-eyes check or the
+decoded reverts, the wrong-network state, the reviewer view (sign-in, access states, download, salted
+match and mismatch) and salted notes (stored before the transaction, or handed to the author)
+(frontend). Removing the four-eyes check or the
 permanent-identity rule makes contract tests fail (mutation spot checks during P2).
 
 **Recorded earlier on 2026-09-25 (not re-run in this pass):**
@@ -345,27 +365,32 @@ Each limitation with the concrete scenario it allows:
    chain by the indexer's confirmation margin (5 blocks by default) plus the polling interval, so a
    just-revoked auditor keeps download access until the revocation is indexed.
 9. **Only images and PDFs are sanitized.** JPEG, PNG and WebP are re-encoded without metadata, and
-   PDFs are rewritten without their document information, XMP metadata and earlier revisions (an
-   encrypted or unreadable PDF is rejected); every other type is stored as uploaded. *Scenario:* an
-   office document (DOCX, XLSX) whose properties carry an author name or a location is kept with that
-   metadata; it stays encrypted, but reaches every authorized reviewer and, if the organization marks
-   the file public, anyone. Text inside a document (a name typed on a page) is never removed.
-10. **Notes are stored as fingerprints only.** Justifications, proof requests and counter-evidence
-    are recorded as `keccak256` of the note text; the prototype stores the text nowhere. *Scenario:*
-    an auditor requests proof with a detailed note; the organization sees only a hash onchain and has
-    to learn the request by another channel. A short, guessable note ("approved") can also be
-    confirmed from its hash, because the note hash is not salted.
+   since P10.1 PDFs are rewritten without their document information, XMP metadata and earlier
+   revisions; every other type is stored as uploaded. *Scenario:* an office document (DOCX, XLSX)
+   whose properties carry an author name or a location is kept with that metadata; it stays
+   encrypted, but reaches every authorized reviewer and, if the organization marks the file public,
+   anyone. An encrypted or damaged PDF cannot be cleaned, so it is refused (422) and must be
+   re-exported without a password. Text inside a document (a name typed on a page) and metadata
+   embedded inside a PDF's images or attachments are not removed.
+10. **Notes depend on the backend, and old notes are unsalted.** Since P10.3 notes are anchored as
+    keccak256(salt ‖ text) and, when the backend is used, stored encrypted for the claim's reviewers
+    and the note's author. *Scenario:* an action signed without the backend (or on a claim the
+    backend does not know, like the Sepolia demo claim) keeps the note only if its author copies it;
+    and a note anchored before P10.3, including every note of the Sepolia demo, is still
+    `keccak256(text)`, so a short one ("approved") can be confirmed by guessing. The backend operator
+    can read every stored note (limitation 8), and any signed-in wallet can store a note on a claim
+    the backend knows: reviewers see it listed as "not found in the history" unless its fingerprint
+    was anchored.
 11. **Bundles are sealed by upload order, not by anchoring.** Bundle n is closed to new files only
     when bundle n+1 is started. *Scenario:* after anchoring root 0, the organization uploads one more
     file into bundle 0; the backend's root for bundle 0 changes and no longer equals
     `evidenceRoots[0]`, so the served manifest is rejected by the page ("File list altered") and that
     file is not covered by the onchain root.
-12. **Private salted files cannot be checked by the public, and the app has no reviewer view.** A
-    private entry never publishes its salt, so a visitor cannot match a private salted file, and a
-    whole-bundle check fails for any bundle that holds one. Reviewers can download and re-hash private
-    files only through the API (`GET /files/{id}` with a session; the salt is in their view of
-    `GET /claims/{id}`): the app has no screen for it, and manifests served by the API carry no
-    download links.
+12. **Private salted files cannot be checked by the public.** A private entry never publishes its
+    salt, so a visitor cannot match a private salted file, and a whole-bundle check fails for any
+    bundle that holds one. Since P10.2 the claim's reviewers download and check private files on the
+    claim page; manifests served by the API still carry no download links, and the app has no
+    per-file visibility switch.
 13. **Operational constraints.** Each organization needs at least two internal verifiers; a revoked
     participant needs a new wallet (identity is permanent by design); the backend session cookie
     works same-site only (`localhost` for page and API), so a cross-site deployment would need
@@ -380,15 +405,14 @@ Each limitation with the concrete scenario it allows:
 **Next steps**, in order of value (the first is the single most useful):
 
 1. Decentralized dispute resolution with Kleros (designed below), removing the Authority as judge.
-2. Store the notes behind justification, proof-request and counter-evidence fingerprints in the
-   evidence service (salted), so the role screens and the public page can show them and prove they
-   match.
-3. Bind claim IDs to the anchoring organization onchain, and seal backend bundles when the indexer
+2. Bind claim IDs to the anchoring organization onchain, and seal backend bundles when the indexer
    sees their root anchored.
-4. A reviewer view in the app: list, download and re-hash private files (with their salts) for the
-   organization's verifiers and the assigned auditor; a per-file visibility switch.
-5. Let the Authority close a claim stuck by an organization's revocation and refund or forfeit its
+3. Show a claim's notes where they are needed, not only in the reviewer view: the proof request on
+   the organization's *Submit proof* form, and the notes with each role action; restrict who may
+   store a note to the wallets that can anchor one; a per-file visibility switch.
+4. Let the Authority close a claim stuck by an organization's revocation and refund or forfeit its
    deposit.
+5. Metadata stripping for office documents (DOCX, XLSX) and for images embedded in PDFs.
 6. Verifiable credentials for accreditation, then beneficiary confirmation of receipt (Delivery &
    Impact) and the donor funding escrow released on `Verified`, both designed in
    [ARCHITECTURE.md](ARCHITECTURE.md#components).

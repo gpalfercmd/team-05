@@ -283,14 +283,14 @@ Each component with its responsibility and what it is trusted for.
 | `ParticipantRegistry` contract | Wallet roles (`ORGANIZATION_ROLE`, `INTERNAL_VERIFIER_ROLE` + organization link, `AUDITOR_ROLE`); two role admins (`REGISTRY_ADMIN_ROLE`, `ACCREDITATION_AUTHORITY_ROLE`); permanent participant identity | Solidity + OpenZeppelin `AccessControl` | Trusted for who holds which role. The two admins are trusted to map wallets to real entities (no KYC) |
 | `ClaimRegistry` contract | Claim anchors, evidence roots, two-stage attestations, auditor assignment, proof requests, lifecycle state machine, disputes, escrow and payouts | Solidity, Foundry tests (unit, fuzz, invariants) | The only source of truth for status, roots and money; the Authority is trusted as assigner and judge |
 | Backend API | Wallet-signature login, claims, evidence uploads per bundle, role-based access to private files, public claim view (private files as fingerprints only), per-bundle manifests, public chain-index API | Python — FastAPI + Pydantic v2, separate response models per viewer | Trusted for **confidentiality** (it holds the master key) and availability; **not** for integrity: everything it serves is checkable against the chain |
-| Evidence service | Image metadata stripping before hashing, salted SHA-256 commitment per file (salt sealed with the claim key, per-claim HMAC for duplicate detection), one Merkle root per bundle (`root_index` 0 = original, n = supplementary proof n), AES-256-GCM at rest with a per-claim key | Python (`app/services/*`, `poa_shared` recipe) | Same as the backend |
+| Evidence service | Image and PDF metadata stripping before hashing, salted SHA-256 commitment per file (salt sealed with the claim key, per-claim HMAC for duplicate detection), one Merkle root per bundle (`root_index` 0 = original, n = supplementary proof n), AES-256-GCM at rest with a per-claim key; the text and salt of reviewer notes sealed with the same claim key (P10.3) | Python (`app/services/*`, `poa_shared` recipe) | Same as the backend |
 | Evidence manifest | Per-bundle list of file fingerprints (`version` 1 or 2, `claimId`, `rootIndex`, `files[{sha256, public, name?, salt?}]`); names and salts only for public files | JSON Schema `code/shared/manifest.schema.json`, mirrored in zod and Pydantic | Untrusted by design: the page accepts one only if its recomputed root equals the onchain root |
 | Event indexer | Copies both registries' events into `chain_events` and projects `chain_participants` and `chain_claims`, which drive the backend's access rules (`ROLE_SOURCE=chain`) and the public timeline API | Python + web3.py RPC polling from `deployBlock`, idempotent per (chain, tx hash, log index), confirmation margin, automatic range halving | Trusted by the backend for roles (lags the chain); never the source of truth for the public page |
 | Database | Operational data (claims, file rows, login challenges), indexed events and projections | PostgreSQL (SQLite in tests) | Could be tampered with; the page does not rely on it for integrity |
 | File storage | Encrypted evidence files `<random>.enc` | Local folder `STORAGE_DIR` (MinIO/S3 is the production path) | Holds ciphertext only |
-| Frontend: public claim page | Status, claim record, verification summary, deposits and timeline read from the contract (or from the indexer API when provably up to date); in-browser verification of single files (via a verified manifest) or whole bundles; claim text checked against the onchain `metadataHash` | React + Vite + TypeScript + viem | Runs in the visitor's browser; files never leave it |
-| Frontend: role screens | Role read from `ParticipantRegistry`; per-claim actions planned from `ClaimRegistry`'s rules; every call simulated, then signed; payable amounts read from the contract; records and proofs go through the evidence service before anchoring | wagmi + viem + MetaMask (injected wallet) | The contract remains the authority: the planner only hides impossible actions |
-| Shared recipe | Merkle and metadata recipes, test vectors, ABIs, deployment files | `code/shared/` | Frozen by vectors every layer must pass |
+| Frontend: public claim page | Status, claim record, verification summary, deposits and timeline read from the contract (or from the indexer API when provably up to date); in-browser verification of single files (via a verified manifest) or whole bundles; claim text checked against the onchain `metadataHash`; for signed-in reviewers, the *Evidence files (authorized)* and *Notes (authorized)* sections (P10.2, P10.3) | React + Vite + TypeScript + viem | Runs in the visitor's browser; files never leave it (private files are downloaded only by authorized reviewers and checked in their browser) |
+| Frontend: role screens | Role read from `ParticipantRegistry`; per-claim actions planned from `ClaimRegistry`'s rules; every call simulated, then signed; payable amounts read from the contract; records and proofs go through the evidence service before anchoring; every note is salted in the browser and, with the evidence service, stored before its fingerprint is anchored (P10.3) | wagmi + viem + MetaMask (injected wallet) | The contract remains the authority: the planner only hides impossible actions |
+| Shared recipe | Merkle, metadata and note recipes, test vectors, ABIs, deployment files | `code/shared/` | Frozen by vectors every layer must pass |
 | `FundingEscrow` contract *(designed only)* | Holds donations per claim milestone; releases funds only when the linked claim is `Verified` and not `Disputed` | Solidity, reads `ClaimRegistry` status | Makes verification economically meaningful for donors |
 | Beneficiary confirmation *(designed only, Delivery & Impact)* | Beneficiary acknowledges or challenges receipt through a one-time code redeemed by the backend into an attestation, without exposing their identity | Backend + new attestation type in `ClaimRegistry` | Closes the gap between delivery evidence and the recipient's own voice |
 
@@ -333,7 +333,7 @@ active organization, or auditor). Events: `OrganizationRegistered/Revoked`,
 `AlreadyAccredited`, `NotActiveOrganization`, `NotActiveInternalVerifier`, `NotActiveAuditor`, plus
 OpenZeppelin's `AccessControlUnauthorizedAccount` and `AccessControlBadConfirmation`.
 
-### Backend tables (Alembic migrations 0001–0004)
+### Backend tables (Alembic migrations 0001–0005)
 
 Addresses and hashes are stored lowercase (`0x` + hex). Models in `code/backend/app/models.py`.
 
@@ -343,6 +343,7 @@ Addresses and hashes are stored lowercase (`0x` + hex). Models in `code/backend/
 | `evidence_files` | 0001, `root_index` in 0002, `salt_sealed` + `dedup_tag_hex` in 0004 | `id` UUID, `claim_id` FK (cascade), `sha256_hex` (the salted commitment, or plain SHA-256 on legacy rows), `salt_sealed` (AES-GCM of the salt; NULL = legacy unsalted), `dedup_tag_hex`, `storage_name`, `original_name` (sanitized), `mime_type`, `size_bytes`, `is_public`, `root_index ≥ 0`, `uploaded_by`, `uploaded_at` | Unique `(claim_id, sha256_hex)` and `(claim_id, dedup_tag_hex)` |
 | `participants` | 0001 | `address` PK, `role` (`organization` / `internal_verifier` / `auditor`), `organization`, `active` | Hand-seeded fallback for `ROLE_SOURCE=local` only |
 | `challenges` | 0001 | `id`, `address`, `nonce` unique, `message`, `expires_at`, `used` | Single-use login nonces |
+| `claim_notes` | 0005 | `id` UUID, `claim_id` FK (cascade), `kind` (`justification` / `proof_request` / `counter_evidence` / `resolution`), `author` (session wallet), `note_hash_hex`, `text_sealed`, `salt_sealed` (AES-GCM with the claim key), `created_at` | Unique `(claim_id, note_hash_hex)`; text and salt never stored in clear (P10.3) |
 
 ### Indexer tables (migration 0003)
 
@@ -395,6 +396,8 @@ created it. A logged-in session is a signed cookie set by `POST /auth/verify`.
 | `GET /auth/me` | | ✓ | ✓ | ✓ | ✓ | 401 |
 | `POST /claims` | | active organization only | ✓ | | | 401, 403, 422 |
 | `GET /claims/{id}` | public view | public view | full view + salts | full view + salts | full view + salts | 404 |
+| `POST /claims/{id}/notes` (`kind`, `text`, `salt`, `note_hash`) | | ✓ (as author) | ✓ | ✓ | ✓ | 401, 404 claim, 409 same fingerprint, 422 hash ≠ keccak256(salt ‖ text) |
+| `GET /claims/{id}/notes` | | own notes | all notes | all notes | all notes | 401, 404 |
 | `GET /claims/{id}/bundles/{n}/manifest` | ✓ | ✓ | ✓ | ✓ | ✓ | 404 claim or bundle |
 | `POST /claims/{id}/evidence` (multipart `files`, `public`, `root_index`) | | | ✓ | | | 401, 403, 404, 409 duplicate / sealed / gap, 413 > 25 MiB, 422 |
 | `GET /files/{id}` public file | ✓ | ✓ | ✓ | ✓ | ✓ | 404 |
@@ -403,7 +406,12 @@ created it. A logged-in session is a signed cookie set by `POST /auth/verify`.
 | `GET /public/claims`, `/public/claims/{id}/timeline`, `/public/indexer/status` | ✓ | ✓ | ✓ | ✓ | ✓ | 503 without `DEPLOYMENT_FILE`, 404 not indexed, 422 bad ID or status |
 
 The public view lists public files with ID, name, type, size and salt, and private files as
-`{sha256_hex, is_public: false, root_index}` only. `GET /public/*` serves only public chain data
+`{sha256_hex, is_public: false, root_index}` only. Both views carry `viewer_access` (`"authorized"`
+or `"public"`, P10.2), so the app's reviewer view knows whether the backend's access matrix let this
+session open the private files; the page never decides access itself. Notes (P10.3) are never
+public: their text and salt reach only the claim's organization, verifiers and assigned auditor
+(every note) and each note's author (their own notes). A logged-in wallet outside the matrix, such
+as the Accreditation Authority resolving a dispute or a disputant, stores and reads its own notes. `GET /public/*` serves only public chain data
 (addresses, hashes, booleans, status names, block numbers, `rootIndex`); wei amounts are not on its
 whitelist.
 
@@ -475,6 +483,52 @@ normalization. **Line-break rule:** only the description may contain a line feed
 `\r` or `\n` in the title and region (422), so splitting the preimage from both ends yields exactly
 one set of fields and text cannot move between fields under the same hash. Frozen by
 `code/shared/metadata-vectors.json` (Python and TypeScript).
+
+### Reviewer view of private files (P10.2)
+
+On the public claim page, the *Evidence files (authorized)* section reuses the wallet-signature
+login of the role screens (`/auth/challenge` → sign → `/auth/verify`), then reads `GET /claims/{id}`
+with the session cookie:
+
+1. `viewer_access: "public"` → a plain "no access" explanation; `"authorized"` → every bundle with
+   each file's fingerprint, salt and bundle index. States without a list: demo data, no
+   `VITE_API_URL`, no wallet connected, signed out (with a *Sign in with your wallet* button), no
+   backend record of the claim.
+2. The backend's list of fingerprints for bundle n is turned into a version 2 file list (with the
+   salts) and must pass the same `checkManifest` as a published manifest: its Merkle root must equal
+   `evidenceRoots[n]` read from the contract, otherwise the section says "File list altered".
+3. **Download** fetches `GET /files/{id}` with the session (the backend decrypts) and saves the bytes
+   under the file's name re-reduced to `[A-Za-z0-9._-]` as an opaque download.
+4. **Check this file** hashes the downloaded bytes in the browser: SHA-256(salt ‖ bytes) (plain
+   SHA-256 for a pre-P8.2 file) must be the fingerprint listed for that very file in the verified
+   list, which shows **Match**; anything else shows **No match**.
+
+### Note recipe (P10.3, `code/shared/poa_shared/notes.py`)
+
+```text
+noteHash = keccak256( salt ‖ utf8(text) )      salt = 32 random bytes from the author's browser
+```
+
+The `bytes32` anchored as `justificationHash` (`attestInternal`, `confirmProof`, `attestFinal`,
+`resolveDispute`), `requestHash` (`requestProof`) or `counterEvidenceHash` (`openDispute`). The text is
+trimmed once and hashed as written (UTF-8, no Unicode normalization); an empty text is rejected; the
+fixed-length salt makes the preimage split back into one (salt, text) pair. Frozen by
+`code/shared/note-vectors.json` (Python and TypeScript, including each case's legacy hash).
+
+1. The role screen draws the salt (`crypto.getRandomValues`) and computes `noteHash`.
+2. With `VITE_API_URL`, it signs in and sends `{kind, text, salt, note_hash}` to
+   `POST /claims/{id}/notes` **before** the transaction; the backend recomputes the hash (422 on a
+   mismatch) and stores text and salt sealed with the claim key. If storing fails, nothing is sent. A
+   retry of a failed transaction reuses the stored note.
+3. Without the evidence service, or when it has no record of the claim (404), the note is kept
+   nowhere: the fingerprint is still salted, and the author is shown the text and salt to copy.
+4. The transaction anchors `noteHash`. In *Notes (authorized)*, each history event that carries a
+   note fingerprint is shown with the stored note, and the browser recomputes
+   keccak256(salt ‖ text) against the fingerprint from the event ("Matches the onchain
+   fingerprint"). Stored notes whose fingerprint is in no event are listed separately.
+
+Notes anchored before P10.3 are `keccak256(utf8(text))`, unsalted and not stored; they stay that way
+and show as "No text is stored for this fingerprint".
 
 ## Public verification algorithm
 
@@ -622,6 +676,7 @@ Full log with dates: [`dbv-specs-ops/memory.md`](../dbv-specs-ops/memory.md) (se
 | Deployment files and Arbitrum block numbers | Addresses and `deployBlock` in `code/shared/deployments/*.json`, `deployBlock` from receipts. |
 | P9 incentives | Per-claim escrow, pull payments, window set once, no self-dispute; amounts immutable; stuck-claim lock accepted. |
 | P5.3 role screens | The chain decides, the UI mirrors; every call simulated; payable values read from the contract; notes as fingerprints only. |
+| P10 privacy follow-ups | PDFs rewritten without metadata (encrypted or unreadable PDFs rejected, not stored); a reviewer view that proves downloaded private files against the chain; salted note fingerprints with the text sealed by the backend, all without a contract change. |
 
 ## Security considerations
 
@@ -638,7 +693,8 @@ Full log with dates: [`dbv-specs-ops/memory.md`](../dbv-specs-ops/memory.md) (se
 - **Confidentiality.** Per-claim keys (HKDF), AES-256-GCM with random nonces; denied private reads
   return 404; private file metadata never reaches unauthorized viewers (separate response models with
   `extra="forbid"`); names re-sanitized before publication; nothing is logged about files; the public
-  chain API whitelists argument types.
+  chain API whitelists argument types. Note texts and salts are sealed with the claim key and served
+  only to the claim's reviewers and each note's author; the onchain note fingerprints are salted.
 - **Web.** CORS with explicit origins and credentials, never `*`; methods `GET, POST, PATCH, OPTIONS`,
   headers `Content-Type, Accept`; public reads from the page omit cookies; evidence-service calls
   include them. The session cookie uses Starlette's defaults (same-site), so page and API must share a
@@ -647,8 +703,8 @@ Full log with dates: [`dbv-specs-ops/memory.md`](../dbv-specs-ops/memory.md) (se
   when provably complete; manifests and claim text only when their hashes match the chain.
 - **Residual risks.** See [SUBMISSION.md §4](SUBMISSION.md#4-limitations-and-next-step): Sybil
   identities, claim-ID squatting, a trusted Authority, legacy unsalted claims, deposits locked on
-  revocation, a trusted backend for confidentiality, non-image files not sanitized, unsalted note
-  hashes.
+  revocation, a trusted backend for confidentiality, office documents and other non-image, non-PDF
+  files not sanitized, notes anchored before P10.3 unsalted.
 
 ## Known edge cases
 

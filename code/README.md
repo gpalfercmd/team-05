@@ -11,9 +11,9 @@ install, build, test, run, deploy and regenerate everything, and the traps we hi
 | Folder | Purpose | Stack | Tests (2026-09-25) |
 | --- | --- | --- | --- |
 | [`contracts/`](contracts/README.md) | `ParticipantRegistry` (accreditation) and `ClaimRegistry` (evidence anchoring, two-stage verification, proof requests, disputes, deposits/rewards/penalties with settlement); deployment and demo scripts | Solidity 0.8.30, Foundry 1.8.3, OpenZeppelin 5.7.0 (Soldeer) | 168 passed, 100% coverage of `src/` |
-| [`shared/`](shared/) | The cross-layer contract: exported ABIs, deployment files per network, evidence manifest JSON Schema, Merkle and metadata test vectors, and the Python reference recipe `poa_shared` | JSON, Python ≥ 3.12 | 30 passed |
-| [`backend/`](backend/README.md) | Evidence pipeline (image metadata strip, salted SHA-256, AES-256-GCM at rest, role-based access), wallet-signature login, chain indexer and public API | Python ≥ 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL, web3.py | 111 passed (incl. an anvil end-to-end test) |
-| [`frontend/`](frontend/README.md) | Public claim page that re-verifies evidence in the browser against the chain, and role screens where each accredited wallet signs its actions | React 19, Vite 8, TypeScript 6, wagmi 3 + viem 2, pnpm 12.6 | 442 passed, 8 skipped (opt-in anvil test) |
+| [`shared/`](shared/) | The cross-layer contract: exported ABIs, deployment files per network, evidence manifest JSON Schema, Merkle, metadata and note test vectors, and the Python reference recipe `poa_shared` | JSON, Python ≥ 3.12 | 34 passed |
+| [`backend/`](backend/README.md) | Evidence pipeline (image and PDF metadata strip, salted SHA-256, AES-256-GCM at rest, role-based access), sealed reviewer notes, wallet-signature login, chain indexer and public API | Python ≥ 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL, web3.py, pypdf | 128 passed (incl. an anvil end-to-end test) |
+| [`frontend/`](frontend/README.md) | Public claim page that re-verifies evidence in the browser against the chain (with a reviewer view of private files and notes), and role screens where each accredited wallet signs its actions | React 19, Vite 8, TypeScript 6, wagmi 3 + viem 2, pnpm 12.6 | 478 passed, 8 skipped (opt-in anvil test) |
 
 Related documents: [ARCHITECTURE.md](../docs/ARCHITECTURE.md) (design, state machine, data model,
 recipes), [RUNBOOK.md](../docs/RUNBOOK.md) (reproducible setup and demo, step by step with expected
@@ -41,17 +41,20 @@ code/
 │   ├── manifest.schema.json       per-bundle file list (versions 1 and 2)
 │   ├── merkle-vectors.json        Merkle cases, tamper case, salted cases (every layer must pass them)
 │   ├── metadata-vectors.json      metadataHash cases and invalid inputs
-│   ├── poa_shared/                merkle.py, metadata.py, result.py, gen_vectors.py, gen_metadata_vectors.py
-│   └── tests/                     test_merkle.py, test_metadata.py
+│   ├── note-vectors.json          salted note fingerprints keccak256(salt ‖ text), legacy hashes, invalid inputs
+│   ├── poa_shared/                merkle.py, metadata.py, notes.py, result.py, gen_vectors.py, gen_metadata_vectors.py,
+│   │                              gen_note_vectors.py
+│   └── tests/                     test_merkle.py, test_metadata.py, test_notes.py
 ├── backend/                       uv project (installs ../shared as editable)
 │   ├── app/main.py                create_app factory: settings, CORS, sessions, routers, /health
 │   ├── app/settings.py            every environment variable, validated at startup
-│   ├── app/models.py              claims, evidence_files, participants, challenges + chain_* index tables
-│   ├── app/api/                   auth.py, claims.py, files.py, public.py, views.py (per-viewer responses)
-│   ├── app/services/              evidence.py (sanitize, salt, store), crypto.py (HKDF, AES-GCM, HMAC),
-│   │                              bundles.py, claims.py (claim ID, metadataHash, roots), access.py, auth.py
+│   ├── app/models.py              claims, evidence_files, claim_notes, participants, challenges + chain_* index tables
+│   ├── app/api/                   auth.py, claims.py, files.py, notes.py, public.py, views.py (per-viewer responses)
+│   ├── app/services/              evidence.py (image/PDF sanitize, salt, store), crypto.py (HKDF, AES-GCM, HMAC),
+│   │                              bundles.py, claims.py (claim ID, metadataHash, roots), notes.py, access.py, auth.py
 │   ├── app/indexer/               __main__.py (CLI), sync.py, projection.py, rpc.py, abi.py, deployment.py
-│   ├── alembic/versions/          0001 initial tables, 0002 bundles, 0003 chain index, 0004 salted commitments
+│   ├── alembic/versions/          0001 initial tables, 0002 bundles, 0003 chain index, 0004 salted commitments,
+│   │                              0005 claim notes
 │   ├── tests/                     pytest suite (in-memory SQLite; anvil end-to-end test when Foundry is present)
 │   ├── docker-compose.yml         PostgreSQL 16 (role poa, db proof_of_aid, host port ${POSTGRES_PORT:-5432})
 │   └── .env.example               database, secrets, CORS, chain settings
@@ -118,11 +121,11 @@ Opt-in test variables: `ANVIL_E2E_RPC` and `ANVIL_E2E_API` enable the frontend's
 (cd contracts && forge test)                          # 168 passed
 (cd contracts && forge coverage --report summary)     # 100% lines/statements/branches/functions on src/ (~20 s)
 (cd contracts && forge fmt --check)                   # no output = formatted
-(cd shared && uv run pytest -q)                       # 30 passed
-uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 111 passed; run from code/, see Gotchas
+(cd shared && uv run pytest -q)                       # 34 passed
+uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 128 passed; run from code/, see Gotchas
 (cd frontend && pnpm typecheck)                       # tsc -b --noEmit, silent
 (cd frontend && pnpm lint)                            # oxlint, silent
-(cd frontend && pnpm test)                            # 442 passed, 8 skipped
+(cd frontend && pnpm test)                            # 478 passed, 8 skipped
 (cd frontend && pnpm build)                           # tsc -b && vite build → frontend/dist/
 ```
 
@@ -179,7 +182,7 @@ cast call $CLAIMS "lockedOf(bytes32)(uint256)" $CLAIM --rpc-url anvil      # 0
 cd backend
 cp .env.example .env                               # then fill EVIDENCE_ENCRYPTION_KEY and SESSION_SECRET
 docker compose up -d                               # PostgreSQL 16 (or point DATABASE_URL at a native server)
-uv run alembic upgrade head                        # migrations 0001–0004
+uv run alembic upgrade head                        # migrations 0001–0005 (0005 = claim_notes, P10.3)
 
 DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545 \
 INDEXER_CONFIRMATIONS=0 uv run python -m app.indexer --once          # drop --once to keep polling
@@ -195,6 +198,21 @@ Against Arbitrum Sepolia use `DEPLOYMENT_FILE=../shared/deployments/arbitrum-sep
 `CHAIN_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc` (default confirmations). Indexer exit codes:
 0 ok, 1 sync failed, 2 configuration error. To record claims from the role screens, keep the indexer
 running (without `--once`) so the backend learns new roles.
+
+**Updating an existing checkout (P10):** run `(cd backend && uv sync)` once (new dependency `pypdf`)
+and `uv run alembic upgrade head` (adds migration 0005, the `claim_notes` table). No contract change
+and no redeploy.
+
+### Reviewer view of private files and notes
+
+With the backend and `VITE_API_URL` configured, open a claim's public page (`/claims/<claimId>`)
+with the wallet of the claim's organization, one of its internal verifiers or its assigned auditor
+connected. In **Evidence files (authorized)**, press *Sign in with your wallet* (a signature, not a
+transaction); the section then lists every file with its fingerprint and bundle, a **Download**
+button (decrypted by the backend) and **Check this file** (re-hashed in the browser with the file's
+salt and proven against the onchain root). **Notes (authorized)** shows each justification, proof
+request, counter-evidence and dispute decision next to its history event, checked against the
+recorded fingerprint. Other signed-in wallets see an explanation and only the notes they wrote.
 
 ### Role screens and their end-to-end test
 
@@ -235,10 +253,11 @@ the deployment file, and empty the backend's chain tables (Gotchas).
 | ABIs in `shared/abi/` | `(cd contracts && bash script/export-abi.sh)` | after changing an interface (then rebuild the frontend: its typed ABI subset has a drift test) |
 | Merkle vectors | `(cd shared && uv run python -m poa_shared.gen_vectors)` | after changing the Merkle recipe (never for existing claims) |
 | Metadata vectors | `(cd shared && uv run python -m poa_shared.gen_metadata_vectors)` | after changing the metadata recipe |
+| Note vectors | `(cd shared && uv run python -m poa_shared.gen_note_vectors)` | after changing the note recipe |
 | Deployment files | `python3 contracts/script/record_transactions.py <Script>.s.sol --chain-id <id>` | after every broadcast |
 | Demo roots | recompute with `poa_shared.merkle.build_root` and update `EVIDENCE_ROOT` / `SUPPLEMENTARY_ROOT` in `contracts/script/DemoLifecycle.s.sol` and `frontend/src/mocks/claims.ts` | after editing `frontend/public/demo-evidence/` |
 
-On 2026-09-25 all three generators reproduced the committed files byte for byte.
+On 2026-09-25 all four generators reproduced the committed files byte for byte.
 
 ## Gotchas
 
@@ -282,6 +301,6 @@ On 2026-09-25 all three generators reproduced the committed files byte for byte.
 Re-run on 2026-09-25 on `main`: contracts **168 passed** (ClaimRegistry 82, ParticipantRegistry 45,
 incentives 37, Merkle vectors 3, invariant suite 1 entry holding 9 invariants over 8,192 random
 calls), `forge coverage` 100% lines, statements, branches and functions on `ClaimRegistry.sol` and
-`ParticipantRegistry.sol`; shared **30 passed**; backend **111 passed**; frontend **442 passed, 8
-skipped**, typecheck, lint and build clean. Details and what each suite covers:
+`ParticipantRegistry.sol`; shared **34 passed**; backend **128 passed**; frontend **478 passed, 8
+skipped**, typecheck, lint and build clean (shared, backend and frontend re-run after the P10 fixes). Details and what each suite covers:
 [SUBMISSION.md §3](../docs/SUBMISSION.md#3-demo-and-validation).

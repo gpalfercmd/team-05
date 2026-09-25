@@ -37,8 +37,8 @@ git clone https://github.com/proof-of-aid/team-05.git
 cd team-05/code
 
 (cd contracts && forge soldeer install && forge build)   # restores OpenZeppelin 5.7.0 + forge-std 1.16.2 from soldeer.lock; solc 0.8.30 downloads on first build
-(cd shared && uv sync)                                    # Merkle/metadata recipe (own .venv)
-(cd backend && uv sync)                                   # FastAPI app (own .venv, installs ../shared as editable)
+(cd shared && uv sync)                                    # Merkle/metadata/note recipes (own .venv)
+(cd backend && uv sync)                                   # FastAPI app (own .venv, installs ../shared as editable; includes pypdf)
 corepack enable                                           # once per machine
 (cd frontend && pnpm install)
 ```
@@ -172,7 +172,7 @@ database once (`CREATE ROLE poa LOGIN PASSWORD '…'; CREATE DATABASE proof_of_a
 point `DATABASE_URL` at it. Then, from `code/backend` with `.env` filled as in *Configuration*:
 
 ```bash
-uv run alembic upgrade head          # migrations 0001–0004
+uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_notes, P10.3)
 ```
 
 Index the local anvil chain from path B and start the API (anvil still running):
@@ -197,6 +197,9 @@ curl -s localhost:8000/public/indexer/status        # chainId, both registries, 
 curl -s localhost:8000/public/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae92725d600e6095cebb4a5a79b28/timeline
                                                     # the demo claim's events, status "Verified", 2 evidence roots
 ```
+
+An existing database from before P10 needs `uv sync` (new dependency `pypdf`) and
+`uv run alembic upgrade head` once more: it applies only 0005. No contract change, no redeploy.
 
 The indexer's `--once` run exits 0; a second run adds no events (idempotent). To let the page use
 the API, add `VITE_API_URL=http://localhost:8000` to the frontend command of path A or B; the page
@@ -281,6 +284,21 @@ contract addresses) the card only says that actions need a real chain.
    (`cast rpc evm_increaseTime 5184001 --rpc-url anvil && cast rpc evm_mine --rpc-url anvil`) →
    any account **Settle deposits** on the claim page → accounts 2 and 5 **Withdraw**.
 
+**Notes (P10.3).** Every justification, proof request, counter-evidence and dispute decision gets a
+random salt in the browser; the transaction anchors keccak256(salt ‖ note). With `VITE_API_URL` the
+page first signs in and stores the note (encrypted) with the backend; if that fails, no transaction
+is sent. Without the backend, the form shows the note and its salt with **Copy note and salt**:
+nothing else keeps them.
+
+**Reviewer view (P10.2).** Open the claim's page (**Open the public claim page** in the claim panel,
+or `/claims/<claimId>`) with account 2, 3, 4 or the assigned auditor (5) connected. In **Evidence
+files (authorized)** press **Sign in with your wallet** (a signature, no transaction). Expected: each
+file with its fingerprint and bundle number, a **Download** button and **Check this file**, which
+shows **Match** (the downloaded bytes, re-hashed with their salt, give the fingerprint proven against
+the onchain root). **Notes (authorized)** shows each note next to its history event with "Matches
+the onchain fingerprint". Account 7 sees "may not open this claim's private files" instead; without
+`VITE_API_URL`, or on demo data, the section explains why it cannot open files.
+
 After an anvil restart MetaMask may keep old nonces ("nonce too high"): **Settings → Advanced →
 Clear activity tab data** for each imported account.
 
@@ -312,9 +330,9 @@ Every suite, from `code/`:
 (cd contracts && forge test)                     # 168 passed
 (cd contracts && forge coverage --report summary)  # 100% lines/statements/branches/functions on the src/ rows (~20 s)
 (cd contracts && forge fmt --check)              # no output = formatted
-(cd shared && uv run pytest -q)                  # 30 passed
-uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 111 passed
-(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 442 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
+(cd shared && uv run pytest -q)                  # 34 passed
+uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 128 passed
+(cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 478 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
 ```
 
 Run the backend tests **from `code/` with the command above**. Running `uv run pytest` inside
@@ -367,11 +385,12 @@ Files are hashed in the browser and never uploaded.
 | Participants' wallets | Simulated | Seven test-only wallets from a mnemonic; accreditation is a manual admin action, not a real identity check. |
 | Role actions (register, anchor, attest, assign, proof loop, dispute, resolve, settle, withdraw) | Real | Signed in the browser by each role's wallet (path D), or by `DemoLifecycle.s.sol` and `cast` for the scripted demo. Recording a claim or proof from the UI needs the backend (path C). |
 | Deposits and bonds | Real (test ETH) | 1/100 of the reference amounts on Sepolia and in the scripts. |
-| Evidence files | Mock | Made-up text/CSV files in `code/frontend/public/demo-evidence/`; the Sepolia demo claim anchors their real Merkle roots. The EXIF/GPS stripping is proven by a backend test with a synthetic JPEG. |
+| Evidence files | Mock | Made-up text/CSV files in `code/frontend/public/demo-evidence/`; the Sepolia demo claim anchors their real Merkle roots. The EXIF/GPS stripping is proven by a backend test with a synthetic JPEG, the PDF metadata stripping by one with a generated PDF. |
 | Claim metadata (title, description) | Mock | The Sepolia demo claim anchors a stand-in `metadataHash` and has no backend record, so its page says there is nothing to check. |
 | PostgreSQL | Real | Docker Compose or a native server; path C only. Tests use in-memory SQLite. |
 | Evidence storage | Simulated | Local folder (`STORAGE_DIR`), files encrypted with AES-256-GCM, instead of S3/MinIO. |
 | Backend indexer API | Real, optional | The public page works without it and falls back to the chain when it is unreachable or behind. |
+| Reviewer notes (P10.3) | Real with the backend | Stored encrypted by the backend before anchoring; without it, only the author's copy exists. Notes of the Sepolia demo (anchored by the script before P10.3) are unsalted and not stored. |
 
 Known setup limitations and recovery:
 
