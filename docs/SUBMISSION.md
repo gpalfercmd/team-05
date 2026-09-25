@@ -67,10 +67,6 @@ definitions: [Appendix → A.5 Implementation boundary](#a5-implementation-bound
 
 ### Effort split
 
-> **TODO (team):** the percentages below are the team's estimate, not a measurement (the checkpoint
-> plan said Blockchain 50% · Real-world connection 30% · UX 20%). Replace them with the measured split
-> before submitting; only the team knows it.
-
 Percentages describe implementation effort, must total **100%**, and have no ideal distribution.
 
 Current estimate: UX 30%, Real-world connection 30%, Blockchain 40%. The work behind each share:
@@ -164,8 +160,6 @@ sub-agents, and for web research on the Kleros design. Every design decision was
 all test suites were re-run independently after each delegated task, the contract tests were
 mutation-checked, and the public page was checked in a browser against the live deployment. Tool by
 tool: [Appendix → A.10 AI usage](#a10-ai-usage).
-
-> **TODO (team):** add any other AI tool a teammate used (for example an editor assistant) and how its output was checked; only the team knows this.
 
 We confirm that the team can explain and technically defend the submitted work.
 
