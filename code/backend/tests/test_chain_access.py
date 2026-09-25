@@ -122,7 +122,7 @@ def _assign(chain: FakeChain, claim_id: str, auditor: str, previous: str = ZERO_
 def _reads_private(app: FastAPI, account: Account, file_id: str) -> bool:
     response = _client(app, account).get(f"/files/{file_id}")
     assert response.status_code in (200, 404), response.text
-    return response.status_code == 200 and response.content == sanitize_upload(PRIVATE_BYTES)
+    return response.status_code == 200 and response.content == sanitize_upload(PRIVATE_BYTES).value
 
 
 def test_role_source_defaults(settings: Settings, chain_settings: Settings) -> None:

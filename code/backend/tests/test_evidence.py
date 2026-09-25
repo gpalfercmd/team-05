@@ -48,20 +48,21 @@ def test_sanitize_strips_exif_and_gps() -> None:
     raw = demo_jpeg_with_fake_exif_gps()
     assert 0x8825 in Image.open(BytesIO(raw)).getexif()
     sanitized = sanitize_upload(raw)
-    assert sanitized != raw
-    assert not Image.open(BytesIO(sanitized)).getexif()
+    assert isinstance(sanitized, Ok)
+    assert sanitized.value != raw
+    assert not Image.open(BytesIO(sanitized.value)).getexif()
 
 
-def test_sanitize_leaves_non_images_untouched() -> None:
-    blob = b"%PDF-1.4 fake non-image bytes"
-    assert sanitize_upload(blob) == blob
+def test_sanitize_leaves_other_types_untouched() -> None:
+    blob = b"plain text evidence, no PDF header"
+    assert sanitize_upload(blob) == Ok(blob)
 
 
 def test_process_upload_commits_to_salted_sanitized_bytes() -> None:
     raw = demo_jpeg_with_fake_exif_gps()
     result = process_upload(raw, master_key=os.urandom(32), claim_id=os.urandom(32))
     assert isinstance(result, Ok)
-    sanitized = sanitize_upload(raw)
+    sanitized = sanitize_upload(raw).value
     assert len(result.value.salt) == 32
     assert result.value.file_hash == hashlib.sha256(result.value.salt + sanitized).digest()
     assert result.value.plain_hash == hashlib.sha256(sanitized).digest()

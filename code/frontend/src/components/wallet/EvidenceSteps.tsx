@@ -76,7 +76,7 @@ export function EvidenceFilesField({ files, onChange, isPublic, onPublicChange, 
         />
         <p id={hintId} className="field__hint">
           {files.length === 0
-            ? 'Up to 25 MB each. The evidence service strips photo metadata, then stores each file encrypted; only fingerprints go onchain.'
+            ? 'Up to 25 MB each. The evidence service strips photo and PDF metadata (encrypted or damaged PDFs are refused), then stores each file encrypted; only fingerprints go onchain.'
             : `${files.length} file${files.length === 1 ? '' : 's'} selected.`}
         </p>
         {error !== undefined && (

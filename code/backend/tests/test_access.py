@@ -45,7 +45,7 @@ def _scenario(client: TestClient, engine: Engine, wallets: dict[str, Account]) -
         "claim": claim,
         "private_id": private["files"][0]["id"],
         "public_id": public["files"][0]["id"],
-        "sanitized_a": sanitize_upload(FILE_A),
+        "sanitized_a": sanitize_upload(FILE_A).value,
     }
     return scenario
 

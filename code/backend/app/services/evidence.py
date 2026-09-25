@@ -4,8 +4,17 @@
 # Licensed under the MIT License. See LICENSE for details.
 # Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 # =============================================================================
-"""Upload pipeline (spec F3, P3.2): EXIF/GPS strip → salted commitment of the
+"""Upload pipeline (spec F3, P3.2): metadata strip → salted commitment of the
 *sanitized* bytes → AES-GCM to the local volume.
+
+Sanitizing (P10.1): images (JPEG/PNG/WebP) are re-encoded without EXIF/GPS;
+PDFs, recognized by their `%PDF-` magic bytes (never by file name), are
+rewritten without the document information dictionary (`/Info`: author,
+creator tool, dates), the XMP `/Metadata` streams of the catalog and pages,
+page `/PieceInfo`, and every object nothing references any more (earlier
+incremental revisions included). A PDF that cannot be parsed or is encrypted
+cannot be cleaned, so the upload is rejected (`Err` → HTTP 422) rather than
+stored with its metadata. Every other type passes through unchanged.
 
 Salted commitments (P8.2): every new file gets 32 random salt bytes and is
 committed as SHA-256(salt ‖ sanitized bytes), so nobody can confirm a guessed
@@ -31,6 +40,7 @@ from pathlib import Path
 from typing import Final
 
 from PIL import Image, UnidentifiedImageError
+from pypdf import PdfReader, PdfWriter
 
 from poa_shared.merkle import HASH_LENGTH, file_hash, salted_file_hash
 from poa_shared.result import Err, Ok, Result
@@ -42,6 +52,14 @@ STORAGE_SUFFIX: Final = ".enc"
 FILENAME_UNSAFE_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9._-]+")
 FILENAME_FALLBACK: Final[str] = "upload.bin"
 FILENAME_MAX_LENGTH: Final[int] = 100
+PDF_MAGIC: Final[bytes] = b"%PDF-"
+# Readers accept the header anywhere in the first KiB, so a prefixed PDF must not slip past.
+PDF_HEADER_WINDOW: Final[int] = 1024
+PDF_METADATA_KEYS: Final[tuple[str, ...]] = ("/Metadata", "/PieceInfo")
+PDF_REJECTED: Final[str] = (
+    "this PDF cannot be cleaned of its metadata (it is encrypted or unreadable); "
+    "remove its password or re-export it, then upload it again"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,18 +80,24 @@ class ProcessedFile:
     size_bytes: int
 
 
-def sanitize_upload(data: bytes) -> bytes:
-    """Return image bytes re-encoded without metadata; non-images pass through.
+def is_pdf(data: bytes) -> bool:
+    """True when the bytes carry the PDF header (`%PDF-`) where readers look for it."""
+    found = PDF_MAGIC in data[:PDF_HEADER_WINDOW]
+    return found
+
+
+def sanitize_upload(data: bytes) -> Result[bytes]:
+    """Return the bytes without metadata: images re-encoded, PDFs rewritten, rest untouched.
 
     Re-encoding (not tag editing) is what removes EXIF/GPS segments: a JPEG is
     saved with an empty EXIF block, PNG/WebP without ancillary chunks, and ICC
-    profiles are dropped by never passing them to the encoder.
+    profiles are dropped by never passing them to the encoder. `Err` only for a
+    PDF that cannot be cleaned (encrypted or unparseable).
     """
+    if is_pdf(data):
+        return _rewrite_pdf_without_metadata(data)
     image = _try_open_image(data)
-    if image is None:
-        passthrough: bytes = data
-        return passthrough
-    sanitized: bytes = _reencode_without_metadata(image)
+    sanitized: Result[bytes] = Ok(data if image is None else _reencode_without_metadata(image))
     return sanitized
 
 
@@ -98,7 +122,10 @@ def process_upload(data: bytes, *, master_key: bytes, claim_id: bytes) -> Result
     key = derive_claim_key(master_key, claim_id)
     if isinstance(key, Err):
         return key
-    sanitized = sanitize_upload(data)
+    cleaned = sanitize_upload(data)
+    if isinstance(cleaned, Err):
+        return cleaned
+    sanitized = cleaned.value
     salt = secrets.token_bytes(HASH_LENGTH)
     commitment = salted_file_hash(salt, sanitized)
     if isinstance(commitment, Err):
@@ -207,3 +234,44 @@ def _reencode_without_metadata(image: Image.Image) -> bytes:
         canvas.save(buffer, format=target_format)
     encoded: bytes = buffer.getvalue()
     return encoded
+
+
+def _rewrite_pdf_without_metadata(data: bytes) -> Result[bytes]:
+    """Rewrite a PDF without its metadata; `Err` if it is encrypted or cannot be parsed.
+
+    pypdf raises many exception types on hostile input, hence the broad catch:
+    any failure means "cannot clean", never a server error.
+    """
+    cleaned: Result[bytes]
+    try:
+        reader = PdfReader(BytesIO(data), strict=False)
+        cleaned = Err(PDF_REJECTED) if reader.is_encrypted else _clean_pdf(reader)
+    except Exception as cause:  # noqa: BLE001 - untrusted parser, see docstring
+        cleaned = Err(PDF_REJECTED, cause)
+    return cleaned
+
+
+def _clean_pdf(reader: PdfReader) -> Result[bytes]:
+    """Copy the document without `/Info`, XMP and page metadata; the copy must keep every page.
+
+    The copy is rebuilt from the catalog and unreferenced objects are dropped,
+    so earlier incremental revisions (where an old `/Info` or XMP stream could
+    survive) are not written. May raise on malformed input (caught by the caller).
+    """
+    page_count = len(reader.pages)
+    writer = PdfWriter(clone_from=reader)
+    writer.metadata = None
+    writer.xmp_metadata = None
+    for page in writer.pages:
+        for key in PDF_METADATA_KEYS:
+            if key in page:
+                del page[key]
+    writer.compress_identical_objects(remove_duplicates=False, remove_unreferenced=True)
+    buffer = BytesIO()
+    writer.write(buffer)
+    rewritten = buffer.getvalue()
+    reparsed = PdfReader(BytesIO(rewritten), strict=False)
+    cleaned: Result[bytes] = (
+        Ok(rewritten) if len(reparsed.pages) == page_count else Err(PDF_REJECTED)
+    )
+    return cleaned
