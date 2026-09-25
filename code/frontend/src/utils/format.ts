@@ -37,3 +37,17 @@ export function formatTimestamp(seconds: number): string {
   const formatted = `${timestampFormatter.format(new Date(seconds * 1000))} UTC`;
   return formatted;
 }
+
+const SIZE_UNITS = ['bytes', 'KB', 'MB', 'GB'] as const;
+
+/** A file size in plain units (1 KB = 1024 bytes), for file lists. */
+export function formatBytes(bytes: number): string {
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < SIZE_UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const text = unit === 0 ? `${bytes} ${bytes === 1 ? 'byte' : 'bytes'}` : `${value.toFixed(1)} ${SIZE_UNITS[unit]}`;
+  return text;
+}

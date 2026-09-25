@@ -104,6 +104,7 @@ def test_authorized_viewers_see_full_private_detail(
         assert private["id"] == scenario["private"]["id"]
         assert private["uploaded_by"] == addresses_of(wallets)["org"]
         assert private["salt"] == scenario["private"]["salt"]
+        assert body["viewer_access"] == "authorized"
 
 
 def test_unauthorized_wallets_are_treated_as_anonymous(
@@ -116,6 +117,7 @@ def test_unauthorized_wallets_are_treated_as_anonymous(
     login(outsider, wallets["outsider"])
     unassigned_auditor = TestClient(client.app)
     login(unassigned_auditor, wallets["auditor"])
+    assert anonymous_body["viewer_access"] == "public"
     for viewer in (outsider, unassigned_auditor):
         response = viewer.get(url)
         assert PRIVATE_NAME not in response.text

@@ -7,6 +7,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
+import { AuthorizedEvidence } from '../components/AuthorizedEvidence';
 import { ClaimMetadata } from '../components/ClaimMetadata';
 import { EscrowStatus } from '../components/EscrowStatus';
 import { EvidenceSection } from '../components/EvidenceSection';
@@ -88,6 +89,7 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
       <SettlePanel claim={claim} />
       <Timeline entries={claim.timeline} source={claim.source} />
       <EvidenceSection claim={claim} manifests={manifests} />
+      <AuthorizedEvidence claim={claim} />
       <EvidenceVerifier claim={claim} manifests={manifests} />
     </>
   );

@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Evidence service client: wallet login, create claim, upload evidence
+// Proof of Aid — Team 05 — Evidence service client: wallet login, claims, uploads, reviewer downloads
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -168,4 +168,100 @@ export async function uploadEvidence(
     uploadSchema.transform((value) => ({ rootIndex: value.root_index, evidenceRoot: value.evidence_root, fileCount: value.files.length })),
   );
   return bundle;
+}
+
+// --- P10.2 reviewer view: the claim's private files for the viewers the access matrix allows --------
+
+/** One stored file as an authorized viewer sees it (`EvidenceFileResponse`). */
+export type AuthorizedFile = {
+  id: string;
+  /** SHA-256(salt ‖ bytes) since P8.2, plain SHA-256 before: the Merkle leaf input. */
+  fingerprint: Hex;
+  /** `undefined` on unsalted files recorded before P8.2. */
+  salt: Hex | undefined;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  isPublic: boolean;
+  rootIndex: number;
+};
+
+export type AuthorizedBundle = { rootIndex: number; files: readonly AuthorizedFile[] };
+
+/**
+ * What this session may see of a claim: every file (the backend's access matrix said yes), only
+ * fingerprints (`denied`), or nothing because the backend holds no record of the claim.
+ */
+export type ClaimAccess =
+  | { kind: 'authorized'; bundles: readonly AuthorizedBundle[] }
+  | { kind: 'denied' }
+  | { kind: 'not-stored' };
+
+const authorizedFileSchema = z.object({
+  id: z.string().min(1),
+  sha256_hex: bytes32,
+  salt: bytes32.nullable(),
+  original_name: z.string(),
+  mime_type: z.string(),
+  size_bytes: z.number().int().nonnegative(),
+  is_public: z.boolean(),
+  root_index: z.number().int().nonnegative(),
+});
+
+const claimAccessSchema = z.discriminatedUnion('viewer_access', [
+  z.object({
+    viewer_access: z.literal('authorized'),
+    bundles: z.array(z.object({ root_index: z.number().int().nonnegative(), files: z.array(authorizedFileSchema) })),
+  }),
+  z.object({ viewer_access: z.literal('public') }),
+]);
+
+const toAccess = (value: z.infer<typeof claimAccessSchema>): ClaimAccess =>
+  value.viewer_access === 'public'
+    ? { kind: 'denied' }
+    : {
+        kind: 'authorized',
+        bundles: value.bundles.map((bundle) => ({
+          rootIndex: bundle.root_index,
+          files: bundle.files.map((file) => ({
+            id: file.id,
+            fingerprint: file.sha256_hex,
+            salt: file.salt ?? undefined,
+            name: file.original_name,
+            mimeType: file.mime_type,
+            sizeBytes: file.size_bytes,
+            isPublic: file.is_public,
+            rootIndex: file.root_index,
+          })),
+        })),
+      };
+
+/** The claim as this session sees it; the backend decides with its access matrix, never the page. */
+export async function readClaimAccess(fetchFn: FetchLike, apiUrl: string, claimId: Hex): Promise<Result<ClaimAccess, string>> {
+  const answer = await send(fetchFn, apiEndpoint(apiUrl, `/claims/${claimId}`), { method: 'GET', headers: { Accept: 'application/json' } }, JSON_TIMEOUT_MS);
+  const access: Result<ClaimAccess, string> =
+    answer.ok && answer.value.status === 404 ? ok({ kind: 'not-stored' }) : expect2xx(answer, claimAccessSchema.transform(toAccess));
+  return access;
+}
+
+/** The decrypted bytes of one file (`GET /files/{id}` with the session); denied reads look like 404. */
+export async function downloadEvidenceFile(fetchFn: FetchLike, apiUrl: string, fileId: string): Promise<Result<ArrayBuffer, string>> {
+  let bytes: Result<ArrayBuffer, string>;
+  try {
+    const response = await fetchFn(apiEndpoint(apiUrl, `/files/${encodeURIComponent(fileId)}`), {
+      method: 'GET',
+      credentials: 'include',
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    });
+    bytes = response.ok
+      ? ok(await response.arrayBuffer())
+      : err(
+          response.status === 404 || response.status === 401
+            ? 'The evidence service did not hand out this file: your session may have expired or your access was removed.'
+            : `The evidence service refused the download (HTTP ${response.status}).`,
+        );
+  } catch (error: unknown) {
+    bytes = err(`The evidence service could not be reached (${describe(error)}).`);
+  }
+  return bytes;
 }

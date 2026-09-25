@@ -1,0 +1,44 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Reviewer view: private file rows, their buttons and check results
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.authorized-evidence {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.authorized-evidence > h2,
+.authorized-evidence > p {
+  margin: 0;
+}
+
+.authorized-file {
+  padding-block: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.authorized-file__icon {
+  vertical-align: -2px;
+  color: var(--color-on-neutral);
+}
+
+.authorized-file__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.authorized-file__result {
+  flex: 1 1 100%;
+}
+
+.authorized-file__result:empty {
+  display: none;
+}
+
+.authorized-file__result > p {
+  margin: 0;
+}

@@ -17,12 +17,12 @@ import {
   type FileCheck,
   type HashedFile,
   type ManifestState,
-  type SaltedDigest,
   type VerifiedManifest,
 } from '../evidence/verification';
 import type { ClaimView, EvidenceBundle } from '../types/claim';
 import type { Hex } from 'viem';
-import { merkleErrorMessage, readFileBytes, saltedSha256Hex, sha256Hex } from '../utils/merkle';
+import { hashFileWithSalts } from '../evidence/hashing';
+import { merkleErrorMessage } from '../utils/merkle';
 import { err, ok, type Result } from '../utils/result';
 
 export type VerifierMode = 'files' | 'bundle';
@@ -35,30 +35,9 @@ export type CheckOutcome =
 /** A file list the visitor loaded; unlike a published one, it always exists once loaded. */
 export type LoadedManifest = { fileName: string; state: Exclude<ManifestState, { kind: 'none' }> };
 
-/** SHA-256 of one file plus its commitment for every public salt of the verified list (P8.2). */
-async function hashOne(file: File, salts: readonly Hex[]): Promise<Result<HashedFile, string>> {
-  const bytes = await readFileBytes(file);
-  if (!bytes.ok) {
-    return bytes;
-  }
-  const plain = await sha256Hex(bytes.value);
-  if (!plain.ok) {
-    return plain;
-  }
-  const salted: SaltedDigest[] = [];
-  for (const salt of salts) {
-    const commitment = await saltedSha256Hex(salt, bytes.value);
-    if (commitment.ok) {
-      salted.push({ salt, commitment: commitment.value });
-    }
-  }
-  const hashed: Result<HashedFile, string> = ok({ name: file.name, sha256: plain.value, salted });
-  return hashed;
-}
-
 // Files are read and hashed here with WebCrypto; nothing about them is sent anywhere.
 async function hashFiles(files: readonly File[], salts: readonly Hex[]): Promise<Result<HashedFile[], string>> {
-  const hashed = await Promise.all(files.map(async (file) => ({ name: file.name, digest: await hashOne(file, salts) })));
+  const hashed = await Promise.all(files.map(async (file) => ({ name: file.name, digest: await hashFileWithSalts(file, salts) })));
   const hashes: HashedFile[] = [];
   let failure: string | undefined;
   for (const { name, digest } of hashed) {

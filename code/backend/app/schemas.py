@@ -134,14 +134,20 @@ class ClaimFields(BaseModel):
 
 
 class ClaimResponse(ClaimFields):
-    """A claim for its authorized viewers: every bundle with full file detail."""
+    """A claim for its authorized viewers: every bundle with full file detail.
 
+    `viewer_access` (P10.2) tells the app's reviewer view, explicitly, that this
+    session may open the claim's private files (the access matrix said yes).
+    """
+
+    viewer_access: Literal["authorized"] = "authorized"
     bundles: list[EvidenceBundleResponse] = []
 
 
 class PublicClaimResponse(ClaimFields):
     """A claim for anyone else: bundles with private files reduced to fingerprints."""
 
+    viewer_access: Literal["public"] = "public"
     bundles: list[PublicEvidenceBundleResponse] = []
 
 

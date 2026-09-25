@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { API, LOGIN_MESSAGE, NEW_CLAIM_ID, NEW_METADATA_HASH, NEW_ROOT, stubEvidenceApi } from '../test/stubEvidenceApi';
 import { WALLETS } from '../test/stubRegistryNode';
-import { createClaim, readSession, requestChallenge, uploadEvidence, verifyLogin } from './evidenceApi';
+import { createClaim, downloadEvidenceFile, readClaimAccess, readSession, requestChallenge, uploadEvidence, verifyLogin } from './evidenceApi';
 
 describe('evidence service client', () => {
   it('reads the session: signed out on 401, else the checksummed wallet', async () => {
@@ -52,5 +52,41 @@ describe('evidence service client', () => {
     const down = stubEvidenceApi({ session: undefined, replies: { 'GET /auth/me': 'network-error' } });
     const session = await readSession(down.fetch, API);
     expect(!session.ok && session.error).toMatch(/could not be reached/);
+  });
+
+  it('reads the claim as this session sees it: authorized, fingerprints only, or not stored', async () => {
+    const sha = `0x${'aa'.repeat(32)}`;
+    const authorized = stubEvidenceApi({
+      session: 'x',
+      replies: {
+        [`GET /claims/${NEW_CLAIM_ID}`]: {
+          status: 200,
+          body: {
+            viewer_access: 'authorized',
+            bundles: [{ root_index: 0, files: [{ id: 'f1', sha256_hex: sha, salt: null, original_name: 'a.txt', mime_type: 'text/plain', size_bytes: 3, is_public: false, root_index: 0 }] }],
+          },
+        },
+      },
+    });
+    const access = await readClaimAccess(authorized.fetch, API, NEW_CLAIM_ID);
+    expect(access).toEqual({
+      ok: true,
+      value: {
+        kind: 'authorized',
+        bundles: [{ rootIndex: 0, files: [{ id: 'f1', fingerprint: sha, salt: undefined, name: 'a.txt', mimeType: 'text/plain', sizeBytes: 3, isPublic: false, rootIndex: 0 }] }],
+      },
+    });
+    expect(authorized.requests[0]?.credentials).toBe('include');
+    const denied = stubEvidenceApi({ session: 'x', replies: { [`GET /claims/${NEW_CLAIM_ID}`]: { status: 200, body: { viewer_access: 'public', bundles: [] } } } });
+    expect(await readClaimAccess(denied.fetch, API, NEW_CLAIM_ID)).toEqual({ ok: true, value: { kind: 'denied' } });
+    const missing = stubEvidenceApi({ session: 'x', replies: {} });
+    expect(await readClaimAccess(missing.fetch, API, NEW_CLAIM_ID)).toEqual({ ok: true, value: { kind: 'not-stored' } });
+  });
+
+  it('downloads file bytes with the session and explains a refused download', async () => {
+    const served = await downloadEvidenceFile(() => Promise.resolve(new Response('bytes')), API, 'f1');
+    expect(served.ok && new TextDecoder().decode(served.value)).toBe('bytes');
+    const refused = await downloadEvidenceFile(() => Promise.resolve(new Response('', { status: 404 })), API, 'f1');
+    expect(!refused.ok && refused.error).toMatch(/did not hand out this file/);
   });
 });
