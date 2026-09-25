@@ -14,6 +14,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* The sticky header must not cover the target of an in-page link. */
+  scroll-padding-top: 80px;
 }
 
 body {
@@ -26,6 +28,8 @@ body {
   color: var(--color-on-surface);
   background: var(--color-neutral);
   -webkit-font-smoothing: antialiased;
+  /* Full-width bands paint past the container; clip keeps them from ever scrolling sideways. */
+  overflow-x: clip;
 }
 
 h1 {
@@ -129,63 +133,207 @@ pre {
   color: var(--color-on-neutral);
 }
 
-/* Hero CTA on the dashboard: the jury's entry point to the demo flow. */
-.hero-cta {
-  margin: var(--space-md) 0 0;
+/* A page made of full-width bands (the dashboard) draws its own vertical rhythm. */
+.page--bands {
+  gap: 0;
 }
 
-/* Hero: eyebrow + actions + trust badges (audit-record look, DESIGN.md tokens only). */
-.hero__eyebrow {
-  margin: 0 0 var(--space-sm);
-  font-size: var(--text-label-size);
+.app-main:has(> .page--bands) {
+  padding-block: 0;
+}
+
+/* Full-width band: the background bleeds to the viewport edges while the content keeps the
+   container width; box-shadow + clip-path paint the bleed without widening the page.
+   Bands alternate between the page neutral and the surface white. */
+.band {
+  --band-bg: var(--color-neutral);
+  padding-block: var(--space-xl);
+  background: var(--band-bg);
+  box-shadow: 0 0 0 100vmax var(--band-bg);
+  clip-path: inset(0 -100vmax);
+}
+
+.band--alt {
+  --band-bg: var(--color-surface);
+}
+
+@media (min-width: 768px) {
+  .band {
+    padding-block: 80px;
+  }
+}
+
+/* Section head: eyebrow, title, one muted line, then the section's content. */
+.section-head {
+  display: grid;
+  gap: var(--space-sm);
+  max-width: 44rem;
+  margin-bottom: var(--space-lg);
+}
+
+.section-head > h2,
+.section-head > p {
+  margin: 0;
+}
+
+.section-head > h2 {
+  font-size: var(--text-heading-size);
+  font-weight: var(--text-heading-weight);
+  line-height: var(--text-heading-line-height);
+  letter-spacing: var(--text-heading-tracking);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--text-caption-size);
   font-weight: var(--text-label-weight);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-accent);
+}
+
+/* Page header on inner pages: eyebrow, title and lead above a hairline. */
+.page__header {
+  display: grid;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.page__header > h1,
+.page__header > p {
+  margin: 0;
+}
+
+/* Hero: pill tag, headline, lead, two actions and a stat row below a hairline. */
+.hero {
+  padding-block: var(--space-xl);
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding-block: var(--space-xxl);
+  }
+}
+
+/* The headline grows with the width only here; the type scale elsewhere is unchanged. */
+.hero h1 {
+  max-width: 48rem;
+  margin: var(--space-lg) 0 var(--space-md);
+  font-size: clamp(var(--text-heading-size), 1.25rem + 2.8vw, 3rem);
+  line-height: 1.1;
+}
+
+.hero .page__lead {
+  max-width: 40rem;
+}
+
+.pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: var(--space-xs) 12px;
+  font-size: var(--text-caption-size);
+  font-weight: var(--text-label-weight);
+  color: var(--color-on-neutral);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
 }
 
 .hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  margin: var(--space-md) 0 0;
+  margin: var(--space-lg) 0 0;
 }
 
-.hero__badges {
+.stats {
   display: grid;
-  gap: var(--space-sm);
-  margin: var(--space-lg) 0 0;
-  padding: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-xl) 0 0;
+  padding: var(--space-lg) 0 0;
   list-style: none;
+  border-top: 1px solid var(--color-border);
 }
 
 @media (min-width: 768px) {
-  .hero__badges {
-    grid-template-columns: repeat(3, 1fr);
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-.hero__badge {
-  padding: var(--space-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+.stats__value {
+  display: block;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-heading-weight);
+  line-height: var(--text-subheading-line-height);
+  letter-spacing: var(--text-heading-tracking);
+  color: var(--color-primary);
 }
 
-.hero__badge-icon {
+.stats__label {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-caption-size);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-on-neutral);
+}
+
+/* Principles: a joined grid of cells sharing hairlines, one column on mobile. */
+.principles {
+  display: grid;
+  margin: var(--space-lg) 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.principles__item {
+  min-width: 0;
+  padding: var(--space-lg);
+}
+
+.principles__item + .principles__item {
+  border-top: 1px solid var(--color-border);
+}
+
+@media (min-width: 768px) {
+  .principles {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .principles__item + .principles__item {
+    border-top: 0;
+    border-left: 1px solid var(--color-border);
+  }
+}
+
+.principles__icon {
   color: var(--color-accent);
 }
 
-.hero__badge-title {
+.principles__title {
   margin: var(--space-sm) 0 var(--space-xs);
   font-size: var(--text-label-size);
-  font-weight: var(--text-label-weight);
+  font-weight: 600;
 }
 
-.hero__badge-text {
+.principles__text {
   margin: 0;
-  font-size: var(--text-caption-size);
+  font-size: var(--text-label-size);
   color: var(--color-on-neutral);
 }
 
@@ -247,8 +395,8 @@ pre {
 /* Sample claim cards: status + fingerprint + evidence count + one clear action. */
 .claim-cards {
   display: grid;
-  gap: var(--space-sm);
-  margin: var(--space-md) 0 0;
+  gap: var(--space-md);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -263,9 +411,14 @@ pre {
   display: grid;
   gap: var(--space-sm);
   align-content: start;
-  padding: var(--space-md);
+  padding: var(--space-lg);
   background: var(--color-neutral);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.claim-card > .status-badge {
+  justify-self: start;
 }
 
 .claim-card__id {
@@ -433,6 +586,7 @@ pre {
   font-weight: var(--text-label-weight);
   letter-spacing: var(--text-label-tracking);
   line-height: 1.2;
+  text-decoration: none;
   border: 1.5px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -482,6 +636,20 @@ pre {
 
 .icon-button:hover {
   background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* Claim page: the record and "What was claimed" side by side on wide screens. */
+.claim-overview {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 960px) {
+  .claim-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 
 /* Motion only confirms state changes; honour the user's request for none at all. */

@@ -10,13 +10,23 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Sticky from tablet up; on phones the header wraps to two rows and would eat the viewport. */
+@media (min-width: 768px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+}
+
 .site-header__inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm) var(--space-md);
-  padding-block: var(--space-md);
+  gap: var(--space-sm) var(--space-lg);
+  min-height: 64px;
+  padding-block: 12px;
 }
 
 /* Primary is reserved for brand and navigation (DESIGN.md). */
@@ -28,6 +38,32 @@
   font-weight: var(--text-subheading-weight);
   color: var(--color-primary);
   text-decoration: none;
+}
+
+/* Section links sit between brand and actions; they collapse on narrow screens, where the
+   dashboard itself links to every section. Primary is the navigation colour (DESIGN.md). */
+.site-header__nav {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .site-header__nav {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: var(--space-xl);
+    font-size: var(--text-label-size);
+    font-weight: var(--text-label-weight);
+  }
+}
+
+.site-header__nav a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.site-header__nav a:hover {
+  text-decoration: underline;
 }
 
 .site-header__actions {
