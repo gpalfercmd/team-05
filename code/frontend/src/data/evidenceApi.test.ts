@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { API, LOGIN_MESSAGE, NEW_CLAIM_ID, NEW_METADATA_HASH, NEW_ROOT, stubEvidenceApi } from '../test/stubEvidenceApi';
 import { WALLETS } from '../test/stubRegistryNode';
-import { createClaim, downloadEvidenceFile, readClaimAccess, readSession, requestChallenge, uploadEvidence, verifyLogin } from './evidenceApi';
+import { createClaim, downloadEvidenceFile, readClaimAccess, readNotes, readSession, requestChallenge, storeNote, uploadEvidence, verifyLogin } from './evidenceApi';
 
 describe('evidence service client', () => {
   it('reads the session: signed out on 401, else the checksummed wallet', async () => {
@@ -88,5 +88,19 @@ describe('evidence service client', () => {
     expect(served.ok && new TextDecoder().decode(served.value)).toBe('bytes');
     const refused = await downloadEvidenceFile(() => Promise.resolve(new Response('', { status: 404 })), API, 'f1');
     expect(!refused.ok && refused.error).toMatch(/did not hand out this file/);
+  });
+
+  it('stores a note with the backend field names, and says when the claim is unknown there', async () => {
+    const hash = `0x${'aa'.repeat(32)}` as const;
+    const salt = `0x${'bb'.repeat(32)}` as const;
+    const reply = { id: 'n1', claim_id: NEW_CLAIM_ID, kind: 'proof_request', author: WALLETS.auditor.toLowerCase(), note_hash: hash, text: 'x', salt, created_at: '2026-09-25T08:00:00Z' };
+    const api = stubEvidenceApi({ session: 'x', replies: { [`POST /claims/${NEW_CLAIM_ID}/notes`]: { status: 201, body: reply }, [`GET /claims/${NEW_CLAIM_ID}/notes`]: { status: 200, body: { notes: [reply] } } } });
+    const note = { kind: 'proof_request' as const, text: 'x', salt, noteHash: hash };
+    expect(await storeNote(api.fetch, API, NEW_CLAIM_ID, note)).toEqual({ ok: true, value: 'stored' });
+    expect(api.requests[0]).toMatchObject({ method: 'POST', credentials: 'include', body: { kind: 'proof_request', text: 'x', salt, note_hash: hash } });
+    const notes = await readNotes(api.fetch, API, NEW_CLAIM_ID);
+    expect(notes.ok && notes.value[0]).toMatchObject({ kind: 'proof_request', author: WALLETS.auditor, noteHash: hash, salt, text: 'x' });
+    const unknown = stubEvidenceApi({ session: 'x', replies: {} });
+    expect(await storeNote(unknown.fetch, API, NEW_CLAIM_ID, note)).toEqual({ ok: true, value: 'not-stored' });
   });
 });

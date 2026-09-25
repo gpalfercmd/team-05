@@ -15,6 +15,8 @@ import { CLAIM_ID, chainEnv, WALLETS } from '../test/stubRegistryNode';
 import { connectWallet, renderWithProviders, wallet } from '../test/wagmiMock';
 import type { ClaimView } from '../types/claim';
 import { buildRoot, saltedSha256Hex } from '../utils/merkle';
+import { computeNoteHash } from '../utils/noteHash';
+import { NOTE_MATCHES, NOTE_MISMATCH, NOTE_NOT_STORED } from './AuthorizedNotes';
 import { AuthorizedEvidence, DEMO_NOTE, NO_ACCESS_NOTE, NO_API_NOTE, NO_WALLET_NOTE, NOT_STORED_NOTE, SIGNED_OUT_NOTE } from './AuthorizedEvidence';
 
 vi.mock('wagmi', async (importOriginal) => ({
@@ -205,5 +207,74 @@ describe('Evidence files (authorized)', () => {
     const altered: ClaimView = { ...claim, evidence: [{ ...claim.evidence[0]!, root: `0x${'00'.repeat(32)}` }] };
     renderWithProviders(<AuthorizedEvidence claim={altered} />, chainEnv({ apiUrl: API }));
     expect(await screen.findByText('File list altered')).toBeInTheDocument();
+  });
+
+  describe('notes (P10.3)', () => {
+    const NOTE_SALT: Hex = `0x${'c3'.repeat(32)}`;
+    const noteHash = (text: string): Hex => {
+      const hashed = computeNoteHash(NOTE_SALT, text);
+      if (!hashed.ok) throw new Error(hashed.error);
+      return hashed.value;
+    };
+    const withNotes = (claim: ClaimView, hashes: Hex[]): ClaimView => ({
+      ...claim,
+      timeline: hashes.map((hash, index) => ({
+        txHash: `0x${String(index + 1).padStart(2, '0').repeat(32)}`,
+        blockNumber: BigInt(index + 1),
+        logIndex: 0,
+        timestamp: 1_790_000_000 + index,
+        newStatus: undefined,
+        action: { kind: 'internal-attestation', verifier: WALLETS.verifier1, approved: true },
+        noteHash: hash,
+      })),
+    });
+    const stored = (text: string, hash: Hex = noteHash(text), author = WALLETS.verifier1) => ({
+      id: text,
+      claim_id: CLAIM_ID,
+      kind: 'justification',
+      author: author.toLowerCase(),
+      note_hash: hash,
+      text,
+      salt: NOTE_SALT,
+      created_at: '2026-09-25T08:00:00Z',
+    });
+
+    it('shows each note next to its history event, verified against the onchain fingerprint', async () => {
+      const recorded = [noteHash('Receipts match.'), noteHash('Stock counted.'), `0x${'dd'.repeat(32)}` as Hex];
+      withApi({
+        session: WALLETS.auditor.toLowerCase(),
+        replies: {
+          ...authorizedReplies(),
+          [`GET /claims/${CLAIM_ID}/notes`]: {
+            status: 200,
+            body: { notes: [stored('Receipts match.'), stored('Tampered text', recorded[1])] },
+          },
+        },
+      });
+      renderWithProviders(<AuthorizedEvidence claim={withNotes(claimView(), recorded)} />, chainEnv({ apiUrl: API }));
+      const section = (await screen.findByRole('heading', { name: 'Notes (authorized)' })).closest('section');
+      if (section === null) throw new Error('section');
+      expect(await within(section).findByText('Receipts match.')).toBeInTheDocument();
+      expect(within(section).getByText(NOTE_MATCHES)).toBeInTheDocument();
+      expect(within(section).getByText(NOTE_MISMATCH)).toBeInTheDocument();
+      expect(within(section).getByText(NOTE_NOT_STORED)).toBeInTheDocument();
+    });
+
+    it('lets an author without file access read only the notes the backend returns', async () => {
+      connectWallet(WALLETS.disputant, undefined);
+      const own = stored('Counter-evidence: the photo is from 2024.', undefined, WALLETS.disputant);
+      withApi({
+        session: WALLETS.disputant.toLowerCase(),
+        replies: {
+          [`GET /claims/${CLAIM_ID}`]: { status: 200, body: { viewer_access: 'public', bundles: [] } },
+          [`GET /claims/${CLAIM_ID}/notes`]: { status: 200, body: { notes: [own] } },
+        },
+      });
+      renderWithProviders(<AuthorizedEvidence claim={withNotes(claimView(), [own.note_hash])} />, chainEnv({ apiUrl: API }));
+      expect(await screen.findByText(NO_ACCESS_NOTE)).toBeInTheDocument();
+      expect(await screen.findByText(own.text)).toBeInTheDocument();
+      expect(screen.getByText(NOTE_MATCHES)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Download/ })).not.toBeInTheDocument();
+    });
   });
 });

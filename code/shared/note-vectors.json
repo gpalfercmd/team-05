@@ -1,0 +1,64 @@
+{
+  "spec": {
+    "hash": "noteHash = keccak256(salt || utf8(text)) (Ethereum keccak256, not NIST SHA3-256): the bytes32 anchored as justificationHash, requestHash, counterEvidenceHash or the dispute resolution's justificationHash.",
+    "salt": "32 random bytes chosen by the author's browser for every note; never reused, never published.",
+    "text": "The note exactly as written (the app trims surrounding whitespace once, before hashing), UTF-8, no Unicode normalization. An empty text is rejected.",
+    "legacy": "Notes anchored before P10.3 are unsalted: legacy_hash = keccak256(utf8(text)), which a guess can confirm. They stay as they are.",
+    "invalid": "Every invalid case must be rejected: no hash is computed for it.",
+    "encoding": "Byte values are lowercase 0x-prefixed hex strings."
+  },
+  "cases": [
+    {
+      "name": "short_note",
+      "salt": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "text": "approved",
+      "preimage_hex": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f617070726f766564",
+      "note_hash": "0x1408e81344f103c82d2091cf671a1451af1aa78d60545e808e014c8547628ec7",
+      "legacy_hash": "0x2b29265fc125740ae6bbc5035ae7af720b6932f4a3e44ba5ac02955c21ca9a05"
+    },
+    {
+      "name": "same_text_other_salt",
+      "salt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "text": "approved",
+      "preimage_hex": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff617070726f766564",
+      "note_hash": "0xc70098b3a97286e30ae29a950dbc9a97dd602889bcdb833646b2d6657a7774d0",
+      "legacy_hash": "0x2b29265fc125740ae6bbc5035ae7af720b6932f4a3e44ba5ac02955c21ca9a05"
+    },
+    {
+      "name": "proof_request",
+      "salt": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "text": "missing receipt",
+      "preimage_hex": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f6d697373696e672072656365697074",
+      "note_hash": "0x79f90039a07ab56b95ace3c87b83b7137df13c1a6a3a80c6dee20ee0f634ebb9",
+      "legacy_hash": "0x0e706f1e8ea2306a6404159167469b61f19dd56a9218bd2e0cdcfa9f420b9630"
+    },
+    {
+      "name": "unicode_multiline",
+      "salt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "text": "Recibos revisados — 3 faltan.\nSegunda línea: 中文 · agua 🚰",
+      "preimage_hex": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff52656369626f7320726576697361646f7320e2809420332066616c74616e2e0a536567756e6461206cc3ad6e65613a20e4b8ade6968720c2b7206167756120f09f9ab0",
+      "note_hash": "0x49cb6d202a409e8422f780539f528560f827bb42696ffa1f9e6bacc87733accf",
+      "legacy_hash": "0x066b7d9e0a67b074ad0700b4257d9cb0447977674e9cc7907c22179a3918e52f"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "short_salt",
+      "salt": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e",
+      "text": "approved",
+      "reason": "salt is not 32 bytes"
+    },
+    {
+      "name": "long_salt",
+      "salt": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00",
+      "text": "approved",
+      "reason": "salt is not 32 bytes"
+    },
+    {
+      "name": "empty_text",
+      "salt": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "text": "",
+      "reason": "empty note"
+    }
+  ]
+}
