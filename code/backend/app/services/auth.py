@@ -44,7 +44,7 @@ def normalize_address(value: str) -> Result[str]:
 def build_message(address: str, nonce: str, expires_at: datetime) -> str:
     """Build the exact EIP-191 text the wallet signs (must be byte-stable)."""
     message = (
-        "Sign in to Proof of Aid\n"
+        "Sign in to ClearTrust\n"
         f"\nAddress: {address}\nNonce: {nonce}\nExpires: {expires_at.isoformat()}"
     )
     return message

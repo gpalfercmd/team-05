@@ -13,7 +13,7 @@ export function Footer() {
   return (
     <footer className="site-footer">
       <div className="container site-footer__inner">
-        <span>Proof of Aid — check aid claims without exposing people.</span>
+        <span>ClearTrust — check aid claims without exposing people.</span>
         <span>
           Status and evidence fingerprints read directly from the blockchain ({chain.name}).{' '}
           <Link to="/claims">Browse claims</Link> · <Link to="/workspace">Workspace</Link>

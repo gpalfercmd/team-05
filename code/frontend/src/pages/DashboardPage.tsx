@@ -98,11 +98,11 @@ export function DashboardPage() {
       >
         <div className="section-head">
           <p className="eyebrow">The project</p>
-          <h2 id="about-heading">What is Proof of Aid?</h2>
+          <h2 id="about-heading">What is ClearTrust?</h2>
         </div>
         <div className="about-grid">
           <p>
-            Proof of Aid lets anyone check that an aid claim is backed by real evidence — without
+            ClearTrust lets anyone check that an aid claim is backed by real evidence — without
             seeing the private data inside that evidence. No account, no special access: the checks
             run in your browser against fingerprints recorded on the Arbitrum blockchain.
           </p>

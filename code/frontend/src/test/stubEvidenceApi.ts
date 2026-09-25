@@ -12,7 +12,7 @@ export const API = 'http://api.test';
 export const NEW_CLAIM_ID: Hex = `0x${'c1'.repeat(32)}`;
 export const NEW_METADATA_HASH: Hex = `0x${'d2'.repeat(32)}`;
 export const NEW_ROOT: Hex = `0x${'e3'.repeat(32)}`;
-export const LOGIN_MESSAGE = 'Sign in to Proof of Aid\n\nAddress: 0x…\nNonce: 1\nExpires: soon';
+export const LOGIN_MESSAGE = 'Sign in to ClearTrust\n\nAddress: 0x…\nNonce: 1\nExpires: soon';
 
 export type Recorded = { url: string; method: string; credentials: RequestCredentials | undefined; body: unknown };
 
