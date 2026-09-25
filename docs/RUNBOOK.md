@@ -18,7 +18,7 @@ This section is technically explained at [code/README.md → Introduction, note 
 | pnpm | 12.6.0, pinned in `code/frontend/package.json` (`packageManager`); run `corepack enable` once | frontend. Do not use `npm install` (the lockfile is `pnpm-lock.yaml`). |
 | Foundry (`forge`, `anvil`, `cast`) | 1.8.3 (`foundryup` or `brew install foundry`) | contracts, local chain (B, C), backend anvil test |
 | Python + uv | Python ≥ 3.12, uv 0.11 (`curl -LsSf https://astral.sh/uv/install.sh \| sh`) | shared recipe, backend (C) |
-| PostgreSQL | 16 (Docker, `code/backend/docker-compose.yml`) or a native 16+ server | backend API and indexer (C). The test suites do **not** need it (they use in-memory SQLite). |
+| PostgreSQL | a native 16+ server | backend API and indexer (C). The test suites do **not** need it (they use in-memory SQLite). |
 | Browser | any recent one | the public page. MetaMask is **not** needed to check claims: the public page never signs. |
 | MetaMask | any recent version, in a separate browser profile | only path D (role screens) |
 
@@ -61,19 +61,6 @@ Start order: **1. API**, **2. indexer** (both in [A](#a-backend-api-migrations-a
 run the `anvil` and deploy snippets of C before A.
 
 ### A. Backend API, migrations and indexer
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
-
-```bash
-cd code/backend
-docker compose up -d        # Postgres 16, role poa / db proof_of_aid, port 5432
-```
-
-This section is technically explained at [code/README.md → C. Backend and indexer, note 2](../code/README.md#c-backend-and-indexer-note-2).
-
-```bash
-uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_notes, P10.3)
-```
 
 This section is technically explained at [code/README.md → C. Backend and indexer, note 3](../code/README.md#c-backend-and-indexer-note-3).
 
