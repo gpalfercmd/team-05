@@ -87,7 +87,7 @@ guards are checked, and each function's caller, events and ETH movements: [Appen
 ### Who pays what, in plain words
 
 Deposits make fraud and frivolous disputes cost money
-([Incentives](#incentives-deposits-rewards-and-penalties-p9) has the exact rules):
+([Incentives](#a6-incentives-deposits-rewards-and-penalties-p9) has the exact rules):
 
 - **The foundation** deposits a penalty plus the auditor's reward when it anchors the claim
   (1.01 ETH at the reference amounts; 0.0101 ETH on Arbitrum Sepolia).
