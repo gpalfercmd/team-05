@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useState, type ReactNode } from 'react';
-import type { Hex } from 'viem';
+import type { Hash, Hex } from 'viem';
 import type { ContractCall } from '../../chain/calls';
 import { parseNoteInput } from '../../chain/inputs';
 import { useContractAction } from '../../hooks/useContractAction';
@@ -32,17 +32,24 @@ type ActionFormProps = {
   buildCall: (decision: boolean, note: Hex) => ContractCall;
   /** 5 inside a claim panel, whose own heading is an h4. */
   level?: 4 | 5;
+  /** Lets the claim panel keep the confirmation after this form disappears with the old stage. */
+  onConfirmed?: (hash: Hash) => void;
 };
 
 // Settle carries no note; the contract call ignores this placeholder.
 const NO_NOTE: Hex = '0x';
 
-export function ActionForm({ title, description, noteLabel, options, buildCall, level = 4 }: ActionFormProps) {
+export function ActionForm({ title, description, noteLabel, options, buildCall, level = 4, onConfirmed }: ActionFormProps) {
   const Heading = level === 5 ? 'h5' : 'h4';
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | undefined>();
   const [active, setActive] = useState<string | undefined>();
-  const action = useContractAction({ onConfirmed: () => setNote('') });
+  const action = useContractAction({
+    onConfirmed: (hash) => {
+      setNote('');
+      onConfirmed?.(hash);
+    },
+  });
 
   const submit = (option: ActionOption): void => {
     const parsed = noteLabel === undefined ? { ok: true as const, value: NO_NOTE } : parseNoteInput(note);

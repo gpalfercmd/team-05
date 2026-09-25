@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useState, type FormEvent } from 'react';
-import type { Address } from 'viem';
+import type { Address, Hash } from 'viem';
 import type { ContractCall } from '../../chain/calls';
 import { parseAddressInput } from '../../chain/inputs';
 import { useContractAction } from '../../hooks/useContractAction';
@@ -26,6 +26,7 @@ type AddressActionFormProps = {
   buildCall: (addresses: readonly Address[]) => ContractCall;
   /** 5 inside a claim panel, whose own heading is an h4. */
   level?: 4 | 5;
+  onConfirmed?: (hash: Hash) => void;
 };
 
 export function AddressActionForm({
@@ -36,11 +37,17 @@ export function AddressActionForm({
   variant = 'primary',
   buildCall,
   level = 4,
+  onConfirmed,
 }: AddressActionFormProps) {
   const Heading = level === 5 ? 'h5' : 'h4';
   const [values, setValues] = useState<string[]>(() => inputs.map(() => ''));
   const [errors, setErrors] = useState<(string | undefined)[]>([]);
-  const action = useContractAction({ onConfirmed: () => setValues(inputs.map(() => '')) });
+  const action = useContractAction({
+    onConfirmed: (hash) => {
+      setValues(inputs.map(() => ''));
+      onConfirmed?.(hash);
+    },
+  });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();

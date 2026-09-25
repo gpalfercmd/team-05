@@ -46,7 +46,7 @@ describe('Accreditation Authority screen', () => {
     expect(within(panel).getByRole('heading', { name: 'Claim 0xabab…abab' })).toHaveFocus();
     await user.type(within(panel).getByLabelText('Auditor wallet'), WALLETS.auditor);
     await user.click(within(panel).getByRole('button', { name: 'Assign auditor' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'assignAuditor', args: [CLAIM_ID, WALLETS.auditor] });
   });
 
@@ -69,7 +69,7 @@ describe('Accreditation Authority screen', () => {
     expect(wallet.written).toHaveLength(0);
     await user.type(within(panel).getByLabelText('Decision note'), 'Counter-evidence does not hold.');
     await user.click(within(panel).getByRole('button', { name: 'Dismiss dispute' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'resolveDispute', args: [CLAIM_ID, false, expect.stringMatching(/^0x[0-9a-f]{64}$/)] });
   });
 

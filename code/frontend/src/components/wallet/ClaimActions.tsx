@@ -5,11 +5,12 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { Hex } from 'viem';
+import type { Hash, Hex } from 'viem';
 import { planClaimActions } from '../../chain/claimActions';
 import type { RegistryAddresses } from '../../chain/calls';
+import { useAppConfig } from '../../hooks/useAppConfig';
 import { useClaimActionState } from '../../hooks/useClaimActionState';
 import { useEscrowParams } from '../../hooks/useEscrowParams';
 import type { Role } from '../../utils/roles';
@@ -31,11 +32,22 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
   const params = useEscrowParams();
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  const { chain } = useAppConfig();
+  // A confirmed action usually moves the claim to its next stage, which removes that action's
+  // form; the confirmation is kept here so the outcome and its transaction stay visible.
+  const [confirmed, setConfirmed] = useState<{ title: string; hash: Hash } | undefined>();
 
   // Choosing a claim moves focus to its panel, so keyboard and screen-reader users follow along.
   useEffect(() => {
     headingRef.current?.focus();
   }, [claimId]);
+
+  useEffect(() => {
+    if (confirmed !== undefined) {
+      noticeRef.current?.focus();
+    }
+  }, [confirmed]);
 
   let body: ReactNode;
   switch (lookup.state) {
@@ -84,6 +96,7 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
               registries={registries}
               params={params}
               renderSubmitProof={renderSubmitProof}
+              onConfirmed={(title, hash) => setConfirmed({ title, hash })}
             />
           ))}
           <p className="caption">
@@ -100,6 +113,16 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
       <h4 id={headingId} ref={headingRef} tabIndex={-1}>
         Claim <code title={claimId}>{truncateMiddle(claimId)}</code>
       </h4>
+      {confirmed !== undefined && (
+        <p ref={noticeRef} tabIndex={-1} className="tx-status tx-status--confirmed" role="status">
+          <span>
+            Done ✓ {confirmed.title} on {chain.name}.
+          </span>
+          <span className="tx-status__hash">
+            Transaction <HashDisplay value={confirmed.hash} label="transaction" explorer="tx" />
+          </span>
+        </p>
+      )}
       {body}
     </section>
   );

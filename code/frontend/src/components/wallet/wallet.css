@@ -182,3 +182,19 @@
   font-family: var(--font-mono);
   font-size: var(--text-mono-size);
 }
+
+.evidence-steps {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: var(--text-label-size);
+}
+
+.evidence-steps li[aria-current='step'] {
+  font-weight: 600;
+}
+
+.evidence-steps__state {
+  color: var(--color-on-neutral);
+}

@@ -123,6 +123,8 @@ function viewResult(state: StubChainState, functionName: string, args: readonly 
       return organization !== undefined && state.organizations.includes(organization) ? organization : zeroAddress;
     },
     isAuditor: () => state.auditors.includes(account),
+    activeVerifierCount: () =>
+      state.organizations.includes(account) ? BigInt(Object.values(state.verifiers).filter((organization) => organization === account).length) : 0n,
     anchorDeposit: () => state.params.anchorDeposit,
     auditorDeposit: () => state.params.auditorDeposit,
     disputeBond: () => state.params.disputeBond,

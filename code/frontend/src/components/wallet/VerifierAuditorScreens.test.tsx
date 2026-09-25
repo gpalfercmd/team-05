@@ -5,7 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { openClaim, renderAs } from '../../test/roleScreens';
 import { CLAIM_ID, demoChainState, WALLETS, type StubChainState, type StubClaim } from '../../test/stubRegistryNode';
@@ -31,7 +31,7 @@ describe('internal verifier', () => {
     const panel = await openClaim(user, CLAIM_ID);
     await user.type(within(panel).getByLabelText('Justification'), 'Receipts match the delivery list.');
     await user.click(within(panel).getByRole('button', { name: 'Approve evidence' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'attestInternal', args: [CLAIM_ID, true, expect.stringMatching(/^0x/)] });
   });
 
@@ -57,7 +57,7 @@ describe('internal verifier', () => {
     const other = await openClaim(second.user, CLAIM_ID);
     await second.user.type(within(other).getByLabelText('Justification'), 'Stock count checked.');
     await second.user.click(within(other).getByRole('button', { name: 'Accept proof' }));
-    await within(other).findByText(/Done ✓/);
+    await within(other).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'confirmProof', args: [CLAIM_ID, true, expect.any(String)] });
   });
 
@@ -78,7 +78,7 @@ describe('auditor', () => {
     const approve = await within(panel).findByRole('button', { name: 'Approve and lock 0.001234 ETH' });
     await user.type(within(panel).getByLabelText('Justification'), 'All bundles reviewed.');
     await user.click(approve);
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(simulated[0]).toMatchObject({ functionName: 'attestFinal', value: 1_234_000_000_000_000n });
     expect(wallet.written[0]).toMatchObject({ functionName: 'attestFinal', value: 1_234_000_000_000_000n });
   });
@@ -88,7 +88,7 @@ describe('auditor', () => {
     const panel = await openClaim(user, CLAIM_ID);
     await user.type(within(panel).getByLabelText('Justification'), 'Evidence does not support the claim.');
     await user.click(within(panel).getByRole('button', { name: 'Reject claim' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'attestFinal', args: [CLAIM_ID, false, expect.any(String)], value: 0n });
   });
 
@@ -97,7 +97,7 @@ describe('auditor', () => {
     const panel = await openClaim(user, CLAIM_ID);
     await user.type(within(panel).getByLabelText('What proof is missing?'), 'A stock count for the warehouse.');
     await user.click(within(panel).getByRole('button', { name: 'Request proof' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'requestProof' });
   });
 
@@ -115,7 +115,7 @@ describe('auditor', () => {
     const panel = await openClaim(user, CLAIM_ID);
     await user.type(within(panel).getByLabelText('Counter-evidence'), 'Beneficiary list duplicated.');
     await user.click(within(panel).getByRole('button', { name: 'Open dispute and lock 0.0025 ETH' }));
-    await within(panel).findByText(/Done ✓/);
+    await within(panel).findAllByText(/Done ✓/);
     expect(wallet.written[0]).toMatchObject({ functionName: 'openDispute', value: 2_500_000_000_000_000n });
   });
 
@@ -151,7 +151,9 @@ describe('settle (any wallet)', () => {
     const { user } = renderAs(WALLETS.stranger, withClaim(closed));
     const panel = await openClaim(user, CLAIM_ID);
     await user.click(within(panel).getByRole('button', { name: 'Settle deposits' }));
-    await within(panel).findByText(/Done ✓/);
+    // The panel keeps the outcome even after the settled claim no longer offers the form.
+    const notice = await within(panel).findByText('Done ✓ Deposits settled on Anvil.');
+    await waitFor(() => expect(notice.closest('p')).toHaveFocus());
     expect(wallet.written[0]).toMatchObject({ functionName: 'settle', args: [CLAIM_ID] });
   });
 

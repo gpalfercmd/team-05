@@ -12,9 +12,11 @@ import { useRole, type RoleState } from '../../hooks/useRole';
 import { useRegistries, useWallet } from '../../hooks/useWallet';
 import { HashDisplay } from '../HashDisplay';
 import { AlertTriangleIcon } from '../icons';
+import { AnchorClaimSection } from './AnchorClaimForm';
 import { AuditorAccreditationPanel } from './AuditorAccreditationPanel';
 import { ClaimWorkbench } from './ClaimWorkbench';
 import { RegistryAdminPanel } from './RegistryAdminPanel';
+import { SubmitProofForm } from './SubmitProofForm';
 import { WrongNetworkNotice } from './WrongNetworkNotice';
 import './wallet.css';
 
@@ -23,12 +25,20 @@ type RoleActionsProps = { role: RoleState; viewer: Address; registries: Registry
 function RoleActions({ role, viewer, registries }: RoleActionsProps) {
   // Each role sees only the actions the contracts let it take (DESIGN.md: hidden, not disabled).
   const workbench = (
-    <ClaimWorkbench role={role.role} viewer={viewer} verifierOrganization={role.verifierOrganization} registries={registries} />
+    <ClaimWorkbench
+      role={role.role}
+      viewer={viewer}
+      verifierOrganization={role.verifierOrganization}
+      registries={registries}
+      renderSubmitProof={(claimId, rootIndex, onConfirmed) => (
+        <SubmitProofForm registries={registries} claimId={claimId} rootIndex={rootIndex} onConfirmed={onConfirmed} />
+      )}
+    />
   );
   const screens: Record<RoleState['role'], ReactNode> = {
     registryAdmin: <RegistryAdminPanel registries={registries} />,
     accreditationAuthority: <AuditorAccreditationPanel registries={registries} />,
-    organization: null,
+    organization: <AnchorClaimSection registries={registries} organization={viewer} />,
     internalVerifier: null,
     auditor: null,
     public: (

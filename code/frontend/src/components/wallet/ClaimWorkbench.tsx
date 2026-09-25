@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useState, type ReactNode } from 'react';
-import type { Address, Hex } from 'viem';
+import type { Address, Hash, Hex } from 'viem';
 import type { RegistryAddresses } from '../../chain/calls';
 import { useAppConfig } from '../../hooks/useAppConfig';
 import type { Role } from '../../utils/roles';
@@ -20,7 +20,7 @@ type ClaimWorkbenchProps = {
   verifierOrganization: Address | undefined;
   registries: RegistryAddresses;
   /** The organization's submit-proof form (needs the evidence API); others never get that action. */
-  renderSubmitProof?: (claimId: Hex, rootIndex: number) => ReactNode;
+  renderSubmitProof?: (claimId: Hex, rootIndex: number, onConfirmed: (hash: Hash) => void) => ReactNode;
 };
 
 export const NO_API_QUEUE_NOTE =
@@ -47,7 +47,7 @@ export function ClaimWorkbench({ role, viewer, verifierOrganization, registries,
           role={role}
           viewer={viewer}
           registries={registries}
-          renderSubmitProof={(rootIndex) => renderSubmitProof(selected, rootIndex)}
+          renderSubmitProof={(rootIndex, onConfirmed) => renderSubmitProof(selected, rootIndex, onConfirmed)}
         />
       )}
     </section>

@@ -111,6 +111,22 @@ export async function readCredits(client: ReadClient, registry: RegistryAddresse
   return credits;
 }
 
+/** `activeVerifierCount(organization)`: anchoring needs at least `MIN_INTERNAL_VERIFIERS` (2). */
+export async function readActiveVerifierCount(
+  client: ReadClient,
+  registry: RegistryAddresses,
+  organization: Address,
+): Promise<Result<bigint, string>> {
+  const values = await readAll(client, [
+    { address: registry.participantRegistry, abi: participantRegistryAbi, functionName: 'activeVerifierCount', args: [organization] },
+  ]);
+  const count = values.ok ? parse(z.tuple([weiSchema]).transform(([value]) => value), values.value) : values;
+  return count;
+}
+
+/** IClaimRegistry's `MIN_INTERNAL_VERIFIERS`: checkpoint 1 and proof confirmation need two different verifiers. */
+export const MIN_INTERNAL_VERIFIERS = 2n;
+
 // --- Claim state for the action planner ---------------------------------------------------------
 
 /** Everything the contract checks before a claim action, read for one claim and one wallet. */

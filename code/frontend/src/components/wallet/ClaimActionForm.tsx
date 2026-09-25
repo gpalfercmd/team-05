@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { ReactNode } from 'react';
-import { formatEther } from 'viem';
+import { formatEther, type Hash } from 'viem';
 import type { ClaimAction } from '../../chain/claimActions';
 import {
   assignAuditorCall,
@@ -33,7 +33,9 @@ export type ClaimActionFormProps = {
   /** Payable amounts from the contract; `undefined` while they are read. */
   params: Result<EscrowParams, string> | undefined;
   /** Forms for actions that need the backend (submit proof) are supplied by the caller. */
-  renderSubmitProof: (rootIndex: number) => ReactNode;
+  renderSubmitProof: (rootIndex: number, onConfirmed: (hash: Hash) => void) => ReactNode;
+  /** Reports a confirmed transaction with the form's title. */
+  onConfirmed: (title: string, hash: Hash) => void;
 };
 
 const eth = (wei: bigint): string => `${formatEther(wei)} ETH`;
@@ -45,18 +47,20 @@ function payable(params: ClaimActionFormProps['params'], pick: (value: EscrowPar
   return option;
 }
 
-export function ClaimActionForm({ action, claim, registries, params, renderSubmitProof }: ClaimActionFormProps) {
+export function ClaimActionForm({ action, claim, registries, params, renderSubmitProof, onConfirmed }: ClaimActionFormProps) {
   const id = claim.claimId;
+  const report = (title: string) => (hash: Hash) => onConfirmed(title, hash);
   let form: ReactNode;
   switch (action.kind) {
     case 'submitProof':
-      form = renderSubmitProof(action.rootIndex);
+      form = renderSubmitProof(action.rootIndex, report('Supplementary proof submitted'));
       break;
     case 'attestInternal':
       form = (
         <ActionForm
           level={5}
           title="Checkpoint 1: internal check"
+          onConfirmed={report('Checkpoint 1 recorded')}
           description="Approve if the evidence supports the claim. Rejecting ends the claim and returns the organization’s deposit."
           noteLabel="Justification"
           options={[
@@ -72,6 +76,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Confirm the supplementary proof"
+          onConfirmed={report('Proof review recorded')}
           description="As a second internal verifier, confirm the proof the organization submitted. Sending it back asks the organization for new proof."
           noteLabel="Justification"
           options={[
@@ -87,6 +92,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Request more proof"
+          onConfirmed={report('Proof requested')}
           description="The organization must submit supplementary evidence, which a second internal verifier then confirms."
           noteLabel="What proof is missing?"
           options={[{ label: 'Request proof', decision: true, variant: 'secondary' }]}
@@ -100,6 +106,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Final decision (checkpoint 2)"
+          onConfirmed={report('Final decision recorded')}
           description="Approving locks your auditor deposit until the dispute window closes; you lose it if a dispute is upheld. Rejecting costs nothing and returns the organization’s deposit."
           noteLabel="Justification"
           options={[
@@ -119,6 +126,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Dispute this verified claim"
+          onConfirmed={report('Dispute opened')}
           description="If the Accreditation Authority upholds the dispute you receive your bond back plus the organization’s and auditor’s deposits; if it is dismissed you lose the bond."
           noteLabel="Counter-evidence"
           options={[{ ...open, decision: true, variant: 'danger' }]}
@@ -132,6 +140,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <AddressActionForm
           level={5}
           title={action.currentAuditor === undefined ? 'Assign an auditor' : 'Reassign the auditor'}
+          onConfirmed={report('Auditor assigned')}
           description={
             action.currentAuditor === undefined
               ? 'Choose an accredited auditor to review this claim.'
@@ -148,6 +157,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Resolve the dispute"
+          onConfirmed={report('Dispute resolved')}
           description="Upholding rejects the claim and pays the disputant its bond plus the organization’s and auditor’s deposits. Dismissing keeps the claim verified and splits the bond between the organization and the auditor."
           noteLabel="Decision note"
           options={[
@@ -163,6 +173,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
         <ActionForm
           level={5}
           title="Settle the deposits"
+          onConfirmed={report('Deposits settled')}
           description="The dispute window has closed. Settling credits the organization its penalty deposit and the auditor its deposit and reward; each then withdraws. Anyone may do this."
           options={[{ label: 'Settle deposits', decision: true }]}
           buildCall={() => settleCall(registries, id)}
