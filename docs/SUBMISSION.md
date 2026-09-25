@@ -95,49 +95,9 @@ shared 34, backend 128, frontend 512 passed and 8 skipped) are in
 
 ### Mock demonstration
 
-Short screen recordings of the web app, one per role, following the Valencia case with the demo
-wallets on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
-The videos are not recorded yet. Commit each one under the suggested path, or, on GitHub, open this
-file in the web editor and drag the video into it to get an embeddable URL.
+Short screen recordings of the web app with the demo wallets on local anvil ([RUNBOOK path D](RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
-**1. Public visitor (verify a file).** A donor opens the 500-kit claim page with no wallet, drops the
-published supplier invoice into **Verify it yourself** and gets **Match**, then drops a copy with one
-changed character and gets **No match**.
 
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/public-visitor.mp4`.
-
-**2. Organization.** The foundation signs in with its wallet, records the 500-kit claim with its
-evidence files and anchors it, paying the anchor deposit.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/organization.mp4`.
-
-**3. Internal verifier.** Laura checks a downloaded private file in *Evidence files (authorized)*
-(**Match**) and approves checkpoint 1 with **Approve evidence**. The four-eyes refusal is shown on
-a second claim with two verifiers: Laura is refused **Accept proof** there because she did
-checkpoint 1, and the other verifier accepts it.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/internal-verifier.mp4`.
-
-**4. Auditor.** AuditAid Iberia reviews the evidence, then approves the claim and locks its deposit.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/auditor.mp4`.
-
-**5. Accreditation Authority.** The Oversight Authority accredits AuditAid Iberia with **Accredit
-auditor**, assigns it to the claim with **Assign auditor**, and later resolves the 480-kit dispute
-with **Uphold dispute** or **Dismiss dispute**.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/accreditation-authority.mp4`.
-
-**6. Registry Admin.** The platform operator registers the foundation's wallet with **Register
-organization** and Laura's wallet with **Register internal verifier**.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/registry-admin.mp4`.
-
-**7. Withdraw / Settle.** After the 60-day window (anvil's clock moved forward), any wallet settles
-the claim with **Settle deposits**, and the foundation and AuditAid Iberia collect their credits with
-**Withdraw**.
-
-> **TODO (team):** add video link. Suggested file: `docs/evidence/videos/withdraw-settle.mp4`.
 
 ## 4. Limitations and next step
 
