@@ -5,7 +5,7 @@
 
 | | |
 | --- | --- |
-| **Project name** | Proof of Aid — Team 05 |
+| **Project name** | ClearTrust |
 | **Team ID & members** | team-05 · Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez |
 | **System vision** | Anyone, without special access, can check that an aid claim is backed by unaltered evidence reviewed by independent, accredited verifiers, without seeing beneficiaries' personal data. |
 | **Implementation focus** | **Trust, Evidence & Privacy:** trusting aid claims whose evidence cannot be published, through encrypted offchain evidence anchored onchain by Merkle root and a contract-enforced two-stage verification. |
