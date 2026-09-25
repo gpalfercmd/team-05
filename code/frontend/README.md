@@ -4,8 +4,9 @@ React + Vite + TypeScript app for the **Trust, Evidence & Privacy** prototype: a
 where anyone can check a claim's evidence without a wallet and without seeing personal data (P5.4),
 on top of the shell (P5.2: tooling, design tokens from
 [`DESIGN.md`](../../dbv-specs-ops/docs/DESIGN.md), routing, wallet connection, `StatusBadge`,
-`HashDisplay`). Role views for signing actions (P5.3) were cut and not built: in the prototype the
-role actions are signed by the Foundry scripts (see [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md)).
+`HashDisplay`), and the role screens (P5.3): with a wallet connected, the dashboard reads its role
+from the `ParticipantRegistry` and offers only that role's actions, signed with MetaMask (how to
+use them on anvil or Sepolia: [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).
 
 Stack: React 19, React Router 7, wagmi 3 + viem 2 (injected wallet, e.g. MetaMask), TanStack
 Query, zod, plain CSS with custom properties. Tests: Vitest + Testing Library (jsdom).
@@ -144,6 +145,27 @@ bundle mode, pick *Supplementary proof #1* and drop both `delivery-summary.csv` 
 `stock-count.txt`. A test recomputes the demo roots from these files, so the demo cannot silently
 drift: if you edit a demo file, update its manifest and the roots in `src/mocks/claims.ts`.
 
+## Role screens (P5.3)
+
+With contract addresses configured and a wallet connected, the dashboard's **Your wallet** card:
+
+- reads the wallet's role from the `ParticipantRegistry` (`useRole`); nothing is inferred locally;
+- lists claims to act on from the indexer (`GET /public/claims`, with `VITE_API_URL`) or takes a
+  pasted claim ID, re-reads that claim from the contract and offers only the actions
+  `planClaimActions` (`src/chain/claimActions.ts`, a mirror of `ClaimRegistry`'s rules) allows;
+- simulates each call first, so a rule it breaks is shown in plain English
+  (`utils/contractErrors.ts`), then signs it with `useWriteContract` on the configured chain and
+  waits for the receipt (`useContractAction`); every query refreshes on confirmation;
+- reads payable amounts from the contract (`anchorDeposit`, `auditorDeposit`, `disputeBond`);
+- records claims and proof through the backend (wallet-signed login, `POST /claims`, evidence
+  upload), then anchors the returned root; without `VITE_API_URL` those two forms say so;
+- blocks signing on the wrong network (with a **Switch** button), and in demo mode only says that
+  actions need a real chain. The public claim page adds **Settle** for any connected wallet once a
+  claim's dispute window has closed on the chain's clock.
+
+`src/chain/roleActions.anvil.test.ts` runs the same call builders against real contracts on anvil
+(opt-in, see the RUNBOOK's path D).
+
 ## Folder map
 
 ```
@@ -156,12 +178,18 @@ src/
   data/               claim sources (chain, API, demo), published file lists, typed ABI subset,
                       events → timeline, indexer timeline parser, summary
   evidence/           manifest schema (zod), verification logic, plain-language labels
-  hooks/              useAppConfig, useClaim, useEvidenceVerifier, useRole (stub: role screens were
-                      cut), useTheme
+  chain/              role screens' logic: call builders, validated registry reads, action planner
+                      (contract rules per role and status), form inputs, transaction phases, and
+                      the opt-in anvil end-to-end test
+  hooks/              useAppConfig, useClaim, useEvidenceVerifier, useRole (from the registry),
+                      useWallet, useContractAction (simulate → sign → receipt), useClaimActionState,
+                      useEscrowParams / useCredits, useEvidenceService (backend login), useChainTime,
+                      useTheme
   components/         AppLayout, Header, RoleBanner, ConnectButton, ThemeToggle, ConfigError,
                       DemoDataNotice, StatusBadge, HashDisplay, AddressText, ClaimLookup,
                       ClaimMetadata, EscrowStatus, Timeline, VerificationSummary, EvidenceSection,
-                      EvidenceVerifier, VerificationResult, FileDropZone, icons/
+                      EvidenceVerifier, VerificationResult, FileDropZone, SettlePanel, icons/,
+                      wallet/ (WalletPanel and the per-role forms, TxButton, TxStatus)
   pages/              DashboardPage, PublicClaimPage, NotFoundPage
   mocks/              demo claims (contract state + events) and demo manifests
   types/              ClaimView (public, onchain-only view of a claim)
