@@ -245,6 +245,8 @@ This section is technically explained at [code/README.md → Validate, note 2](.
 
 ## Demo
 
+**Video:** [Mock video of the web app](Mock%20video%20of%20the%20web%20app.mp4), a walkthrough of the web app's roles.
+
 **Entry point:** path A (`pnpm dev:sepolia`, live chain) or path B (`anvil` + `DemoLifecycle`,
 local chain), then the demo claim page `/claims/0xfedebf75…a79b28`.
 
