@@ -1,10 +1,5 @@
 # Project Submission
 
-> **State:** final submission, 2026-09-25. Contracts (with deposits, rewards and penalties) deployed and
-> exercised on Arbitrum Sepolia; evidence backend, chain indexer, public verification page and role
-> screens implemented and tested; setup and demo dry-run from a fresh clone ([RUNBOOK.md](RUNBOOK.md)).
-> Every number and address below was checked against the code, the test runs of 2026-09-25 and
-> `code/shared/deployments/arbitrum-sepolia.json`.
 
 ## 1. Project snapshot
 
