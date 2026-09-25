@@ -55,12 +55,12 @@ cd ..
 
 ## Run
 
-Start order: **1. API**, **2. indexer** (both in [C](#c-backend-api-migrations-and-indexer)),
-**3. web page** ([A](#a-public-page-against-the-live-arbitrum-sepolia-deployment) for Sepolia,
-[B](#b-local-anvil-demo-full-lifecycle-on-your-machine) for the local chain). For the local chain,
-run the `anvil` and deploy snippets of B before C.
+Start order: **1. API**, **2. indexer** (both in [A](#a-backend-api-migrations-and-indexer)),
+**3. web page** ([B](#b-public-page-against-the-live-arbitrum-sepolia-deployment) for Sepolia,
+[C](#c-local-anvil-demo-full-lifecycle-on-your-machine) for the local chain). For the local chain,
+run the `anvil` and deploy snippets of C before A.
 
-### C. Backend API, migrations and indexer
+### A. Backend API, migrations and indexer
 
 This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
 
@@ -112,7 +112,7 @@ psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
   -c "TRUNCATE chain_events, chain_participants, chain_claims, sync_state;"
 ```
 
-### A. Public page against the live Arbitrum Sepolia deployment
+### B. Public page against the live Arbitrum Sepolia deployment
 
 ```bash
 cd frontend
@@ -129,7 +129,7 @@ deploy block come from `code/shared/deployments/arbitrum-sepolia.json`
 `0x658e3D60058a0B4f52AAbc4e536F4b2963bBc013`, deploy block 312397989). Loading the history takes a
 few seconds (chunked `eth_getLogs` over the public RPC).
 
-### B. Local anvil demo (full lifecycle on your machine)
+### C. Local anvil demo (full lifecycle on your machine)
 
 This section is technically explained at [code/README.md → B. Local anvil demo, note 1](../code/README.md#b-local-anvil-demo-note-1).
 
