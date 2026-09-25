@@ -7,13 +7,21 @@
 
 import { useId, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
+import type { Hex } from 'viem';
 import { isBytes32 } from '../utils/merkle';
 import './ClaimLookup.css';
 
 const FORMAT_HINT = 'A claim ID is 0x followed by 64 hexadecimal characters.';
 
+type ClaimLookupProps = {
+  /** Called with the lowercase claim ID instead of opening its public page (role screens). */
+  onSelect?: (claimId: Hex) => void;
+  label?: string;
+  buttonLabel?: string;
+};
+
 /** On a real chain there is no list to browse without the indexer, so visitors need a way in by ID. */
-export function ClaimLookup() {
+export function ClaimLookup({ onSelect, label = 'Look up a claim by its ID', buttonLabel = 'Open claim' }: ClaimLookupProps = {}) {
   const navigate = useNavigate();
   const inputId = useId();
   const hintId = useId();
@@ -25,7 +33,9 @@ export function ClaimLookup() {
     const claimId = value.trim();
     const valid = isBytes32(claimId);
     setInvalid(!valid);
-    if (valid) {
+    if (valid && onSelect !== undefined) {
+      onSelect(claimId.toLowerCase() as Hex);
+    } else if (valid) {
       void navigate(`/claims/${claimId.toLowerCase()}`);
     }
   };
@@ -33,7 +43,7 @@ export function ClaimLookup() {
   const form = (
     <form className="claim-lookup" onSubmit={onSubmit} noValidate>
       <label htmlFor={inputId} className="claim-lookup__label">
-        Look up a claim by its ID
+        {label}
       </label>
       <div className="claim-lookup__row">
         <input
@@ -48,7 +58,7 @@ export function ClaimLookup() {
           aria-describedby={hintId}
         />
         <button type="submit" className="btn btn-secondary">
-          Open claim
+          {buttonLabel}
         </button>
       </div>
       <p id={hintId} className={invalid ? 'claim-lookup__hint claim-lookup__hint--error' : 'claim-lookup__hint'}>

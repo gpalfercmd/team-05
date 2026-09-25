@@ -26,15 +26,37 @@
 }
 
 .action-form h3,
-.action-form h4 {
+.action-form h4,
+.action-form h5 {
   margin: 0;
   font-size: var(--text-subheading-size);
   font-weight: var(--text-subheading-weight);
   line-height: var(--text-subheading-line-height);
 }
 
-.action-form h4 {
+.action-form h4,
+.action-form h5 {
   font-size: 1rem;
+}
+
+.claim-panel {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+  padding: var(--space-md);
+  background: var(--color-neutral);
+  border-radius: var(--radius-md);
+}
+
+.claim-panel h4 {
+  margin: 0;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+}
+
+.claim-panel > p,
+.claim-panel ul {
+  margin: 0;
 }
 
 .action-form p {

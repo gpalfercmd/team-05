@@ -82,7 +82,7 @@ export function DashboardPage() {
 
       <section className="card" aria-labelledby="wallet-heading">
         <h2 id="wallet-heading">Your wallet</h2>
-        <WalletPanel demo={contracts.mode === 'mock'} />
+        <WalletPanel />
       </section>
 
       {contracts.mode === 'chain' && (

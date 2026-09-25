@@ -24,7 +24,7 @@ const renderPanel = (demo = false) =>
   renderWithProviders(
     <>
       <RoleBanner />
-      <WalletPanel demo={demo} />
+      <WalletPanel />
     </>,
     demo ? testEnv() : undefined,
   );

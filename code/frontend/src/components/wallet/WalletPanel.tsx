@@ -6,18 +6,28 @@
 // =============================================================================
 
 import type { ReactNode } from 'react';
+import type { Address } from 'viem';
+import type { RegistryAddresses } from '../../chain/calls';
 import { useRole, type RoleState } from '../../hooks/useRole';
-import { useWallet } from '../../hooks/useWallet';
+import { useRegistries, useWallet } from '../../hooks/useWallet';
 import { HashDisplay } from '../HashDisplay';
 import { AlertTriangleIcon } from '../icons';
+import { AuditorAccreditationPanel } from './AuditorAccreditationPanel';
+import { ClaimWorkbench } from './ClaimWorkbench';
+import { RegistryAdminPanel } from './RegistryAdminPanel';
 import { WrongNetworkNotice } from './WrongNetworkNotice';
 import './wallet.css';
 
-function RoleActions({ role }: { role: RoleState }) {
+type RoleActionsProps = { role: RoleState; viewer: Address; registries: RegistryAddresses };
+
+function RoleActions({ role, viewer, registries }: RoleActionsProps) {
   // Each role sees only the actions the contracts let it take (DESIGN.md: hidden, not disabled).
+  const workbench = (
+    <ClaimWorkbench role={role.role} viewer={viewer} verifierOrganization={role.verifierOrganization} registries={registries} />
+  );
   const screens: Record<RoleState['role'], ReactNode> = {
-    registryAdmin: null,
-    accreditationAuthority: null,
+    registryAdmin: <RegistryAdminPanel registries={registries} />,
+    accreditationAuthority: <AuditorAccreditationPanel registries={registries} />,
     organization: null,
     internalVerifier: null,
     auditor: null,
@@ -27,18 +37,24 @@ function RoleActions({ role }: { role: RoleState }) {
       </p>
     ),
   };
-  return <>{screens[role.role]}</>;
+  return (
+    <>
+      {screens[role.role]}
+      {workbench}
+    </>
+  );
 }
 
 export const DEMO_ACTIONS_NOTE =
   'Demo data: role actions need a real chain. Configure the contract addresses (see the runbook) to sign actions with your wallet.';
 
-export function WalletPanel({ demo }: { demo: boolean }) {
+export function WalletPanel() {
   const wallet = useWallet();
   const role = useRole();
+  const registries = useRegistries();
 
   let content: ReactNode;
-  if (demo) {
+  if (registries === undefined) {
     content = <p className="muted">{DEMO_ACTIONS_NOTE}</p>;
   } else if (wallet.status === 'disconnected') {
     content = (
@@ -58,7 +74,7 @@ export function WalletPanel({ demo }: { demo: boolean }) {
         </p>
       );
     } else if (role.status === 'ready') {
-      body = <RoleActions role={role} />;
+      body = <RoleActions role={role} viewer={wallet.address} registries={registries} />;
     } else {
       body = (
         <p className="muted" role="status">
