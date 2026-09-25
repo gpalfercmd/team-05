@@ -9,7 +9,8 @@
 `create_app` builds the app from explicit settings so tests inject their own
 (SQLite + temp storage) without touching the real `.env`. Routers: auth
 (wallet login), claims (create/read/upload/manifest), files (download/visibility),
-public (P4: indexed chain claims, timelines and indexer status, no login).
+notes (P10.3: sealed text behind salted note fingerprints), public (P4: indexed
+chain claims, timelines and indexer status, no login).
 
 When `DEPLOYMENT_FILE` is set the deployment and the shared ABI catalog are
 loaded at startup (a broken file stops the app instead of serving wrong
@@ -33,6 +34,7 @@ from poa_shared.result import Err
 from app.api.auth import router as auth_router
 from app.api.claims import router as claims_router
 from app.api.files import router as files_router
+from app.api.notes import router as notes_router
 from app.api.public import router as public_router
 from app.db import make_engine, make_session_factory
 from app.indexer.abi import EventCatalog, load_catalog
@@ -90,6 +92,7 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
     app.include_router(auth_router)
     app.include_router(claims_router)
     app.include_router(files_router)
+    app.include_router(notes_router)
     app.include_router(public_router)
 
     @app.get("/health")

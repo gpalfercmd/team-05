@@ -58,9 +58,10 @@ export function AddressField({ label, value, onChange, hint, error, disabled = f
   );
 }
 
-const NOTE_HINT = 'Kept offchain: only its fingerprint (keccak-256) is recorded, so keep the note in your records.';
+const NOTE_HINT =
+  'Only a salted fingerprint of the note is recorded on the blockchain. With the evidence service the note is stored encrypted for the claim’s reviewers; without it you are shown the note and its salt to keep.';
 
-/** A justification or request note; only its fingerprint goes onchain. */
+/** A justification or request note; only its salted fingerprint goes onchain. */
 export function NoteField({ label, value, onChange, hint = NOTE_HINT, error, disabled = false }: FieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;

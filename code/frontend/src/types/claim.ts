@@ -39,6 +39,11 @@ export type TimelineEntry = {
   /** From the StatusChanged of the same transaction; `undefined` when the status did not change. */
   newStatus: RecordedClaimStatus | undefined;
   action: TimelineAction;
+  /**
+   * The note fingerprint the action anchored (justification, proof request, counter-evidence,
+   * resolution). Public, like every event argument; the note itself is not (P10.3).
+   */
+  noteHash?: Hex;
 };
 
 export type PublicFileLink = { name: string; href: string };

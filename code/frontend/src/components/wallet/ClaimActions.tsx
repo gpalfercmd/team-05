@@ -17,7 +17,9 @@ import type { Role } from '../../utils/roles';
 import { truncateMiddle } from '../../utils/format';
 import { HashDisplay } from '../HashDisplay';
 import { StatusBadge } from '../StatusBadge';
+import type { PreparedNote } from '../../hooks/useNoteKeeper';
 import { ClaimActionForm, type ClaimActionFormProps } from './ClaimActionForm';
+import { NoteReceipt } from './NoteReceipt';
 
 type ClaimActionsProps = {
   claimId: Hex;
@@ -36,7 +38,7 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
   const { chain } = useAppConfig();
   // A confirmed action usually moves the claim to its next stage, which removes that action's
   // form; the confirmation is kept here so the outcome and its transaction stay visible.
-  const [confirmed, setConfirmed] = useState<{ title: string; hash: Hash } | undefined>();
+  const [confirmed, setConfirmed] = useState<{ title: string; hash: Hash; note: PreparedNote | undefined } | undefined>();
 
   // Choosing a claim moves focus to its panel, so keyboard and screen-reader users follow along.
   useEffect(() => {
@@ -96,7 +98,7 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
               registries={registries}
               params={params}
               renderSubmitProof={renderSubmitProof}
-              onConfirmed={(title, hash) => setConfirmed({ title, hash })}
+              onConfirmed={(title, hash, note) => setConfirmed({ title, hash, note })}
             />
           ))}
           <p className="caption">
@@ -123,6 +125,7 @@ export function ClaimActions({ claimId, role, viewer, registries, renderSubmitPr
           </span>
         </p>
       )}
+      {confirmed?.note !== undefined && <NoteReceipt note={confirmed.note} />}
       {body}
     </section>
   );

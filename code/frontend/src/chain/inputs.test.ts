@@ -5,7 +5,6 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { keccak256, stringToHex } from 'viem';
 import { describe, expect, it } from 'vitest';
 import { WALLETS } from '../test/stubRegistryNode';
 import { parseAddressInput, parseNoteInput } from './inputs';
@@ -24,8 +23,8 @@ describe('parseAddressInput', () => {
 });
 
 describe('parseNoteInput', () => {
-  it('fingerprints the trimmed note with keccak-256', () => {
-    expect(parseNoteInput('  Receipts match.  ')).toEqual({ ok: true, value: keccak256(stringToHex('Receipts match.')) });
+  it('returns the note trimmed once, exactly as it is fingerprinted', () => {
+    expect(parseNoteInput('  Receipts match.  ')).toEqual({ ok: true, value: 'Receipts match.' });
   });
 
   it('requires a note', () => {

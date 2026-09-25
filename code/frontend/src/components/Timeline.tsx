@@ -20,7 +20,7 @@ type TimelineProps = { entries: readonly TimelineEntry[]; source: ClaimSource };
 
 const toIsoTime = (seconds: number): string => new Date(seconds * 1000).toISOString();
 
-function ActionSentence({ entry }: { entry: TimelineEntry }) {
+export function ActionSentence({ entry }: { entry: TimelineEntry }) {
   const parts = describeAction(entry.action);
   return (
     <p className="timeline__sentence">

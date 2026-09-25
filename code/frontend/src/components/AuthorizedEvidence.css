@@ -42,3 +42,22 @@
 .authorized-file__result > p {
   margin: 0;
 }
+
+.authorized-notes {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.authorized-note {
+  display: grid;
+  gap: var(--space-xs);
+  padding-block: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.authorized-note > p {
+  margin: 0;
+}

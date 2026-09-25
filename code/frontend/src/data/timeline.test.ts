@@ -79,8 +79,18 @@ describe('buildTimeline', () => {
         timestamp: 1100,
         newStatus: 'InternallyVerified',
         action: { kind: 'internal-attestation', verifier: VERIFIER, approved: true },
+        noteHash: JUSTIFICATION.toLowerCase(),
       },
     ]);
+  });
+
+  it('keeps the anchored note fingerprint of every note-carrying action (P10.3)', () => {
+    const [entry] = timelineOf([
+      log({ eventName: 'ProofRequested', args: { claimId: CLAIM_ID, auditor: AUDITOR, requestHash: JUSTIFICATION } }, 12, 0),
+    ]);
+    expect(entry?.noteHash).toBe(JUSTIFICATION.toLowerCase());
+    const [anchoredEntry] = timelineOf([log(anchored, 10, 0)]);
+    expect(anchoredEntry).not.toHaveProperty('noteHash');
   });
 
   it('gives AuditorAssigned its own entry without a status change', () => {

@@ -1,5 +1,5 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Evidence service client: wallet login, claims, uploads, reviewer downloads
+// Proof of Aid — Team 05 — Evidence service client: login, claims, uploads, reviewer downloads, notes
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
@@ -264,4 +264,58 @@ export async function downloadEvidenceFile(fetchFn: FetchLike, apiUrl: string, f
     bytes = err(`The evidence service could not be reached (${describe(error)}).`);
   }
   return bytes;
+}
+
+// --- P10.3 notes: the text behind a salted note fingerprint, kept sealed by the backend ------------
+
+/** Which contract argument a note is anchored as (the backend's `kind`). */
+export type NoteKind = 'justification' | 'proof_request' | 'counter_evidence' | 'resolution';
+
+export type NoteToStore = { kind: NoteKind; text: string; salt: Hex; noteHash: Hex };
+
+/** A note this session may read: only its author and the claim's authorized reviewers get one. */
+export type StoredNote = { id: string; kind: NoteKind; author: Address; noteHash: Hex; text: string; salt: Hex; createdAt: string };
+
+const noteKindSchema = z.enum(['justification', 'proof_request', 'counter_evidence', 'resolution']);
+const storedNoteSchema = z.object({
+  id: z.string().min(1),
+  kind: noteKindSchema,
+  author: address,
+  note_hash: bytes32,
+  text: z.string(),
+  salt: bytes32,
+  created_at: z.string(),
+});
+const toStoredNote = (value: z.infer<typeof storedNoteSchema>): StoredNote => ({
+  id: value.id,
+  kind: value.kind,
+  author: value.author,
+  noteHash: value.note_hash,
+  text: value.text,
+  salt: value.salt,
+  createdAt: value.created_at,
+});
+
+/**
+ * Stores a note before its fingerprint is anchored; the backend recomputes the fingerprint and
+ * refuses a mismatch. `not-stored` means the backend has no record of the claim (it was created
+ * elsewhere), so the note cannot be kept there.
+ */
+export async function storeNote(fetchFn: FetchLike, apiUrl: string, claimId: Hex, note: NoteToStore): Promise<Result<'stored' | 'not-stored', string>> {
+  const answer = await send(
+    fetchFn,
+    apiEndpoint(apiUrl, `/claims/${claimId}/notes`),
+    postJson({ kind: note.kind, text: note.text, salt: note.salt, note_hash: note.noteHash }),
+    JSON_TIMEOUT_MS,
+  );
+  const stored: Result<'stored' | 'not-stored', string> =
+    answer.ok && answer.value.status === 404 ? ok('not-stored') : expect2xx(answer, storedNoteSchema.transform((): 'stored' => 'stored'));
+  return stored;
+}
+
+/** The claim's notes this session may read (every note for reviewers, one's own otherwise). */
+export async function readNotes(fetchFn: FetchLike, apiUrl: string, claimId: Hex): Promise<Result<StoredNote[], string>> {
+  const answer = await send(fetchFn, apiEndpoint(apiUrl, `/claims/${claimId}/notes`), { method: 'GET', headers: { Accept: 'application/json' } }, JSON_TIMEOUT_MS);
+  const notes = expect2xx(answer, z.object({ notes: z.array(storedNoteSchema) }).transform((value) => value.notes.map(toStoredNote)));
+  return notes;
 }

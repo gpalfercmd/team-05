@@ -17,6 +17,7 @@ import type { ClaimView } from '../types/claim';
 import { formatBytes } from '../utils/format';
 import { err, ok, type Result } from '../utils/result';
 import { saveBytes } from '../utils/saveFile';
+import { AuthorizedNotes } from './AuthorizedNotes';
 import { ManifestProblemView } from './EvidenceSection';
 import { HashDisplay } from './HashDisplay';
 import { AlertTriangleIcon, LockIcon, ShieldCheckIcon } from './icons';
@@ -244,20 +245,23 @@ export function AuthorizedEvidence({ claim }: { claim: ClaimView }) {
   const gate = useClaimAccess(claim.claimId, claim.source);
   const message = gateMessage(gate);
   return (
-    <section className="card authorized-evidence" aria-labelledby="authorized-evidence-heading">
-      <h2 id="authorized-evidence-heading">Evidence files (authorized)</h2>
-      <p className="muted">
-        For reviewers only. The evidence service decrypts a private file for the organization, its internal verifiers and the
-        assigned auditor; this page then checks it against the fingerprint recorded on the blockchain.
-      </p>
-      {message}
-      {message === undefined && gate.state === 'ready' && gate.access.kind === 'authorized' && (
-        <ul className="evidence-list">
-          {gate.access.bundles.map((bundle) => (
-            <BundleFiles key={bundle.rootIndex} claim={claim} bundle={bundle} apiUrl={gate.apiUrl} fetch={gate.fetch} />
-          ))}
-        </ul>
-      )}
-    </section>
+    <>
+      <section className="card authorized-evidence" aria-labelledby="authorized-evidence-heading">
+        <h2 id="authorized-evidence-heading">Evidence files (authorized)</h2>
+        <p className="muted">
+          For reviewers only. The evidence service decrypts a private file for the organization, its internal verifiers and
+          the assigned auditor; this page then checks it against the fingerprint recorded on the blockchain.
+        </p>
+        {message}
+        {message === undefined && gate.state === 'ready' && gate.access.kind === 'authorized' && (
+          <ul className="evidence-list">
+            {gate.access.bundles.map((bundle) => (
+              <BundleFiles key={bundle.rootIndex} claim={claim} bundle={bundle} apiUrl={gate.apiUrl} fetch={gate.fetch} />
+            ))}
+          </ul>
+        )}
+      </section>
+      {gate.state === 'ready' && gate.access.kind !== 'not-stored' && <AuthorizedNotes timeline={claim.timeline} notes={gate.notes} />}
+    </>
   );
 }

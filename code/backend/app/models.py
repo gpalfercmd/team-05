@@ -21,6 +21,10 @@
   `auditor_address` on the claim; in chain mode the access matrix reads
   `ChainParticipant` / `ChainClaim` instead (F3, P4).
 - `Challenge` stores single-use wallet-login nonces (P3.4, anti-replay).
+- `ClaimNote` (P10.3) keeps the text behind a salted note fingerprint
+  (`keccak256(salt ‖ utf8(text))`, anchored as a justification, proof request,
+  counter-evidence or dispute resolution): text and salt are sealed with the
+  claim key; only `note_hash_hex`, the kind and the author are stored in clear.
 - P4 chain index: `ChainEvent` is every decoded registry event (unique per
   `(chain_id, tx_hash, log_index)`, so re-indexing a range is a no-op),
   `SyncState` the indexer cursor, and `ChainParticipant` / `ChainClaim` the
@@ -66,6 +70,12 @@ EVENT_NAME_LENGTH: Final[int] = 40
 STATUS_NAME_LENGTH: Final[int] = 24  # longest `ClaimStatus` name is "InternallyVerified"
 CONTRACT_SET_LENGTH: Final[int] = 2 * ADDRESS_LENGTH + 1
 
+NOTE_KIND_JUSTIFICATION: Final[str] = "justification"
+NOTE_KIND_PROOF_REQUEST: Final[str] = "proof_request"
+NOTE_KIND_COUNTER_EVIDENCE: Final[str] = "counter_evidence"
+NOTE_KIND_RESOLUTION: Final[str] = "resolution"
+NOTE_KIND_LENGTH: Final[int] = 32
+
 
 class Claim(Base):
     """Offchain claim metadata created by an organization (spec F2)."""
@@ -86,6 +96,9 @@ class Claim(Base):
     )
 
     evidence_files: Mapped[list[EvidenceFile]] = relationship(
+        back_populates="claim", cascade="all, delete-orphan"
+    )
+    notes: Mapped[list[ClaimNote]] = relationship(
         back_populates="claim", cascade="all, delete-orphan"
     )
 
@@ -120,6 +133,34 @@ class EvidenceFile(Base):
     )
 
     claim: Mapped[Claim] = relationship(back_populates="evidence_files")
+
+
+class ClaimNote(Base):
+    """The sealed text behind one salted note fingerprint anchored for a claim (P10.3)."""
+
+    __tablename__ = "claim_notes"
+    __table_args__ = (
+        UniqueConstraint("claim_id", "note_hash_hex", name="uq_note_per_claim"),
+        CheckConstraint(
+            "kind IN ('justification', 'proof_request', 'counter_evidence', 'resolution')",
+            name="ck_claim_note_kind",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    claim_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("claims.id", ondelete="CASCADE"), index=True
+    )
+    kind: Mapped[str] = mapped_column(String(NOTE_KIND_LENGTH))
+    author: Mapped[str] = mapped_column(String(ADDRESS_LENGTH))
+    note_hash_hex: Mapped[str] = mapped_column(String(HASH_HEX_LENGTH))
+    text_sealed: Mapped[bytes] = mapped_column(LargeBinary)
+    salt_sealed: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    claim: Mapped[Claim] = relationship(back_populates="notes")
 
 
 class Participant(Base):

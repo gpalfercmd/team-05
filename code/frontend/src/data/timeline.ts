@@ -119,14 +119,41 @@ function mapEvent(event: TimelineEvent): Result<MappedEvent, string> {
   return mapped;
 }
 
-const toEntry = (log: ClaimEventLog, entryAction: TimelineAction, newStatus: RecordedClaimStatus | undefined): TimelineEntry => ({
-  txHash: log.transactionHash,
-  blockNumber: log.blockNumber,
-  logIndex: log.logIndex,
-  timestamp: log.timestamp,
-  newStatus,
-  action: entryAction,
-});
+/** The note fingerprint an action event carries (justification, request, counter-evidence), if any. */
+function noteHashOf(event: TimelineEvent): Hex | undefined {
+  let noteHash: Hex | undefined;
+  switch (event.eventName) {
+    case 'InternalAttestation':
+    case 'ProofReviewed':
+    case 'FinalAttestation':
+    case 'DisputeResolved':
+      noteHash = event.args.justificationHash;
+      break;
+    case 'ProofRequested':
+      noteHash = event.args.requestHash;
+      break;
+    case 'DisputeOpened':
+      noteHash = event.args.counterEvidenceHash;
+      break;
+    default:
+      noteHash = undefined;
+  }
+  return noteHash;
+}
+
+const toEntry = (log: ClaimEventLog, entryAction: TimelineAction, newStatus: RecordedClaimStatus | undefined): TimelineEntry => {
+  const noteHash = noteHashOf(log);
+  const entry: TimelineEntry = {
+    txHash: log.transactionHash,
+    blockNumber: log.blockNumber,
+    logIndex: log.logIndex,
+    timestamp: log.timestamp,
+    newStatus,
+    action: entryAction,
+    ...(noteHash === undefined ? {} : { noteHash: noteHash.toLowerCase() as Hex }),
+  };
+  return entry;
+};
 
 /** Actions whose transaction may carry no StatusChanged of their own. */
 const KEEPS_STATUS: ReadonlySet<TimelineAction['kind']> = new Set(['auditor-assigned', 'deposit-locked', 'credited', 'settled']);

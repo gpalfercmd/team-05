@@ -531,6 +531,22 @@ pre {
   color: var(--color-warning);
 }
 
+/* A notice holding several paragraphs (e.g. a note kept nowhere, with its text and salt). */
+.notice--stack {
+  flex-direction: column;
+}
+
+.notice--stack > p {
+  margin: 0;
+}
+
+/* The text of a reviewer note, as written: keeps its line breaks, never overflows. */
+.note-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .muted {
   color: var(--color-on-neutral);
 }

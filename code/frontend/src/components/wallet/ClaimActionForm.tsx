@@ -21,6 +21,7 @@ import {
 } from '../../chain/calls';
 import { addressAt } from '../../chain/inputs';
 import type { ClaimActionState, EscrowParams } from '../../chain/reads';
+import type { PreparedNote } from '../../hooks/useNoteKeeper';
 import type { Result } from '../../utils/result';
 import { truncateMiddle } from '../../utils/format';
 import { ActionForm } from './ActionForm';
@@ -34,8 +35,8 @@ export type ClaimActionFormProps = {
   params: Result<EscrowParams, string> | undefined;
   /** Forms for actions that need the backend (submit proof) are supplied by the caller. */
   renderSubmitProof: (rootIndex: number, onConfirmed: (hash: Hash) => void) => ReactNode;
-  /** Reports a confirmed transaction with the form's title. */
-  onConfirmed: (title: string, hash: Hash) => void;
+  /** Reports a confirmed transaction with the form's title (and the note it carried, if any). */
+  onConfirmed: (title: string, hash: Hash, note?: PreparedNote) => void;
 };
 
 const eth = (wei: bigint): string => `${formatEther(wei)} ETH`;
@@ -49,7 +50,7 @@ function payable(params: ClaimActionFormProps['params'], pick: (value: EscrowPar
 
 export function ClaimActionForm({ action, claim, registries, params, renderSubmitProof, onConfirmed }: ClaimActionFormProps) {
   const id = claim.claimId;
-  const report = (title: string) => (hash: Hash) => onConfirmed(title, hash);
+  const report = (title: string) => (hash: Hash, note?: PreparedNote) => onConfirmed(title, hash, note);
   let form: ReactNode;
   switch (action.kind) {
     case 'submitProof':
@@ -62,7 +63,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Checkpoint 1: internal check"
           onConfirmed={report('Checkpoint 1 recorded')}
           description="Approve if the evidence supports the claim. Rejecting ends the claim and returns the organization’s deposit."
-          noteLabel="Justification"
+          note={{ label: 'Justification', claimId: id, kind: 'justification' }}
           options={[
             { label: 'Approve evidence', decision: true },
             { label: 'Reject claim', decision: false, variant: 'danger' },
@@ -78,7 +79,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Confirm the supplementary proof"
           onConfirmed={report('Proof review recorded')}
           description="As a second internal verifier, confirm the proof the organization submitted. Sending it back asks the organization for new proof."
-          noteLabel="Justification"
+          note={{ label: 'Justification', claimId: id, kind: 'justification' }}
           options={[
             { label: 'Accept proof', decision: true },
             { label: 'Send back to the organization', decision: false, variant: 'secondary' },
@@ -94,7 +95,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Request more proof"
           onConfirmed={report('Proof requested')}
           description="The organization must submit supplementary evidence, which a second internal verifier then confirms."
-          noteLabel="What proof is missing?"
+          note={{ label: 'What proof is missing?', claimId: id, kind: 'proof_request' }}
           options={[{ label: 'Request proof', decision: true, variant: 'secondary' }]}
           buildCall={(_, note) => requestProofCall(registries, id, note)}
         />
@@ -108,7 +109,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Final decision (checkpoint 2)"
           onConfirmed={report('Final decision recorded')}
           description="Approving locks your auditor deposit until the dispute window closes; you lose it if a dispute is upheld. Rejecting costs nothing and returns the organization’s deposit."
-          noteLabel="Justification"
+          note={{ label: 'Justification', claimId: id, kind: 'justification' }}
           options={[
             ...(action.canApprove ? [{ ...approve, decision: true }] : []),
             { label: 'Reject claim', decision: false, variant: 'danger' as const },
@@ -128,7 +129,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Dispute this verified claim"
           onConfirmed={report('Dispute opened')}
           description="If the Accreditation Authority upholds the dispute you receive your bond back plus the organization’s and auditor’s deposits; if it is dismissed you lose the bond."
-          noteLabel="Counter-evidence"
+          note={{ label: 'Counter-evidence', claimId: id, kind: 'counter_evidence' }}
           options={[{ ...open, decision: true, variant: 'danger' }]}
           buildCall={(_, note) => openDisputeCall(registries, id, note, params?.ok === true ? params.value.disputeBond : 0n)}
         />
@@ -159,7 +160,7 @@ export function ClaimActionForm({ action, claim, registries, params, renderSubmi
           title="Resolve the dispute"
           onConfirmed={report('Dispute resolved')}
           description="Upholding rejects the claim and pays the disputant its bond plus the organization’s and auditor’s deposits. Dismissing keeps the claim verified and splits the bond between the organization and the auditor."
-          noteLabel="Decision note"
+          note={{ label: 'Decision note', claimId: id, kind: 'resolution' }}
           options={[
             { label: 'Uphold dispute', decision: true, variant: 'danger' },
             ...(action.canDismiss ? [{ label: 'Dismiss dispute', decision: false }] : []),

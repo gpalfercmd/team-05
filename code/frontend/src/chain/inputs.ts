@@ -1,11 +1,11 @@
 // =============================================================================
-// Proof of Aid — Team 05 — Form inputs for role actions: wallet addresses and note fingerprints
+// Proof of Aid — Team 05 — Form inputs for role actions: wallet addresses and note texts
 // Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
 // Licensed under the MIT License. See LICENSE for details.
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { getAddress, isAddress, keccak256, stringToHex, zeroAddress, type Address, type Hex } from 'viem';
+import { getAddress, isAddress, zeroAddress, type Address } from 'viem';
 import { err, ok, type Result } from '../utils/result';
 
 /** A pasted wallet address, checksum-validated; mixed case with a bad checksum is a typo, not an address. */
@@ -23,13 +23,14 @@ export function parseAddressInput(raw: string): Result<Address, string> {
 }
 
 /**
- * Justifications, proof requests and counter-evidence stay offchain: the contract records only
- * this keccak-256 fingerprint, so the note can be shown later and checked against the record.
+ * Justifications, proof requests, counter-evidence and resolutions stay offchain: the contract
+ * records only a salted fingerprint of the text (P10.3, `utils/noteHash`). This returns the text
+ * exactly as it is hashed: trimmed once, never empty.
  */
-export function parseNoteInput(raw: string): Result<Hex, string> {
+export function parseNoteInput(raw: string): Result<string, string> {
   const value = raw.trim();
-  const parsed: Result<Hex, string> =
-    value === '' ? err('Write a short note. Only its fingerprint is recorded on the blockchain.') : ok(keccak256(stringToHex(value)));
+  const parsed: Result<string, string> =
+    value === '' ? err('Write a short note. Only its fingerprint is recorded on the blockchain.') : ok(value);
   return parsed;
 }
 

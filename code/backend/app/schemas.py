@@ -241,6 +241,47 @@ class SessionResponse(BaseModel):
     address: str
 
 
+# --- P10.3 notes: the text behind a salted note fingerprint. Only the author and
+# the claim's authorized viewers ever receive text or salt; there is no public model.
+
+NoteKind = Literal["justification", "proof_request", "counter_evidence", "resolution"]
+NOTE_MAX_LENGTH: Final[int] = 4000
+
+
+class NoteCreate(BaseModel):
+    """A note about to be anchored: the server checks `note_hash` = keccak256(salt ‖ utf8(text))."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: NoteKind
+    text: str = Field(min_length=1, max_length=NOTE_MAX_LENGTH)
+    salt: str = Field(pattern=BYTES32_HEX_PATTERN)
+    note_hash: str = Field(pattern=BYTES32_HEX_PATTERN)
+
+
+class NoteResponse(BaseModel):
+    """A stored note with its salt, so the reader can recompute the onchain fingerprint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    claim_id: str = Field(pattern=BYTES32_HEX_PATTERN)
+    kind: NoteKind
+    author: str
+    note_hash: str = Field(pattern=BYTES32_HEX_PATTERN)
+    text: str
+    salt: str = Field(pattern=BYTES32_HEX_PATTERN)
+    created_at: datetime
+
+
+class NoteList(BaseModel):
+    """The notes of one claim this session may read, oldest first."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    notes: list[NoteResponse]
+
+
 class FileVisibilityUpdate(BaseModel):
     """Flip the per-file `public` flag (spec F3: private by default)."""
 
