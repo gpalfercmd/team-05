@@ -1,10 +1,6 @@
 # Runbook
 
-The shortest reproducible path from a fresh clone to a working demo of the **Trust, Evidence &
-Privacy** prototype. Start from the repository root. After `cd code`, every command runs from
-`code/` unless a block starts with its own `cd`.
-
-There are four ways to see it work, from cheapest to most complete:
+This section is technically explained at [code/README.md → Introduction, note 1](../code/README.md#introduction-note-1).
 
 | Path | Needs | Shows |
 | --- | --- | --- |
@@ -43,23 +39,11 @@ corepack enable                                           # once per machine
 (cd frontend && pnpm install)
 ```
 
-If Corepack reports that a folder "is configured to use yarn", a `package.json` in a parent folder
-(for example your home directory) declares another package manager. Inside `code/frontend/` the
-frontend's own `packageManager` field wins, so run pnpm from there.
+This section is technically explained at [code/README.md → Setup, note 1](../code/README.md#setup-note-1).
 
 ### Configuration (`.env.example` files)
 
-Each layer has its own template. Copy it to `.env` in the same folder; `.env` files are
-git-ignored. Never commit a `.env`, and never put a key or mnemonic that holds real funds in one.
-
-| Template | When you need it | What to fill |
-| --- | --- | --- |
-| `code/frontend/.env.example` | Optional. Without `.env` the app runs on built-in demo data. | `VITE_CHAIN`, both contract addresses, `VITE_DEPLOY_BLOCK`, optional `VITE_API_URL`. Only `VITE_*` values reach the browser: no secrets here. |
-| `code/frontend/.env.sepolia` | Committed on purpose (public addresses only); used by `pnpm dev:sepolia`. | Nothing. |
-| `code/backend/.env.example` | Path C (API, migrations, indexer). | `DATABASE_URL`, and two secrets generated locally (commands below). The P4 values (`DEPLOYMENT_FILE`, `CHAIN_RPC_URL`, …) can stay commented and be passed on the command line as shown in path C. |
-| `code/contracts/.env.example` | Only to deploy to Arbitrum Sepolia. The local anvil demo needs no `.env`. | `ARBITRUM_SEPOLIA_RPC_URL`, a **fresh test-only** `MNEMONIC`, optional `ARBISCAN_API_KEY`. |
-
-Backend secrets (generate them on your machine, never share them):
+This section is technically explained at [code/README.md → Configuration, note 1](../code/README.md#configuration-note-1).
 
 ```bash
 cd backend
@@ -90,14 +74,13 @@ few seconds (chunked `eth_getLogs` over the public RPC).
 
 ### B. Local anvil demo (full lifecycle on your machine)
 
-Terminal 1:
+This section is technically explained at [code/README.md → B. Local anvil demo, note 1](../code/README.md#b-local-anvil-demo-note-1).
 
 ```bash
 anvil                   # local chain on http://127.0.0.1:8545, chain id 31337; Ctrl+C to stop
 ```
 
-Terminal 2, from `code/contracts`. Anvil's well-known development accounts sign everything (public
-test keys, never use them on a real network):
+This section is technically explained at [code/README.md → B. Local anvil demo, note 2](../code/README.md#b-local-anvil-demo-note-2).
 
 ```bash
 cd contracts
@@ -119,7 +102,7 @@ ClaimRegistry `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`). `Deploy.s.sol` rewr
 without the recorded transaction hashes, so `git status` shows it modified; the addresses are the
 same, and `git checkout -- ../shared/deployments/anvil.json` restores the committed version.
 
-Check the result and settle the deposits after the 60-day window (still in `code/contracts`):
+This section is technically explained at [code/README.md → B. Local anvil demo, note 3](../code/README.md#b-local-anvil-demo-note-3).
 
 ```bash
 CLAIMS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
@@ -135,8 +118,7 @@ cast call $CLAIMS "credits(address)(uint256)" 0x3C44CdDdB6a900fa2b585dd299e03d12
 cast call $CLAIMS "credits(address)(uint256)" 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc --rpc-url anvil  # auditor: 1600000000000000 (deposit + reward + half the bond)
 ```
 
-Settling is optional; once settled, the claim can never be disputed again. To see the local chain
-in the browser (terminal 3, from `code/frontend`):
+This section is technically explained at [code/README.md → B. Local anvil demo, note 4](../code/README.md#b-local-anvil-demo-note-4).
 
 ```bash
 cd frontend
@@ -152,30 +134,24 @@ were paid out."). The dispute window is judged on the chain's clock (latest bloc
 clock jump the page says "Dispute window closed" and, until someone settles, shows a **Settle the
 deposits** card (path D).
 
-**Reset:** stop anvil (Ctrl+C) and start it again; the chain is empty and the commands above can be
-repeated with the same addresses. On a chain that keeps running, the demo claim can be anchored
-only once (`ClaimAlreadyExists`): replay with `DEMO_CLAIM_UUID=<any text>` added to the
-`DemoLifecycle` command (the claim ID becomes `keccak256(bytes(uuid))`, shown in the script log).
+This section is technically explained at [code/README.md → B. Local anvil demo, note 5](../code/README.md#b-local-anvil-demo-note-5).
 
 ### C. Backend API, migrations and indexer
 
-Start PostgreSQL. Either Docker (from `code/backend`):
+This section is technically explained at [code/README.md → C. Backend and indexer, note 1](../code/README.md#c-backend-and-indexer-note-1).
 
 ```bash
 cd backend
 docker compose up -d        # Postgres 16, role poa / db proof_of_aid, port 5432
 ```
 
-If port 5432 is already taken (for example by a Homebrew PostgreSQL), add `POSTGRES_PORT=5433` to
-`backend/.env` and use `:5433` in `DATABASE_URL`. Or use a native server: create a role and a
-database once (`CREATE ROLE poa LOGIN PASSWORD '…'; CREATE DATABASE proof_of_aid OWNER poa;`) and
-point `DATABASE_URL` at it. Then, from `code/backend` with `.env` filled as in *Configuration*:
+This section is technically explained at [code/README.md → C. Backend and indexer, note 2](../code/README.md#c-backend-and-indexer-note-2).
 
 ```bash
 uv run alembic upgrade head          # migrations 0001–0005 (0005 adds claim_notes, P10.3)
 ```
 
-Index the local anvil chain from path B and start the API (anvil still running):
+This section is technically explained at [code/README.md → C. Backend and indexer, note 3](../code/README.md#c-backend-and-indexer-note-3).
 
 ```bash
 DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545 \
@@ -185,9 +161,7 @@ DEPLOYMENT_FILE=../shared/deployments/anvil.json \
 uv run uvicorn app.main:create_app --factory --port 8000     # Ctrl+C to stop
 ```
 
-Against Arbitrum Sepolia instead, use `DEPLOYMENT_FILE=../shared/deployments/arbitrum-sepolia.json`
-and `CHAIN_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc` (default confirmations), and drop
-`--once` to keep polling.
+This section is technically explained at [code/README.md → C. Backend and indexer, note 4](../code/README.md#c-backend-and-indexer-note-4).
 
 **Expected result:**
 
@@ -198,16 +172,14 @@ curl -s localhost:8000/public/claims/0xfedebf75d5a350c6f5267f00c1d9cfc3e3fae9272
                                                     # the demo claim's events, status "Verified", 2 evidence roots
 ```
 
-An existing database from before P10 needs `uv sync` (new dependency `pypdf`) and
-`uv run alembic upgrade head` once more: it applies only 0005. No contract change, no redeploy.
+This section is technically explained at [code/README.md → C. Backend and indexer, note 5](../code/README.md#c-backend-and-indexer-note-5).
 
 The indexer's `--once` run exits 0; a second run adds no events (idempotent). To let the page use
 the API, add `VITE_API_URL=http://localhost:8000` to the frontend command of path A or B; the page
 then says "History from the indexer API" and still reads status and roots from the contract. The
 backend's `CORS_ORIGINS` (default `http://localhost:5173`) must list the page's exact origin.
 
-**After a redeploy or an anvil restart,** the database still holds the old chain's index and the
-indexer cursor. Empty the chain tables before indexing again (the evidence tables are untouched):
+This section is technically explained at [code/README.md → C. Backend and indexer, note 6](../code/README.md#c-backend-and-indexer-note-6).
 
 ```bash
 psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
@@ -216,35 +188,7 @@ psql "postgresql://poa:<password>@localhost:5432/proof_of_aid" \
 
 ### D. Role screens: sign each role's actions from the browser
 
-The dashboard's **Your wallet** card reads the connected wallet's role from the `ParticipantRegistry`
-(the chain is the source of truth) and shows only the actions the contracts allow that role on
-each claim. Every action is first simulated against the contract, so a rule it would break is
-explained in plain English before the wallet asks for a signature; then MetaMask signs it and the
-card shows *Confirm in wallet… → Recording… → Done ✓* with the transaction. Payable amounts
-(anchor deposit, auditor deposit, dispute bond) are read from the contract, never typed in.
-
-| Role | What it can do in the dashboard |
-| --- | --- |
-| Registry Admin | Register / revoke organizations and internal verifiers |
-| Accreditation Authority | Accredit / revoke auditors; assign an auditor to an internally verified claim; uphold or dismiss a dispute |
-| Organization | Record a claim (details + evidence through the backend, then `anchorClaim` paying `anchorDeposit()`); answer a proof request (upload bundle *n*, then `submitProof`); see its claims (with the API) |
-| Internal verifier | Checkpoint 1 (approve / reject) and confirm submitted proof, on its organization's claims; a different verifier than checkpoint 1 must confirm |
-| Auditor | On claims assigned to it: request proof, approve (locks `auditorDeposit()`) or reject (pays nothing); dispute *another* auditor's verified claim inside the window (locks `disputeBond()`) |
-| Any wallet | **Withdraw** when the contract owes it (`credits > 0`); **Settle** a verified claim once its dispute window has closed (dashboard or claim page) |
-
-Organizations and internal verifiers may also dispute a claim that is not their own. Without
-`VITE_API_URL` there is no claim list and no evidence storage: paste a claim ID to act on it, and
-the **Record a claim** / **Submit proof** forms say that they need the backend. In demo mode (no
-contract addresses) the card only says that actions need a real chain.
-
-**On local anvil.**
-
-1. Run path B (anvil + `Deploy` + `DemoLifecycle`). To record claims and proof from the UI, also
-   run path C against anvil, keeping the indexer running so the backend learns new roles:
-   `DEPLOYMENT_FILE=../shared/deployments/anvil.json CHAIN_RPC_URL=http://127.0.0.1:8545
-   INDEXER_CONFIRMATIONS=0 uv run python -m app.indexer` (without `--once`). The backend only
-   accepts a claim from an organization the indexer has seen registered.
-2. Start the page with the API (from `code/frontend`):
+This section is technically explained at [code/README.md → D. Role screens, note 1](../code/README.md#d-role-screens-note-1).
 
    ```bash
    VITE_CHAIN=anvil \
@@ -253,14 +197,7 @@ contract addresses) the card only says that actions need a real chain.
    VITE_DEPLOY_BLOCK=1 VITE_API_URL=http://localhost:8000 pnpm dev
    ```
 
-   Open `http://localhost:5173` (use `localhost`, not `127.0.0.1`, for both the page and the API:
-   the backend's login cookie is only sent between same-site origins, and `CORS_ORIGINS` must list
-   the page's exact origin).
-3. In MetaMask (a separate browser profile, used only for tests): **Add a network manually** →
-   name `Anvil`, RPC URL `http://127.0.0.1:8545`, chain ID `31337`, currency `ETH`. Then **Import
-   account** with the private keys anvil prints at startup (they are anvil's public development
-   keys, derived from `test test … junk`: never send real funds to them or use them on a real
-   network):
+This section is technically explained at [code/README.md → D. Role screens, note 2](../code/README.md#d-role-screens-note-2).
 
    | anvil index | Address | Role after `DemoLifecycle` |
    | ---: | --- | --- |
@@ -273,22 +210,7 @@ contract addresses) the card only says that actions need a real chain.
    | 6 | `0x976EA74026E726554dB657fA54763abd0C3a0aa9` | Second auditor (the demo's disputant) |
    | 7 | `0x14dC79964da2C08b23698B3D3cc7Ca32193d9955` | No role (settle, withdraw) |
 
-4. **Connect wallet**, then switch accounts in MetaMask to change role (the banner and the card
-   follow). If the wallet is on another network the card says so and offers **Switch to Anvil**.
-5. A full claim from the browser: account 2 **Record a claim** (sign the login message, then the
-   anchor transaction; the page links the new claim) → account 3, paste the claim ID (or pick it
-   from the list), **Approve evidence** → account 1, **Assign auditor** `0x9965…A4dc` → account 5,
-   **Request proof** → account 2, **Submit proof** with a new file → account 4, **Accept proof**
-   (account 3 is refused: it did checkpoint 1) → account 5, **Approve and lock 0.001 ETH** →
-   optionally account 6 disputes and account 1 resolves → jump the clock
-   (`cast rpc evm_increaseTime 5184001 --rpc-url anvil && cast rpc evm_mine --rpc-url anvil`) →
-   any account **Settle deposits** on the claim page → accounts 2 and 5 **Withdraw**.
-
-**Notes (P10.3).** Every justification, proof request, counter-evidence and dispute decision gets a
-random salt in the browser; the transaction anchors keccak256(salt ‖ note). With `VITE_API_URL` the
-page first signs in and stores the note (encrypted) with the backend; if that fails, no transaction
-is sent. Without the backend, the form shows the note and its salt with **Copy note and salt**:
-nothing else keeps them.
+This section is technically explained at [code/README.md → D. Role screens, note 3](../code/README.md#d-role-screens-note-3).
 
 **Reviewer view (P10.2).** Open the claim's page (**Open the public claim page** in the claim panel,
 or `/claims/<claimId>`) with account 2, 3, 4 or the assigned auditor (5) connected. In **Evidence
@@ -299,13 +221,7 @@ the onchain root). **Notes (authorized)** shows each note next to its history ev
 the onchain fingerprint". Account 7 sees "may not open this claim's private files" instead; without
 `VITE_API_URL`, or on demo data, the section explains why it cannot open files.
 
-After an anvil restart MetaMask may keep old nonces ("nonce too high"): **Settings → Advanced →
-Clear activity tab data** for each imported account.
-
-**Automated check without MetaMask.** With path B running (and optionally path C), this test signs
-the same calls the screens build, with the same anvil accounts, and checks roles, the action
-planner, payable amounts, decoded reverts, the proof loop, settle and withdraw on the real
-contracts (it moves anvil's clock forward 60 days per run):
+This section is technically explained at [code/README.md → D. Role screens, note 4](../code/README.md#d-role-screens-note-4).
 
 ```bash
 cd frontend
@@ -313,18 +229,11 @@ ANVIL_E2E_RPC=http://127.0.0.1:8545 ANVIL_E2E_API=http://localhost:8000 \
   pnpm vitest run src/chain/roleActions.anvil.test.ts     # 8 passed; without ANVIL_E2E_API the backend step is skipped
 ```
 
-**On Arbitrum Sepolia.** `pnpm dev:sepolia` (add `VITE_API_URL` pointing at a backend that indexes
-Sepolia to record claims and proof), select Arbitrum Sepolia (chain ID 421614) in MetaMask, and
-connect a wallet that holds Sepolia ETH and a role in that deployment: the Registry Admin is
-`0x92718b20EeBbbd2e228878D64bBCCCF951f779cf` and the Accreditation Authority
-`0x0e53FF46bcAB90c2CEd3BADfafF453ef40a58e68` (the team's test-only deploy wallets, see
-`code/shared/deployments/arbitrum-sepolia.json`); they register any new participant wallets
-first. Transaction links go to Arbiscan. The demo claim's dispute window only closes 60 days after
-its approval, so **Settle** appears there only after that date.
+This section is technically explained at [code/README.md → D. Role screens, note 5](../code/README.md#d-role-screens-note-5).
 
 ## Validate
 
-Every suite, from `code/`:
+This section is technically explained at [code/README.md → Validate, note 1](../code/README.md#validate-note-1).
 
 ```bash
 (cd contracts && forge test)                     # 168 passed
@@ -335,12 +244,7 @@ uv run --project backend pytest -c backend/pyproject.toml backend/tests -q   # 1
 (cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build)      # 478 passed, 8 skipped (the opt-in anvil test); typecheck and lint silent; build OK
 ```
 
-Run the backend tests **from `code/` with the command above**. Running `uv run pytest` inside
-`code/backend` also works in a fresh clone, but it reads `code/backend/.env`: once that file sets
-P4 values such as `DEPLOYMENT_FILE`, they leak into the tests' settings and dozens of tests fail. The backend suite
-includes an end-to-end test that starts its own anvil (chain id 31338), runs `Deploy` and
-`DemoLifecycle` and indexes the result; it is skipped automatically when Foundry is not on `PATH`
-or `forge soldeer install` has not been run.
+This section is technically explained at [code/README.md → Validate, note 2](../code/README.md#validate-note-2).
 
 **Expected result:** every command exits 0 with the counts shown.
 
@@ -371,9 +275,7 @@ receipts, an invoice, a delivery summary and a stock count), no real personal da
 | 11 | **Tamper a file:** change one character of `receipt-001.txt` and drop it again | **No match** |
 | 12 | Bundle mode: pick *Supplementary proof #1* and drop `delivery-summary.csv` + `stock-count.txt`; then flip one byte of `stock-count.txt` | **Match** (root `0x8e94…2370`), then **No match** |
 
-Steps 1–8 are executed by `DemoLifecycle.s.sol` (on Sepolia they are the transactions linked in
-[SUBMISSION.md](SUBMISSION.md#3-demo-and-validation)); each appears in the page's history.
-Files are hashed in the browser and never uploaded.
+This section is technically explained at [code/README.md → Demo, note 1](../code/README.md#demo-note-1).
 
 ## Dependencies and limitations
 
@@ -392,14 +294,4 @@ Files are hashed in the browser and never uploaded.
 | Backend indexer API | Real, optional | The public page works without it and falls back to the chain when it is unreachable or behind. |
 | Reviewer notes (P10.3) | Real with the backend | Stored encrypted by the backend before anchoring; without it, only the author's copy exists. Notes of the Sepolia demo (anchored by the script before P10.3) are unsalted and not stored. |
 
-Known setup limitations and recovery:
-
-- A slow or rate-limited RPC makes the Sepolia history load slowly; lower `VITE_LOG_CHUNK_SIZE`
-  (frontend) or `INDEXER_BLOCK_CHUNK` (indexer), or set your own `VITE_RPC_URL` / `CHAIN_RPC_URL`.
-- `pnpm dev` stops with `Port 5173 is in use`: stop the other server or pass `--port 5174`, and add
-  that origin to the backend's `CORS_ORIGINS` if the API is used.
-- On the Sepolia demo claim the settle step cannot be shown before the dispute window closes
-  (60 days after the approval); use path B, which moves anvil's clock.
-- The API-served manifest of a claim anchored by the script (not through the backend) returns 404;
-  the page then uses the committed demo manifests, which it accepts only because their roots match
-  the chain.
+This section is technically explained at [code/README.md → Dependencies and limitations, note 1](../code/README.md#dependencies-and-limitations-note-1).
