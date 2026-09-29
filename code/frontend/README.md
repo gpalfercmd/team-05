@@ -3,7 +3,7 @@
 React + Vite + TypeScript app for the **Trust, Evidence & Privacy** prototype: a public claim page
 where anyone can check a claim's evidence without a wallet and without seeing personal data (P5.4),
 on top of the shell (P5.2: tooling, design tokens from
-[`DESIGN.md`](../../dbv-specs-ops/docs/DESIGN.md), routing, wallet connection, `StatusBadge`,
+[`DESIGN.md`](../../DESIGN.md), routing, wallet connection, `StatusBadge`,
 `HashDisplay`), and the role screens (P5.3): with a wallet connected, the workspace page (`/workspace`) reads its role
 from the `ParticipantRegistry` and offers only that role's actions, signed with MetaMask (how to
 use them on anvil or Sepolia: [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md#d-role-screens-sign-each-roles-actions-from-the-browser)).

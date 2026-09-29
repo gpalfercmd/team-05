@@ -8,7 +8,7 @@ Este proyecto sigue la metodología **Spec-Driven Development (SDD)** del framew
 | `dbv-specs-ops/docs/MASTER_PROMPT.md` | Workflow obligatorio, normas y límites |
 | `dbv-specs-ops/docs/SPECIFICATIONS.md` | Requisitos del proyecto actual |
 | `docs/ARCHITECTURE.md` | Stack y decisiones técnicas (**raíz del repo**, ver override abajo) |
-| `dbv-specs-ops/docs/DESIGN.md` | Sistema de diseño visual: tokens de color, tipografía, componentes y filosofía *(si existe)* |
+| `DESIGN.md` (**raíz del repo**) | Sistema de diseño visual: tokens de color, tipografía, componentes y filosofía *(si existe)* |
 | `dbv-specs-ops/memory.md` | **Contexto y Decisiones:** Conocimiento cualitativo (ADRs, lecciones, mapa) |
 | `dbv-specs-ops/task.md` | Estado actual + Snapshot de Contexto |
 
