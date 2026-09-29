@@ -1,0 +1,635 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T17:55:17Z",
+  "title": "Design System: ClearTrust",
+  "extensions": {
+    "colorMeta": {
+      "ledger-navy": {
+        "role": "primary",
+        "displayName": "Ledger Navy",
+        "canonical": "#1f3a5f",
+        "tonalRamp": [
+          "#000829",
+          "#0a2448",
+          "#274368",
+          "#46628a",
+          "#6684ae",
+          "#88a7d3",
+          "#abccf9",
+          "#cff1ff"
+        ]
+      },
+      "register-slate": {
+        "role": "secondary",
+        "displayName": "Register Slate",
+        "canonical": "#4a6178",
+        "tonalRamp": [
+          "#000c1e",
+          "#12273b",
+          "#2e445a",
+          "#4d647b",
+          "#6d859d",
+          "#8fa8c1",
+          "#b2cce7",
+          "#d7f2ff"
+        ]
+      },
+      "verification-teal": {
+        "role": "tertiary",
+        "displayName": "Verification Teal",
+        "canonical": "#0f766e",
+        "tonalRamp": [
+          "#001411",
+          "#00312c",
+          "#005049",
+          "#017169",
+          "#39938a",
+          "#5fb7ad",
+          "#84dcd2",
+          "#aafff7"
+        ]
+      },
+      "ledger-paper": {
+        "role": "neutral",
+        "displayName": "Ledger Paper",
+        "canonical": "#f7f8fa",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a4a5a7",
+          "#c8c9cb",
+          "#edeef0"
+        ]
+      },
+      "page-white": {
+        "role": "neutral",
+        "displayName": "Page White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1a2230",
+        "tonalRamp": [
+          "#050b17",
+          "#1d2533",
+          "#394252",
+          "#586272",
+          "#798394",
+          "#9ba6b8",
+          "#bfcadd",
+          "#e4efff"
+        ]
+      },
+      "margin-grey": {
+        "role": "neutral",
+        "displayName": "Margin Grey",
+        "canonical": "#5b6675",
+        "tonalRamp": [
+          "#040b17",
+          "#1c2632",
+          "#394351",
+          "#576271",
+          "#788393",
+          "#9aa6b7",
+          "#becadb",
+          "#e3f0ff"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9dee5",
+        "tonalRamp": [
+          "#080b10",
+          "#22252a",
+          "#3e4248",
+          "#5d6268",
+          "#7e8389",
+          "#a1a5ac",
+          "#c5cad0",
+          "#eaeff6"
+        ]
+      },
+      "rejection-red": {
+        "role": "semantic",
+        "displayName": "Rejection Red",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#3b0000",
+          "#620000",
+          "#8a0000",
+          "#b12015",
+          "#da4a3b",
+          "#ff705e",
+          "#ff9681",
+          "#ffbba5"
+        ]
+      },
+      "verified-green": {
+        "role": "semantic",
+        "displayName": "Verified Green",
+        "canonical": "#067647",
+        "tonalRamp": [
+          "#001600",
+          "#003409",
+          "#005327",
+          "#017445",
+          "#399766",
+          "#5fbb87",
+          "#85e0ab",
+          "#aaffcf"
+        ]
+      },
+      "caution-amber": {
+        "role": "semantic",
+        "displayName": "Caution Amber",
+        "canonical": "#b54708",
+        "tonalRamp": [
+          "#340000",
+          "#5a0000",
+          "#7f0d00",
+          "#a53800",
+          "#cc5c28",
+          "#f4804e",
+          "#ffa572",
+          "#ffca97"
+        ]
+      },
+      "brand-blue": {
+        "role": "brand",
+        "displayName": "Brand Blue",
+        "canonical": "#2aa0fc",
+        "tonalRamp": [
+          "#00004d",
+          "#001b70",
+          "#004095",
+          "#0063ba",
+          "#0087e0",
+          "#39abff",
+          "#63d1ff",
+          "#8af7ff"
+        ]
+      },
+      "status-anchored-bg": {
+        "role": "status",
+        "displayName": "Status Anchored Background",
+        "canonical": "#eef2f6",
+        "tonalRamp": [
+          "#090b0e",
+          "#222528",
+          "#3f4246",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a9",
+          "#c6cacd",
+          "#ebeff3"
+        ]
+      },
+      "status-anchored-fg": {
+        "role": "status",
+        "displayName": "Status Anchored Text",
+        "canonical": "#364152",
+        "tonalRamp": [
+          "#040b19",
+          "#1b2535",
+          "#384354",
+          "#566274",
+          "#778396",
+          "#99a6ba",
+          "#bdcadf",
+          "#e2f0ff"
+        ]
+      },
+      "status-internally-verified-bg": {
+        "role": "status",
+        "displayName": "Status Internally Verified Background",
+        "canonical": "#eff4ff",
+        "tonalRamp": [
+          "#080b12",
+          "#21252d",
+          "#3e424b",
+          "#5d616a",
+          "#7e828c",
+          "#a0a5af",
+          "#c4c9d4",
+          "#eaeef9"
+        ]
+      },
+      "status-internally-verified-fg": {
+        "role": "status",
+        "displayName": "Status Internally Verified Text",
+        "canonical": "#1849a9",
+        "tonalRamp": [
+          "#05004e",
+          "#001072",
+          "#063896",
+          "#295bbc",
+          "#497ee3",
+          "#6ba2ff",
+          "#8dc7ff",
+          "#b1eeff"
+        ]
+      },
+      "status-proof-requested-bg": {
+        "role": "status",
+        "displayName": "Status Proof Requested Background",
+        "canonical": "#fffaeb",
+        "tonalRamp": [
+          "#0e0b03",
+          "#29251a",
+          "#464236",
+          "#656154",
+          "#878275",
+          "#aaa597",
+          "#cec9bb",
+          "#f3eedf"
+        ]
+      },
+      "status-proof-requested-fg": {
+        "role": "status",
+        "displayName": "Status Proof Requested Text",
+        "canonical": "#93370d",
+        "tonalRamp": [
+          "#300000",
+          "#540000",
+          "#781d00",
+          "#9d401a",
+          "#c3633e",
+          "#eb8661",
+          "#ffaa84",
+          "#ffd0a8"
+        ]
+      },
+      "status-proof-submitted-bg": {
+        "role": "status",
+        "displayName": "Status Proof Submitted Background",
+        "canonical": "#f4f3ff",
+        "tonalRamp": [
+          "#0b0a11",
+          "#25242c",
+          "#42414a",
+          "#61606a",
+          "#82818c",
+          "#a4a4af",
+          "#c9c8d3",
+          "#eeedf9"
+        ]
+      },
+      "status-proof-submitted-fg": {
+        "role": "status",
+        "displayName": "Status Proof Submitted Text",
+        "canonical": "#5925dc",
+        "tonalRamp": [
+          "#22006e",
+          "#300094",
+          "#4500bc",
+          "#5e2fe4",
+          "#7b5bff",
+          "#9b82ff",
+          "#bda9ff",
+          "#e0d0ff"
+        ]
+      },
+      "status-verified-bg": {
+        "role": "status",
+        "displayName": "Status Verified Background",
+        "canonical": "#ecfdf3",
+        "tonalRamp": [
+          "#040e08",
+          "#1c2821",
+          "#38463e",
+          "#57655d",
+          "#77877e",
+          "#9aaaa0",
+          "#bdcec4",
+          "#e2f3e9"
+        ]
+      },
+      "status-verified-fg": {
+        "role": "status",
+        "displayName": "Status Verified Text",
+        "canonical": "#067647",
+        "tonalRamp": [
+          "#001600",
+          "#003409",
+          "#005327",
+          "#017445",
+          "#399766",
+          "#5fbb87",
+          "#85e0ab",
+          "#aaffcf"
+        ]
+      },
+      "status-rejected-bg": {
+        "role": "status",
+        "displayName": "Status Rejected Background",
+        "canonical": "#fef3f2",
+        "tonalRamp": [
+          "#100909",
+          "#2b2322",
+          "#48403f",
+          "#685f5e",
+          "#89807f",
+          "#aca2a1",
+          "#d1c6c5",
+          "#f6eceb"
+        ]
+      },
+      "status-rejected-fg": {
+        "role": "status",
+        "displayName": "Status Rejected Text",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#3b0000",
+          "#620000",
+          "#8a0000",
+          "#b12015",
+          "#da4a3b",
+          "#ff705e",
+          "#ff9681",
+          "#ffbba5"
+        ]
+      },
+      "status-disputed-bg": {
+        "role": "status",
+        "displayName": "Status Disputed Background",
+        "canonical": "#fff4ed",
+        "tonalRamp": [
+          "#100906",
+          "#2b231e",
+          "#49403a",
+          "#685f59",
+          "#8a807a",
+          "#ada39c",
+          "#d1c7c0",
+          "#f7ece5"
+        ]
+      },
+      "status-disputed-fg": {
+        "role": "status",
+        "displayName": "Status Disputed Text",
+        "canonical": "#b93815",
+        "tonalRamp": [
+          "#390000",
+          "#5f0000",
+          "#860000",
+          "#ad2b02",
+          "#d55232",
+          "#fd7756",
+          "#ff9c79",
+          "#ffc29e"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "Landing headline only; the one fluid size."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Page and section titles."
+      },
+      "subheading": {
+        "displayName": "Subheading",
+        "purpose": "Card titles, stat values, verdict labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, badges, nav, field labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, footers, step text."
+      },
+      "eyebrow": {
+        "displayName": "Eyebrow",
+        "purpose": "Uppercase teal kicker above a section title."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Hashes, transaction ids, addresses."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-card",
+        "value": "0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1)",
+        "purpose": "Only on .card and the claim subnav; bordered tiles carry none."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Button and control state transitions."
+      },
+      {
+        "name": "duration-panel",
+        "value": "250ms",
+        "purpose": "Verification reveal and timeline entry."
+      },
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for every transition."
+      },
+      {
+        "name": "skeleton-shimmer",
+        "value": "1.2s ease-in-out infinite",
+        "purpose": "Loading skeleton sweep."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "durations collapse to 0.01ms",
+        "purpose": "prefers-reduced-motion removes all motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "480px"
+      },
+      {
+        "name": "tablet",
+        "value": "768px"
+      },
+      {
+        "name": "desktop",
+        "value": "960px"
+      },
+      {
+        "name": "container",
+        "value": "1120px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action; the teal fill is the single interactive color.",
+      "html": "<button class=\"ds-btn-primary\">Verify claim</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;font:inherit;font-size:.875rem;font-weight:500;letter-spacing:.01em;line-height:1.2;border:1.5px solid transparent;border-radius:8px;cursor:pointer;transition:background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1);color:var(--color-on-primary);background:var(--color-accent)}.ds-btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 85%,var(--color-on-surface))}.ds-btn-primary:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined alternative action.",
+      "html": "<button class=\"ds-btn-secondary\">View evidence</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;font:inherit;font-size:.875rem;font-weight:500;letter-spacing:.01em;line-height:1.2;border:1.5px solid transparent;border-radius:8px;cursor:pointer;transition:background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1);color:var(--color-accent);background:transparent;border-color:var(--color-accent)}.ds-btn-secondary:hover{background:color-mix(in srgb,var(--color-accent) 10%,transparent)}.ds-btn-secondary:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive or rejecting action.",
+      "html": "<button class=\"ds-btn-danger\">Reject claim</button>",
+      "css": ".ds-btn-danger{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;font:inherit;font-size:.875rem;font-weight:500;letter-spacing:.01em;line-height:1.2;border:1.5px solid transparent;border-radius:8px;cursor:pointer;transition:background-color 150ms cubic-bezier(.4,0,.2,1),color 150ms cubic-bezier(.4,0,.2,1);color:var(--color-on-primary);background:var(--color-error)}.ds-btn-danger:hover{background:color-mix(in srgb,var(--color-error) 85%,var(--color-on-surface))}.ds-btn-danger:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above a hairline input; the global focus ring, no separate focus border.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-f1\">Claim reference</label><input id=\"ds-f1\" type=\"text\" placeholder=\"0x...\"><p class=\"ds-hint\">Paste the claim id.</p></div>",
+      "css": ".ds-field{display:grid;gap:4px;max-width:320px}.ds-field label{font-size:.875rem;font-weight:600}.ds-field input{padding:10px 12px;font:inherit;color:var(--color-on-surface);background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px}.ds-field input:hover{border-color:var(--color-secondary)}.ds-field input:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}.ds-hint{margin:0;font-size:.75rem;color:var(--color-on-neutral)}"
+    },
+    {
+      "name": "File Drop Zone",
+      "kind": "custom",
+      "refersTo": "drop-zone",
+      "description": "Dashed 12px zone for dropping evidence files.",
+      "html": "<div class=\"ds-drop\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 16V4M7 9l5-5 5 5M4 20h16\"/></svg><p>Drop a file to fingerprint it in your browser</p><button class=\"ds-drop-btn\">Choose file</button></div>",
+      "css": ".ds-drop{display:grid;justify-items:center;gap:8px;padding:24px 16px;text-align:center;color:var(--color-on-neutral);background:var(--color-neutral);border:2px dashed var(--color-border);border-radius:12px;transition:border-color 150ms cubic-bezier(.4,0,.2,1),background-color 150ms cubic-bezier(.4,0,.2,1)}.ds-drop:hover{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,var(--color-surface))}.ds-drop svg{color:var(--color-secondary)}.ds-drop p{margin:0}.ds-drop-btn{padding:10px 20px;font:inherit;font-size:.875rem;font-weight:500;color:var(--color-accent);background:transparent;border:1.5px solid var(--color-accent);border-radius:8px;cursor:pointer}.ds-drop-btn:hover{background:color-mix(in srgb,var(--color-accent) 10%,transparent)}.ds-drop-btn:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Pill with icon and label; the label is never omitted.",
+      "html": "<span class=\"ds-badge\" tabindex=\"0\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 8.5l3.2 3L13 4.5\"/></svg>Verified</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;font-size:.875rem;font-weight:500;letter-spacing:.01em;line-height:1.5;white-space:nowrap;color:var(--status-verified-fg);background:var(--status-verified-bg);border-radius:9999px}.ds-badge:hover{filter:brightness(.97)}.ds-badge:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Header Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Sticky header; the active link is a neutral pill with an inset hairline, never underlined.",
+      "html": "<header class=\"ds-header\"><a class=\"ds-brand\" href=\"#\">Clear<span class=\"ds-trust\">trust</span></a><nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Claims</a><a href=\"#\">Verify</a><a href=\"#\">Workspace</a></nav></header>",
+      "css": ".ds-header{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:64px;padding:12px 24px;background:var(--color-surface);border-bottom:1px solid var(--color-border)}.ds-brand{font-size:1.25rem;font-weight:600;letter-spacing:-.01em;color:var(--color-on-surface);text-decoration:none}.ds-trust{color:#2aa0fc}.ds-nav{display:flex;gap:8px;font-size:.875rem;font-weight:500}.ds-nav a{padding:6px 14px;color:var(--color-primary);text-decoration:none;border-radius:9999px}.ds-nav a:hover,.ds-nav a[aria-current=\"page\"]{background:var(--color-neutral);box-shadow:inset 0 0 0 1px var(--color-border)}.ds-nav a:focus-visible,.ds-brand:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Hash Display",
+      "kind": "custom",
+      "refersTo": "hash-display",
+      "description": "Mono, middle-truncated, copyable.",
+      "html": "<span class=\"ds-hash\"><code>0x9f2c4a...7be1d0</code><button class=\"ds-copy\" aria-label=\"Copy hash\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><rect x=\"5\" y=\"5\" width=\"8\" height=\"8\" rx=\"1.5\"/><path d=\"M3 10.5V4a1 1 0 0 1 1-1h6.5\"/></svg></button></span>",
+      "css": ".ds-hash{display:inline-flex;align-items:center;gap:4px;max-width:100%}.ds-hash code{font-family:var(--font-mono,\"JetBrains Mono\",monospace);font-size:.8125rem;white-space:nowrap;color:var(--color-on-neutral)}.ds-copy{display:inline-grid;place-items:center;min-width:32px;min-height:32px;padding:4px;color:var(--color-accent);background:transparent;border:0;border-radius:4px;cursor:pointer;transition:background-color 150ms cubic-bezier(.4,0,.2,1)}.ds-copy:hover{background:color-mix(in srgb,var(--color-accent) 10%,transparent)}.ds-copy:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    },
+    {
+      "name": "Verification Result",
+      "kind": "custom",
+      "refersTo": "verification-result",
+      "description": "Tinted panel with a 6px left edge in the result color.",
+      "html": "<div class=\"ds-result\" tabindex=\"0\"><div class=\"ds-result-head\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 8.5l3.2 3L13 4.5\"/></svg><strong>Match</strong></div><p>The file fingerprint equals the recorded one.</p></div>",
+      "css": ".ds-result{--result-color:var(--color-success);display:grid;gap:8px;padding:16px;color:var(--color-on-surface);background:color-mix(in srgb,var(--result-color) 8%,var(--color-surface));border:1px solid color-mix(in srgb,var(--result-color) 40%,var(--color-surface));border-left:6px solid var(--result-color);border-radius:8px}.ds-result:hover{border-color:color-mix(in srgb,var(--result-color) 60%,var(--color-surface));border-left-color:var(--result-color)}.ds-result:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}.ds-result-head{display:flex;align-items:center;gap:8px;font-size:1.25rem}.ds-result-head svg{color:var(--result-color)}.ds-result p{margin:0}"
+    },
+    {
+      "name": "Numbered Timeline",
+      "kind": "custom",
+      "refersTo": "timeline-marker",
+      "description": "Ordered list on a 2px rule; latest step filled teal.",
+      "html": "<ol class=\"ds-timeline\"><li tabindex=\"0\">Claim anchored</li><li tabindex=\"0\">Proof submitted</li><li tabindex=\"0\">Verified</li></ol>",
+      "css": ".ds-timeline{display:grid;gap:24px;margin:16px 0 16px 13px;padding:0 0 0 24px;list-style:none;border-left:2px solid var(--color-border);counter-reset:s}.ds-timeline li{position:relative;counter-increment:s}.ds-timeline li::before{content:counter(s);position:absolute;top:0;left:-39px;display:grid;place-items:center;width:28px;height:28px;font-size:.75rem;font-weight:600;color:var(--color-on-neutral);background:var(--color-surface);border:2px solid var(--color-secondary);border-radius:9999px}.ds-timeline li:last-child::before{color:var(--color-on-primary);background:var(--color-accent);border-color:var(--color-accent)}.ds-timeline li:hover::before{border-color:var(--color-accent)}.ds-timeline li:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Public Ledger",
+    "overview": "ClearTrust looks like a well-kept public register: calm, factual, record-like, with every line checkable and nothing decorative. The interface never performs trust with gloss or emphasis. It shows the record, the fingerprint of the record, and the verdict, in that order. Surfaces are near-white and near-grey, ink is navy-tinted, and one restrained teal marks what can be acted on.\n\nThe component philosophy is \"quiet and precise\": hairline borders, soft 8 to 12px corners, almost no shadow, like entries in a ledger. Density is moderate and record-like: label above value, one column, wide bands with generous vertical rhythm on marketing surfaces, tight audit-style lists inside the workspace. Motion only confirms a state change.\n\nThe brand commitment carried over from the product is the ClearTrust name in camel case, the mark in `code/frontend/src/components/CleartrustMark.tsx`, and the tagline \"check aid claims without exposing people\". Both light and dark themes are first class.",
+    "keyCharacteristics": [
+      "Flat by default: 1px hairlines carry structure, shadow is nearly absent.",
+      "One interactive color (Verification Teal) on a navy and slate neutral field.",
+      "Status is always icon plus label, never color alone.",
+      "Hashes and addresses are monospaced, exact and copyable.",
+      "Full-bleed bands alternate neutral and surface backgrounds.",
+      "Motion is 150ms to 250ms, and fully removed under reduced-motion."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Verification Teal is the only interactive color. Navy navigates and titles; it never fills a button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brand-Blue-Is-The-Mark Rule",
+        "body": "Brand Blue and its gradient belong to the logo mark and the \"trust\" half of the wordmark. Never use them for UI chrome, text or states.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Color-Only Rule",
+        "body": "A status or verdict always pairs its color with an icon and a text label.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hash Is Mono Rule",
+        "body": "Hashes and addresses are always JetBrains Mono, middle-truncated where space is short, never wrapped mid-value, and always copyable.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Voice Rule",
+        "body": "Only the hero scales fluidly; every other size is a fixed step of the scale.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Shadow appears only on `.card` and the claim subnav. Bordered tiles carry no shadow, and no element gains one on hover.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Structure is a 1px Hairline border. Never a heavier stroke, except the dashed 2px drop zone and the 6px verdict edge.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use Verification Teal as the only interactive color (buttons, links, focus ring, eyebrow).",
+      "**Do** pair every status and verdict with an icon and a label.",
+      "**Do** show hashes and addresses in JetBrains Mono, copyable, never wrapped mid-value.",
+      "**Do** separate content with 1px Hairline borders, and keep shadow to `.card` and the claim subnav.",
+      "**Do** use the 2px teal focus outline with a 2px offset on every interactive element.",
+      "**Do** alternate full-bleed bands between Ledger Paper and Page White.",
+      "**Do** honor `prefers-reduced-motion` and keep motion to 150ms or 250ms on `cubic-bezier(0.4, 0, 0.2, 1)`.",
+      "**Do** keep 44px minimum touch height for buttons on coarse pointers."
+    ],
+    "donts": [
+      "**Don't** use Brand Blue or the mark gradient for UI chrome, text or states.",
+      "**Don't** convey status by color alone.",
+      "**Don't** underline navigation links; the current page is a neutral pill with an inset border.",
+      "**Don't** add shadows to bordered tiles or to hover states.",
+      "**Don't** add decoration that is not part of the record.",
+      "**Don't** give inputs a separate focus border; the global ring is the focus treatment.",
+      "**Don't** use Ledger Navy as a button fill."
+    ]
+  }
+}
