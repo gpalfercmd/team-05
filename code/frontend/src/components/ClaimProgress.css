@@ -1,0 +1,204 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — ClaimProgress stepper: a rail that fills as the claim advances
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.claim-progress {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.stepper {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .stepper {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-sm);
+  }
+}
+
+.stepper__step {
+  --state-color: var(--color-border);
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    'marker label'
+    'marker state'
+    'marker detail';
+  column-gap: var(--space-md);
+  align-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .stepper__step {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'marker'
+      'label'
+      'state'
+      'detail';
+    row-gap: 2px;
+    justify-items: start;
+    padding-right: var(--space-sm);
+  }
+}
+
+.stepper__step[data-state='done'] {
+  --state-color: var(--color-accent);
+}
+
+.stepper__step[data-state='current'] {
+  --state-color: var(--color-accent);
+}
+
+.stepper__step[data-state='stopped'] {
+  --state-color: var(--color-error);
+}
+
+.stepper__marker {
+  grid-area: marker;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font-weight: 700;
+  color: var(--color-on-neutral);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+}
+
+.stepper__step[data-state='done'] .stepper__marker {
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.stepper__step[data-state='current'] .stepper__marker {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 5px var(--color-accent-soft);
+}
+
+.stepper__step[data-state='stopped'] .stepper__marker {
+  color: var(--color-on-primary);
+  background: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.stepper__step[data-state='skipped'] {
+  opacity: 0.7;
+}
+
+/* The rail between two markers is teal only where this step is done (the claim went past it). */
+.stepper__step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 21px;
+  top: 44px;
+  bottom: calc(-1 * var(--space-md));
+  width: 2px;
+  background: var(--color-border);
+}
+
+.stepper__step[data-state='done']:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 21px;
+  top: 44px;
+  bottom: calc(-1 * var(--space-md));
+  width: 2px;
+  background: var(--color-accent);
+  transform-origin: top;
+}
+
+@media (min-width: 768px) {
+  .stepper__step:not(:last-child)::before,
+  .stepper__step[data-state='done']:not(:last-child)::after {
+    left: 44px;
+    right: 0;
+    top: 21px;
+    bottom: auto;
+    width: auto;
+    height: 2px;
+    transform-origin: left;
+  }
+}
+
+.stepper__label {
+  grid-area: label;
+  font-weight: 600;
+}
+
+.stepper__state {
+  grid-area: state;
+  font-size: var(--text-label-size);
+  color: var(--color-on-neutral);
+}
+
+.stepper__step[data-state='current'] .stepper__state,
+.stepper__step[data-state='stopped'] .stepper__state {
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.stepper__detail {
+  grid-area: detail;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Markers pop in one after the other; the teal rail then grows to the next one. */
+  .stepper__marker {
+    transition:
+      transform 500ms var(--ease-spring) calc(var(--step) * 130ms + 150ms),
+      background-color var(--duration-panel) var(--ease-standard);
+  }
+
+  [data-revealed='false'] .stepper__marker {
+    transform: scale(0.5);
+  }
+
+  .stepper__step[data-state='done']:not(:last-child)::after {
+    transition: transform 700ms var(--ease-out) calc(var(--step) * 130ms + 350ms);
+  }
+
+  [data-revealed='false'] .stepper__step[data-state='done']:not(:last-child)::after {
+    transform: scaleY(0);
+  }
+
+  .stepper__step[data-state='current'] .stepper__marker {
+    animation: current-ring 2.2s ease-out calc(var(--step) * 130ms + 900ms) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+  [data-revealed='false'] .stepper__step[data-state='done']:not(:last-child)::after {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes current-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}

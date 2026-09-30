@@ -1,0 +1,176 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Claim page: verdict panel, evidence group and the animated file-check result
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+/* The verdict is the first thing on the page: a tinted panel with the status, the title and the action. */
+.claim-hero {
+  position: relative;
+  padding: var(--space-lg);
+  background:
+    radial-gradient(28rem 12rem at 100% 0, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--color-surface), var(--color-surface));
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-raised);
+}
+
+@media (min-width: 768px) {
+  .claim-hero {
+    padding: var(--space-xl);
+  }
+}
+
+.claim-hero > h1 {
+  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.claim-hero__status {
+  margin: 0;
+}
+
+.claim-hero__status .status-badge {
+  padding: 6px 16px 6px 12px;
+  font-size: var(--text-label-size);
+  font-weight: 600;
+}
+
+.claim-hero .claim-verdict {
+  max-width: 44rem;
+  font-size: 1.375rem;
+}
+
+/* One heading gathers the file check and the recorded evidence; side by side on wide screens. */
+.claim-group {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.claim-group__head {
+  margin-bottom: 0;
+}
+
+.claim-group__grid {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .claim-group__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .claim-group__grid > .verifier {
+    position: sticky;
+    top: calc(var(--header-h) + 72px);
+  }
+}
+
+.claim-group__grid > * {
+  min-width: 0;
+}
+
+/* The file check is the card with the main action: it carries the accent. */
+.verifier {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-line));
+}
+
+.drop-zone:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+/* Result panel: match lands with a ring and a pop; no match shakes once. Colour is never the only signal:
+   the label, the icon and the sentence say the same. */
+.verification-result__icon {
+  padding: 5px;
+  box-sizing: content-box;
+  background: color-mix(in srgb, var(--result-color) 14%, transparent);
+  border-radius: 50%;
+}
+
+.verification-result__label {
+  font-size: 1.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .verification-result[data-state='match'] {
+    animation:
+      verification-reveal var(--duration-panel) var(--ease-standard),
+      match-ring 1.1s var(--ease-out) 150ms both;
+  }
+
+  .verification-result[data-state='match'] .verification-result__icon {
+    animation: icon-pop 700ms var(--ease-spring) 150ms both;
+  }
+
+  .verification-result[data-state='mismatch'] {
+    animation:
+      verification-reveal var(--duration-panel) var(--ease-standard),
+      shake 480ms var(--ease-standard) 120ms both;
+  }
+
+  .verification-result[data-state='mismatch'] .verification-result__icon {
+    animation: icon-pop 500ms var(--ease-spring) 120ms both;
+  }
+
+  .verification-result__hashes > div {
+    animation: hash-slide 500ms var(--ease-out) 300ms both;
+  }
+
+  .verification-result__hashes > div + div {
+    animation-delay: 450ms;
+  }
+
+  .verifier__results .btn {
+    animation: verification-reveal var(--duration-panel) var(--ease-standard) 500ms both;
+  }
+}
+
+@keyframes match-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 50%, transparent);
+  }
+
+  100% {
+    box-shadow: 0 0 0 18px transparent;
+  }
+}
+
+@keyframes icon-pop {
+  from {
+    transform: scale(0.3) rotate(-30deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  20% {
+    transform: translateX(-8px);
+  }
+
+  40% {
+    transform: translateX(7px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes hash-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}

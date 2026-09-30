@@ -9,10 +9,12 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { AuthorizedEvidence } from '../components/AuthorizedEvidence';
 import { ClaimMetadata } from '../components/ClaimMetadata';
+import { ClaimProgress } from '../components/ClaimProgress';
 import { EscrowStatus } from '../components/EscrowStatus';
 import { EvidenceSection } from '../components/EvidenceSection';
 import { EvidenceVerifier } from '../components/EvidenceVerifier';
 import { HashDisplay } from '../components/HashDisplay';
+import { Reveal } from '../components/Reveal';
 import { SettlePanel } from '../components/SettlePanel';
 import { SkeletonBlocks } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
@@ -25,6 +27,7 @@ import { useChainTime } from '../hooks/useChainTime';
 import { useClaim, type ClaimLoadError } from '../hooks/useClaim';
 import type { ClaimView } from '../types/claim';
 import { formatTimestamp } from '../utils/format';
+import './ClaimPage.css';
 
 function ClaimRecord({ claim }: { claim: ClaimView }) {
   const { chain } = useAppConfig();
@@ -109,22 +112,40 @@ function ClaimDetails({ claim }: { claim: ClaimView }) {
   }, [claim]);
   return (
     <>
+      <ClaimProgress claim={claim} />
       <ClaimSubnav />
       <div id="overview" className="claim-overview">
         <ClaimRecord claim={claim} />
         <ClaimMetadata claim={claim} />
       </div>
-      <VerificationSummary claim={claim} />
-      <EvidenceVerifier claim={claim} manifests={manifests} />
-      <div id="evidence" className="claim-anchor">
-        <EvidenceSection claim={claim} manifests={manifests} />
-      </div>
+      <Reveal>
+        <VerificationSummary claim={claim} />
+      </Reveal>
+      <section className="claim-group" aria-labelledby="check-heading">
+        <Reveal className="section-head claim-group__head">
+          <p className="eyebrow">Check it yourself</p>
+          <h2 id="check-heading">Check the evidence</h2>
+          <p className="muted">Add a file to compare it with the recorded fingerprint, and see the evidence that was recorded.</p>
+        </Reveal>
+        <Reveal className="claim-group__grid" delay={1}>
+          <EvidenceVerifier claim={claim} manifests={manifests} />
+          <div id="evidence" className="claim-anchor">
+            <EvidenceSection claim={claim} manifests={manifests} />
+          </div>
+        </Reveal>
+      </section>
       <div id="history" className="claim-anchor">
-        <Timeline entries={claim.timeline} source={claim.source} />
+        <Reveal>
+          <Timeline entries={claim.timeline} source={claim.source} />
+        </Reveal>
       </div>
-      <DepositsSection claim={claim} chainNow={chainNow === undefined ? undefined : Number(chainNow)} />
+      <Reveal>
+        <DepositsSection claim={claim} chainNow={chainNow === undefined ? undefined : Number(chainNow)} />
+      </Reveal>
       <div id="reviewer" className="claim-anchor">
-        <AuthorizedEvidence claim={claim} />
+        <Reveal>
+          <AuthorizedEvidence claim={claim} />
+        </Reveal>
       </div>
     </>
   );
@@ -155,10 +176,15 @@ function LoadError({ error, retry }: { error: ClaimLoadError; retry: () => void 
 /** Title, one verdict line and the way in to the file check: what a visitor needs before scrolling. */
 function ClaimHeader({ claim }: { claim: ClaimView | undefined }) {
   return (
-    <div className="page__header">
+    <div className="page__header claim-hero">
       <p className="caption claim-crumb">
         <Link to="/">Dashboard</Link> · <Link to="/claims">Claims</Link> · Claim record
       </p>
+      {claim !== undefined && (
+        <p className="claim-hero__status">
+          <StatusBadge status={claim.status} />
+        </p>
+      )}
       <h1>{claim === undefined ? 'Claim record' : claimHeadline(claim)}</h1>
       {claim !== undefined && (
         <>
