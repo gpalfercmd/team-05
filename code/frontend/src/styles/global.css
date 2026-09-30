@@ -159,7 +159,7 @@ pre {
 
 @media (min-width: 768px) {
   .band {
-    padding-block: 80px;
+    padding-block: var(--space-section);
   }
 }
 
@@ -442,13 +442,15 @@ pre {
 }
 
 .claim-card {
+  position: relative;
   display: grid;
   gap: var(--space-sm);
   align-content: start;
   padding: var(--space-lg);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
 }
 
 .claim-card > .status-badge {
@@ -533,12 +535,15 @@ pre {
   }
 }
 
+/* The one raised surface: a hairline, a soft shadow and a faint top light. Pages reuse it; a card that
+   can be acted on adds .card--interactive and lifts when pointed at (see motion.css). */
 .card {
   min-width: 0;
   padding: var(--space-lg);
-  background: var(--color-surface);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 3%, var(--color-surface)), var(--color-surface) 90px);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-raised);
 }
 
 /* Inline verdict lines: a success note, or a warning notice (icon + text, never colour alone). */
@@ -668,6 +673,7 @@ pre {
 .btn-primary {
   color: var(--color-on-primary);
   background: var(--color-accent);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12), 0 6px 14px -6px color-mix(in srgb, var(--color-accent) 70%, transparent);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -771,6 +777,10 @@ pre {
     margin-top: var(--space-lg);
     padding-top: var(--space-md);
   }
+
+  .site-footer__inner {
+    padding-block: var(--space-lg);
+  }
 }
 
 /* ---------------------------------------------------------------- layout reorg (2026-09-25): structure only, tokens unchanged */
@@ -871,19 +881,61 @@ pre {
 /* Site footer: quiet closing band, same container width. */
 .site-footer {
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: linear-gradient(180deg, var(--color-surface), var(--color-neutral));
   margin-top: var(--space-xl);
 }
 
 .site-footer__inner {
+  display: grid;
+  gap: var(--space-md) var(--space-lg);
+  align-items: center;
+  padding-block: var(--space-xl);
+  font-size: var(--text-label-size);
+  color: var(--color-on-neutral);
+}
+
+@media (min-width: 768px) {
+  .site-footer__inner {
+    grid-template-columns: 1.4fr auto 1fr;
+  }
+
+  .site-footer__note {
+    text-align: right;
+  }
+}
+
+.site-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.site-footer__tagline,
+.site-footer__note {
+  margin: 0;
+}
+
+.site-footer__tagline {
+  color: var(--color-on-surface);
+  font-weight: var(--text-label-weight);
+}
+
+.site-footer__nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
-  align-items: center;
-  justify-content: space-between;
-  padding-block: var(--space-lg);
-  font-size: var(--text-caption-size);
-  color: var(--color-on-neutral);
+  gap: var(--space-xs) var(--space-md);
+}
+
+.site-footer__nav a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--text-label-weight);
+  padding: 6px 2px;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+}
+
+.site-footer__nav a:hover {
+  background-size: 100% 1px;
 }
 
 /* Sticky header on all widths (condensed on phones). */
