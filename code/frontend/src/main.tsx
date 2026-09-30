@@ -8,6 +8,7 @@
 // Global styles first so component styles, imported through App, come later in the cascade.
 import './styles/tokens.css';
 import './styles/global.css';
+import './styles/motion.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
