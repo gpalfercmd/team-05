@@ -297,7 +297,7 @@ Quiet and precise: every component is a bordered plain surface with a single tea
 Pill (9999px), 2px 10px padding, label type, icon plus label inside a tinted background from the seven status pairs. Never color alone.
 
 ### Header and navigation
-Sticky, Page White, 1px bottom hairline, 64px tall (56px on phones), brand left, actions right. Below 960px the nav wraps to its own row. Nav links are Ledger Navy with a 6px 14px pill; hover and the current page share the same treatment: Ledger Paper fill with an inset 1px Hairline. No underlines.
+Sticky, Page White, 1px bottom hairline, 64px tall (56px on phones), brand left, actions right. Below 960px the nav wraps to its own row, so its real height is published as the `--header-h` custom property; every sticky offset and jump-target `scroll-margin-top` is built from it. Nav links are Ledger Navy with a 6px 14px pill; hover and the current page share the same treatment: Ledger Paper fill with an inset 1px Hairline. No underlines.
 
 ### Eyebrow and pill tag
 The eyebrow is a caption-size, 500, 0.08em uppercase teal kicker. The pill tag is a Page White capsule with a 1px hairline, 4px 12px padding and a 6px teal dot.
@@ -306,7 +306,10 @@ The eyebrow is a caption-size, 500, 0.08em uppercase teal kicker. The pill tag i
 Mono value in Margin Grey followed by a copy icon button, never wrapping; an overlong value scrolls inside its own box.
 
 ### Verification result
-A tinted panel: 8% result-color wash, a 40% result-color 1px border and a 6px left edge in the result color (green for match, red for mismatch, amber for manifest mismatch, slate by default). Icon in the result color, all text in Ink so contrast holds in both themes. It reveals with a 250ms fade and 4px rise.
+A tinted panel: 8% result-color wash and a 55% result-color 1px border, no thick side edge (green for match, red for mismatch, amber for manifest mismatch, slate by default and for the neutral "Incomplete" state). Icon in the result color, all text in Ink so contrast holds in both themes. Two fingerprints are compared like with like (the value computed from the visitor's file, then the fingerprint listed for it); the anchored bundle root sits apart as a caption, the link in the chain. It reveals with a 250ms fade and 4px rise.
+
+### Verdict line
+One subheading-size line under the claim title (`Verified · checked by 2 internal reviewers and 1 independent auditor · 1 dispute, dismissed`), built only from facts the page already holds and omitting any that is unknown, followed by the primary "Check a file" button.
 
 ### Numbered timeline
 An ordered list on a 2px Hairline rule. Each entry has a 28px circle marker with the step number; the latest step fills teal. Entries fade in over 250ms.
