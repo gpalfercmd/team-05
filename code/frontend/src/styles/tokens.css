@@ -10,6 +10,9 @@
 :root {
   color-scheme: light;
 
+  /* Sticky header height; Header.tsx overwrites it with the measured value (it wraps on phones). */
+  --header-h: 64px;
+
   /* colors */
   --color-primary: #1f3a5f;
   --color-secondary: #4a6178;

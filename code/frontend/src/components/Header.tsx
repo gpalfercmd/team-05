@@ -5,6 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { Link, NavLink } from 'react-router';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { CleartrustMark } from './CleartrustMark';
@@ -21,10 +22,34 @@ const PAGE_LINKS = [
   { to: '/workspace', label: 'Workspace' },
 ] as const;
 
+/**
+ * Publishes the sticky header's real height as `--header-h` on the root: on a phone the header wraps
+ * to several rows, so the sticky section nav and every jump target must clear its measured height.
+ */
+function useHeaderHeight(ref: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const header = ref.current;
+    if (header === null) {
+      return undefined;
+    }
+    const publish = () => {
+      document.documentElement.style.setProperty('--header-h', `${header.getBoundingClientRect().height}px`);
+    };
+    publish();
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(publish);
+    observer?.observe(header);
+    return () => {
+      observer?.disconnect();
+    };
+  }, [ref]);
+}
+
 export function Header() {
   const { contracts } = useAppConfig();
+  const headerRef = useRef<HTMLElement>(null);
+  useHeaderHeight(headerRef);
   return (
-    <header className="site-header">
+    <header className="site-header" ref={headerRef}>
       <div className="container site-header__inner">
         <Link to="/" className="site-header__brand" aria-label="cleartrust home">
           <CleartrustMark size={26} />

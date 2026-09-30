@@ -7,7 +7,7 @@
 
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderRoute } from '../test/renderRoute';
 
 const nav = async () => screen.findByRole('navigation', { name: 'Main' });
@@ -46,6 +46,29 @@ describe('Header', () => {
     await userEvent.click(link);
     await userEvent.click(link);
     expect(scrolled.filter((id) => id === 'how-it-works')).toHaveLength(2);
+  });
+
+  it('publishes its real height as --header-h, so sticky offsets and jump targets follow a wrapped header', async () => {
+    const callbacks: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          callbacks.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 151 } as DOMRect);
+    renderRoute('/');
+    await nav();
+    expect(document.documentElement.style.getPropertyValue('--header-h')).toBe('151px');
+    rect.mockReturnValue({ height: 64 } as DOMRect);
+    callbacks.forEach((callback) => callback());
+    expect(document.documentElement.style.getPropertyValue('--header-h')).toBe('64px');
+    rect.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('does not mark Workspace on the home page', async () => {

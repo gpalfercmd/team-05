@@ -778,7 +778,7 @@ pre {
 /* Claim page: sticky section nav + anchored sections. */
 .claim-subnav {
   position: sticky;
-  top: 64px;
+  top: var(--header-h);
   z-index: 20;
   display: flex;
   flex-wrap: wrap;
@@ -806,11 +806,44 @@ pre {
 .deposits-stack {
   display: grid;
   gap: var(--space-lg);
-  scroll-margin-top: 140px;
 }
 
-#overview {
-  scroll-margin-top: 140px;
+/* Every jump target clears the sticky header, and on wide screens the sticky section nav too. */
+#overview,
+#verify,
+.claim-anchor,
+.deposits-stack {
+  scroll-margin-top: calc(var(--header-h) + 64px);
+}
+
+/* Verdict under the claim title: the answer a visitor came for, before any scrolling. */
+.claim-verdict {
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  line-height: 1.3;
+  color: var(--color-on-surface);
+  text-wrap: balance;
+}
+
+.claim-header__action {
+  margin-top: var(--space-xs);
+}
+
+/* Phones: the section nav is one swipeable row that scrolls away with the page, so it never hides under the header. */
+@media (max-width: 767px) {
+  .claim-subnav {
+    position: static;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  #overview,
+  #verify,
+  .claim-anchor,
+  .deposits-stack {
+    scroll-margin-top: calc(var(--header-h) + var(--space-md));
+  }
 }
 
 .deposits-stack > .card {
