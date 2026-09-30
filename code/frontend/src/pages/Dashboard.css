@@ -1,0 +1,618 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Home page: split hero with a file-check illustration, how-it-works track, claim cards
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+/* ------------------------------------------------------------------ hero */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+}
+
+/* A teal wash and a fine dot grid behind the hero, bled to the viewport edges like the band. */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 28rem at 88% -8%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
+    radial-gradient(38rem 22rem at 4% 108%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 70%),
+    radial-gradient(color-mix(in srgb, var(--color-primary) 16%, transparent) 1px, transparent 1.4px) 0 0 / 22px 22px;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
+  mask-image: linear-gradient(180deg, #000 55%, transparent);
+}
+
+.hero__grid {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+@media (min-width: 960px) {
+  .hero__grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: var(--space-xxl);
+  }
+}
+
+.hero__copy {
+  min-width: 0;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 1.2rem + 3.6vw, 3.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+}
+
+/* The phrase the product stands for gets a drawn underline. */
+.hero__mark {
+  background: linear-gradient(var(--color-accent), var(--color-accent)) 0 96% / 100% 0.12em no-repeat;
+  padding-bottom: 0.06em;
+}
+
+.hero__case {
+  max-width: 36rem;
+  margin: 0 0 var(--space-md);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-on-surface);
+  text-wrap: balance;
+}
+
+.hero__actions {
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.btn--lg {
+  padding: 14px 26px;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 10px 4px;
+  font-weight: var(--text-label-weight);
+  color: var(--color-accent);
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 4px calc(100% - 6px) / 0 1.5px no-repeat;
+}
+
+.btn-link::after {
+  content: '↓';
+  transition: transform var(--duration-panel) var(--ease-out);
+}
+
+.btn-link:hover {
+  background-size: calc(100% - 8px) 1.5px;
+}
+
+.btn-link:hover::after {
+  transform: translateY(3px);
+}
+
+/* The illustration: a real file name and fingerprint from the demo evidence, drawn as a check. */
+.proof-card {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lift);
+}
+
+@media (min-width: 960px) {
+  .proof-card {
+    transform: rotate(1.6deg);
+  }
+}
+
+.proof-card__caption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-caption-size);
+  font-weight: var(--text-label-weight);
+  letter-spacing: 0.02em;
+  color: var(--color-on-neutral);
+}
+
+.proof-card__file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-neutral);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.proof-card__name {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  font-weight: 600;
+}
+
+.proof-card__flow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-left: var(--space-lg);
+}
+
+.proof-card__flow::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: -16px;
+  bottom: -16px;
+  width: 2px;
+  background: linear-gradient(var(--color-border), var(--color-accent));
+  border-radius: 2px;
+}
+
+.proof-card__pulse {
+  position: absolute;
+  left: 3px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-accent);
+  border-radius: 50%;
+}
+
+.proof-card__hashes {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.proof-card__hashes div {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-neutral);
+  border-radius: var(--radius-md);
+}
+
+.proof-card__hashes dt {
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+}
+
+.proof-card__hashes dd {
+  margin: 2px 0 0;
+}
+
+.proof-card__hashes code {
+  color: var(--color-on-surface);
+}
+
+.proof-card__match {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 8px 18px 8px 12px;
+  font-size: var(--text-subheading-size);
+  font-weight: 700;
+  color: var(--status-verified-fg);
+  background: var(--status-verified-bg);
+  border-radius: var(--radius-full);
+}
+
+/* --------------------------------------------------------------- about */
+
+.about-layout {
+  display: grid;
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+@media (min-width: 960px) {
+  .about-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: var(--space-xxl);
+  }
+}
+
+.split {
+  display: grid;
+  min-width: 0;
+}
+
+.split__side {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.split__side p {
+  margin: 0;
+}
+
+.split__side--private {
+  color: var(--color-on-surface);
+  background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--color-on-neutral) 7%, transparent) 8px 9px), var(--color-neutral);
+}
+
+.split__side--public {
+  background: var(--color-accent-soft);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+}
+
+.split__side svg {
+  color: var(--color-accent);
+}
+
+.split__title {
+  font-weight: 600;
+}
+
+.split__bridge {
+  display: grid;
+  place-items: center;
+  height: 56px;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+  background: linear-gradient(var(--color-border), var(--color-border)) center / 2px 100% no-repeat;
+}
+
+.split__bridge span {
+  padding: 2px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.band--alt .split__bridge span {
+  background: var(--color-surface);
+}
+
+/* ------------------------------------------------------------ how it works */
+
+.track {
+  display: grid;
+  gap: var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-xl);
+  }
+}
+
+.track__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  column-gap: var(--space-md);
+  align-items: start;
+}
+
+.track__step > .track__node {
+  grid-row: span 2;
+}
+
+@media (min-width: 768px) {
+  .track__step {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-sm);
+  }
+
+  .track__step > .track__node {
+    grid-row: auto;
+  }
+}
+
+.track__node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: var(--color-accent);
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  box-shadow: var(--shadow-raised), 0 0 0 6px var(--color-accent-soft);
+}
+
+.track__number {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-caption-size);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+  border-radius: 50%;
+}
+
+/* The rail between nodes: vertical on phones, horizontal from 768px. */
+.track__step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 31px;
+  top: 64px;
+  bottom: calc(-1 * var(--space-lg));
+  width: 2px;
+  background: linear-gradient(var(--color-accent), color-mix(in srgb, var(--color-accent) 25%, transparent));
+  transform-origin: top;
+}
+
+@media (min-width: 768px) {
+  .track__step:not(:last-child)::before {
+    left: 64px;
+    top: 31px;
+    right: calc(-1 * var(--space-xl));
+    bottom: auto;
+    width: auto;
+    height: 2px;
+    transform-origin: left;
+  }
+}
+
+.track__title {
+  margin: 0;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+  line-height: var(--text-subheading-line-height);
+}
+
+.track__text {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-on-neutral);
+}
+
+@media (min-width: 768px) {
+  .track__text {
+    margin: 0;
+  }
+}
+
+.principles__item {
+  transition: background-color var(--duration-panel) var(--ease-standard);
+}
+
+.principles__item:hover {
+  background: var(--color-accent-soft);
+}
+
+/* ------------------------------------------------------------ claim cards */
+
+.claim-card__id,
+.claim-card .caption {
+  margin: 0;
+}
+
+/* The link stretches over the whole card; interactive bits inside stay above it. */
+.claim-card__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.claim-card .hash {
+  position: relative;
+  z-index: 1;
+}
+
+.claim-card__open:focus-visible {
+  outline-offset: 3px;
+}
+
+.claim-card:has(.claim-card__open:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.claim-card__open:focus-visible {
+  outline: none;
+}
+
+.workspace-teaser {
+  padding: var(--space-xl) var(--space-lg);
+}
+
+/* ------------------------------------------------------------------ motion */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero::before {
+    background-size: auto, auto, 22px 22px;
+    animation: hero-drift 18s ease-in-out infinite alternate;
+  }
+
+  /* Load sequence: badge, headline, case, actions, then the picture. */
+  .hero__copy > * {
+    animation: rise var(--duration-enter) var(--ease-out) both;
+  }
+
+  .hero__copy > :nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .hero__copy > :nth-child(3) {
+    animation-delay: 180ms;
+  }
+
+  .hero__copy > :nth-child(4) {
+    animation-delay: 260ms;
+  }
+
+  .hero__copy > :nth-child(5) {
+    animation-delay: 340ms;
+  }
+
+  .hero__mark {
+    animation: underline-draw 900ms var(--ease-out) 500ms both;
+  }
+
+  .proof-card {
+    animation: rise-tilt 900ms var(--ease-out) 250ms both;
+    transition:
+      transform var(--duration-enter) var(--ease-out),
+      box-shadow var(--duration-enter) var(--ease-out);
+  }
+
+  .proof-card:hover {
+    transform: rotate(0deg) translateY(-4px);
+  }
+
+  .proof-card__pulse {
+    animation: pulse-down 2.4s var(--ease-standard) 1.4s infinite;
+  }
+
+  .proof-card__hashes div {
+    animation: hash-in 600ms var(--ease-out) both;
+  }
+
+  .proof-card__hashes div:nth-child(1) {
+    animation-delay: 900ms;
+  }
+
+  .proof-card__hashes div:nth-child(2) {
+    animation-delay: 1250ms;
+  }
+
+  .proof-card__match {
+    animation: match-pop 700ms var(--ease-spring) 1700ms both;
+  }
+
+  .proof-card__match svg {
+    animation: match-tilt 700ms var(--ease-spring) 1900ms both;
+  }
+
+  /* The rail draws itself when the step is revealed; the node pops in. */
+  .track__step:not(:last-child)::before {
+    transition: transform var(--duration-draw) var(--ease-out) calc(var(--reveal-index, 0) * var(--stagger) + 250ms);
+  }
+
+  .track__step[data-revealed='false']:not(:last-child)::before {
+    transform: scaleY(0);
+  }
+
+  .track__node {
+    transition: transform 600ms var(--ease-spring) calc(var(--reveal-index, 0) * var(--stagger));
+  }
+
+  .track__step[data-revealed='false'] .track__node {
+    transform: scale(0.6);
+  }
+
+  .track__step:hover .track__node {
+    transform: scale(1.08);
+  }
+
+  .split__bridge {
+    transition: background-size 700ms var(--ease-out) 300ms;
+  }
+
+  [data-revealed='false'] .split__bridge {
+    background-size: 2px 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+  .track__step[data-revealed='false']:not(:last-child)::before {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes hero-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  to {
+    background-position: -40px 20px, 30px -16px, 0 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes rise-tilt {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+  }
+}
+
+@keyframes underline-draw {
+  from {
+    background-size: 0 0.12em;
+  }
+}
+
+@keyframes pulse-down {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+
+  20%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+}
+
+@keyframes hash-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@keyframes match-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes match-tilt {
+  from {
+    transform: rotate(-40deg) scale(0.4);
+  }
+}

@@ -1,0 +1,56 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — StageDots: four segments that fill in when the card scrolls into view
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+.stage-dots {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.stage-dots__bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.stage-dots__seg {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+/* The fill is a separate layer so it can grow from the left without moving the track. */
+.stage-dots__seg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent);
+  border-radius: inherit;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.stage-dots__seg[data-done='true']::after {
+  transform: scaleX(1);
+}
+
+.stage-dots__caption {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stage-dots__seg::after {
+    transition: transform var(--duration-draw) var(--ease-out);
+    transition-delay: calc(var(--seg) * 140ms + 200ms);
+  }
+
+  /* Collapsed until the card is revealed, then each segment fills in turn. */
+  [data-revealed='false'] .stage-dots__seg[data-done='true']::after {
+    transform: scaleX(0);
+  }
+}

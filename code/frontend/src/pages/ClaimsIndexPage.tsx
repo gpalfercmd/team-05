@@ -6,9 +6,9 @@
 // =============================================================================
 
 import { Link } from 'react-router';
+import { ClaimCard } from '../components/ClaimCard';
 import { ClaimLookup } from '../components/ClaimLookup';
 import { HashDisplay } from '../components/HashDisplay';
-import { StatusBadge } from '../components/StatusBadge';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
 
@@ -45,19 +45,8 @@ export function ClaimsIndexPage() {
             <p className="muted">Real claim shapes with made-up evidence. Open one and try the check yourself.</p>
           </div>
           <ul className="claim-cards">
-            {MOCK_CLAIMS.map((claim) => (
-              <li key={claim.claimId} className="claim-card">
-                <StatusBadge status={claim.status} />
-                <p className="claim-card__id">
-                  Claim <HashDisplay value={claim.claimId} label="claim ID" />
-                </p>
-                <p className="caption">
-                  {claim.evidenceRoots.length} evidence bundle{claim.evidenceRoots.length === 1 ? '' : 's'}
-                </p>
-                <Link className="btn btn-secondary claim-card__open" to={`/claims/${claim.claimId}`}>
-                  Open and verify
-                </Link>
-              </li>
+            {MOCK_CLAIMS.map((claim, index) => (
+              <ClaimCard key={claim.claimId} claim={claim} index={index} />
             ))}
           </ul>
         </section>

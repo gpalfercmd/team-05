@@ -7,11 +7,13 @@
 
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
-import { HashDisplay } from '../components/HashDisplay';
-import { LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
-import { StatusBadge } from '../components/StatusBadge';
+import { ClaimCard } from '../components/ClaimCard';
+import { AnchorIcon, LockIcon, ShieldCheckIcon, UserCheckIcon } from '../components/icons';
+import { Reveal } from '../components/Reveal';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
+import { DEMO_MANIFESTS, FULL_STORY_CLAIM_ID, MOCK_CLAIMS } from '../mocks/claims';
+import { truncateMiddle } from '../utils/format';
+import './Dashboard.css';
 
 const HERO_BADGES = [
   { icon: LockIcon, title: 'Private by design', text: 'Evidence stays offchain, encrypted. Only fingerprints are public.' },
@@ -28,10 +30,25 @@ const HERO_STATS = [
 ] as const;
 
 const HOW_IT_WORKS = [
-  { title: 'Open a sample claim', text: 'See its status, checks and full history read from the blockchain.' },
-  { title: 'Download a receipt', text: 'Public evidence files are free to download from the Evidence section.' },
-  { title: 'Drop it to verify', text: 'Your browser re-hashes it and compares it with the onchain fingerprint.' },
+  {
+    icon: AnchorIcon,
+    title: 'Anchor the fingerprint',
+    text: 'An organization records the fingerprint of its evidence on the blockchain. The files themselves stay offchain.',
+  },
+  {
+    icon: UserCheckIcon,
+    title: 'Two-stage review',
+    text: 'An internal verifier checks it first, then an independent accredited auditor gives the final decision.',
+  },
+  {
+    icon: ShieldCheckIcon,
+    title: 'Anyone verifies',
+    text: 'Open a claim, drop a file, and your browser compares its fingerprint with the recorded one. No account needed.',
+  },
 ] as const;
+
+// The demo evidence's first public file and its listed fingerprint, so the illustration shows real values.
+const ILLUSTRATION_FILE = DEMO_MANIFESTS['manifest.json'].files[0];
 
 /** Header links point at `/#section`; a client-side navigation does not scroll there by itself. */
 function useScrollToHash() {
@@ -44,6 +61,45 @@ function useScrollToHash() {
   }, [hash, key]);
 }
 
+/** A file check drawn as a picture: the file, its fingerprint, the recorded one, and the match. */
+function ProofIllustration() {
+  const fingerprint = truncateMiddle(ILLUSTRATION_FILE.sha256);
+  return (
+    <figure className="proof-card">
+      <figcaption className="proof-card__caption">
+        <span className="dot" aria-hidden="true" /> Illustration · a file check, done in your browser
+      </figcaption>
+      <div className="proof-card__file">
+        <LockIcon size={16} aria-hidden="true" />
+        <span className="proof-card__name">{ILLUSTRATION_FILE.name}</span>
+        <span className="caption">stays on your device</span>
+      </div>
+      <div className="proof-card__flow" aria-hidden="true">
+        <span className="proof-card__pulse" />
+        <span className="caption">SHA-256, computed locally</span>
+      </div>
+      <dl className="proof-card__hashes">
+        <div>
+          <dt>Fingerprint of your file</dt>
+          <dd>
+            <code>{fingerprint}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Recorded on the blockchain</dt>
+          <dd>
+            <code>{fingerprint}</code>
+          </dd>
+        </div>
+      </dl>
+      <p className="proof-card__match">
+        <ShieldCheckIcon size={20} aria-hidden="true" />
+        <span>Match</span>
+      </p>
+    </figure>
+  );
+}
+
 export function DashboardPage() {
   const { contracts } = useAppConfig();
   const featuredClaim = MOCK_CLAIMS[0];
@@ -51,40 +107,50 @@ export function DashboardPage() {
   return (
     <div className="page page--bands">
       <div className="band hero">
-        <p className="pill-tag">
-          <span className="dot" aria-hidden="true" />
-          Open verification · No login needed
-        </p>
-        <h1>Check aid claims without exposing people</h1>
-        <p className="page__lead">
-          Record aid evidence, have it checked, and let anyone confirm it was not changed — without
-          exposing the people it protects.
-        </p>
-        <div className="hero__actions">
-          {contracts.mode === 'mock' && featuredClaim !== undefined && (
-            <Link className="btn btn-primary" to={`/claims/${featuredClaim.claimId}`}>
-              See a sample claim
-            </Link>
-          )}
-          {/* The deploy script anchors the demo claim with the committed demo evidence on every chain. */}
-          {contracts.mode === 'chain' && (
-            <Link className="btn btn-primary" to={`/claims/${FULL_STORY_CLAIM_ID}`}>
-              See the demo claim
-            </Link>
-          )}
-          <Link className="btn btn-secondary" to="/claims">
-            Browse claims
-          </Link>
-          <a className="btn btn-secondary" href="#how-it-works">
-            How tracking works
-          </a>
+        <div className="hero__grid">
+          <div className="hero__copy">
+            <p className="pill-tag">
+              <span className="dot" aria-hidden="true" />
+              Open verification · No login needed
+            </p>
+            <h1>
+              Check aid claims <span className="hero__mark">without exposing people</span>
+            </h1>
+            <p className="hero__case">
+              A foundation reports 500 food kits after the Valencia floods. Anyone can check that its proof was never changed.
+            </p>
+            <p className="page__lead">
+              Record aid evidence, have it checked, and let anyone confirm it was not changed — without exposing the people it
+              protects.
+            </p>
+            <div className="hero__actions">
+              <Link className="btn btn-primary btn--lg" to="/claims">
+                Look up a claim
+              </Link>
+              {contracts.mode === 'mock' && featuredClaim !== undefined && (
+                <Link className="btn btn-secondary btn--lg" to={`/claims/${featuredClaim.claimId}`}>
+                  See a sample claim
+                </Link>
+              )}
+              {/* The deploy script anchors the demo claim with the committed demo evidence on every chain. */}
+              {contracts.mode === 'chain' && (
+                <Link className="btn btn-secondary btn--lg" to={`/claims/${FULL_STORY_CLAIM_ID}`}>
+                  See the demo claim
+                </Link>
+              )}
+              <a className="btn-link" href="#how-it-works">
+                How tracking works
+              </a>
+            </div>
+          </div>
+          <ProofIllustration />
         </div>
         <ul className="stats">
-          {HERO_STATS.map((stat) => (
-            <li key={stat.label}>
+          {HERO_STATS.map((stat, index) => (
+            <Reveal as="li" key={stat.label} delay={index}>
               <span className="stats__value">{stat.value}</span>
               <span className="stats__label">{stat.label}</span>
-            </li>
+            </Reveal>
           ))}
         </ul>
       </div>
@@ -96,87 +162,96 @@ export function DashboardPage() {
         className={contracts.mode === 'mock' ? 'band band--compact band--alt' : 'band band--compact'}
         aria-labelledby="about-heading"
       >
-        <div className="section-head">
-          <p className="eyebrow">The project</p>
-          <h2 id="about-heading">What is ClearTrust?</h2>
-        </div>
-        <div className="about-grid">
-          <p>
-            ClearTrust lets anyone check that an aid claim is backed by real evidence — without
-            seeing the private data inside that evidence. No account, no special access: the checks
-            run in your browser against fingerprints recorded on the Arbitrum blockchain.
-          </p>
-          <p>
-            For example, a foundation reports delivering 500 food kits after the Valencia floods.
-            Its strongest proof — signed delivery lists, photos of families — cannot be published,
-            so the files stay offchain, encrypted, while their fingerprints are anchored onchain and
-            every verification step is signed by independent, accredited reviewers.
-          </p>
-          <p>
-            <a href="#how-it-works">See how tracking works</a>
-          </p>
+        <div className="about-layout">
+          <Reveal>
+            <div className="section-head">
+              <p className="eyebrow">The project</p>
+              <h2 id="about-heading">What is ClearTrust?</h2>
+            </div>
+            <div className="about-grid">
+              <p>
+                ClearTrust lets anyone check that an aid claim is backed by real evidence — without seeing the private data
+                inside that evidence. No account, no special access: the checks run in your browser against fingerprints
+                recorded on the Arbitrum blockchain.
+              </p>
+              <p>
+                For example, a foundation reports delivering 500 food kits after the Valencia floods. Its strongest proof —
+                signed delivery lists, photos of families — cannot be published, so the files stay offchain, encrypted, while
+                their fingerprints are anchored onchain and every verification step is signed by independent, accredited
+                reviewers.
+              </p>
+              <p>
+                <a href="#how-it-works">See how tracking works</a>
+              </p>
+            </div>
+          </Reveal>
+          <Reveal className="split" delay={2}>
+            <div className="split__side split__side--private">
+              <LockIcon size={20} aria-hidden="true" />
+              <p className="split__title">Stays offchain, encrypted</p>
+              <p className="caption">Signed delivery lists, photos of families.</p>
+            </div>
+            <div className="split__bridge" aria-hidden="true">
+              <span>fingerprint</span>
+            </div>
+            <div className="split__side split__side--public">
+              <AnchorIcon size={20} aria-hidden="true" />
+              <p className="split__title">Anchored onchain, public</p>
+              <p className="caption">Only the fingerprints of the files.</p>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       {contracts.mode === 'mock' && (
         <section className="band" id="claims" aria-labelledby="demo-claims-heading">
-          <div className="section-head">
+          <Reveal className="section-head">
             <p className="eyebrow">Public records</p>
             <h2 id="demo-claims-heading">Sample claims</h2>
             <p className="muted">
               Real claim shapes with made-up evidence. Open one and try the check yourself.{' '}
               <Link to="/claims">Browse all claims</Link>.
             </p>
-          </div>
+          </Reveal>
           <ul className="claim-cards">
-            {MOCK_CLAIMS.map((claim) => (
-              <li key={claim.claimId} className="claim-card">
-                <StatusBadge status={claim.status} />
-                <p className="claim-card__id">
-                  Claim <HashDisplay value={claim.claimId} label="claim ID" />
-                </p>
-                <p className="caption">
-                  {claim.evidenceRoots.length} evidence bundle{claim.evidenceRoots.length === 1 ? '' : 's'}
-                </p>
-                <Link className="btn btn-secondary claim-card__open" to={`/claims/${claim.claimId}`}>
-                  Open and verify
-                </Link>
-              </li>
+            {MOCK_CLAIMS.map((claim, index) => (
+              <ClaimCard key={claim.claimId} claim={claim} index={index} />
             ))}
           </ul>
         </section>
       )}
 
       <section className="band band--alt" id="how-it-works" aria-labelledby="how-heading">
-        <div className="section-head">
+        <Reveal className="section-head">
           <p className="eyebrow">How it works</p>
           <h2 id="how-heading">How tracking works</h2>
-        </div>
-        <ol className="steps">
+        </Reveal>
+        <ol className="track">
           {HOW_IT_WORKS.map((step, index) => (
-            <li key={step.title} className="steps__item">
-              <span className="steps__number" aria-hidden="true">
-                {index + 1}
+            <Reveal as="li" key={step.title} className="track__step" delay={index}>
+              <span className="track__node" aria-hidden="true">
+                <step.icon size={22} />
+                <span className="track__number">{index + 1}</span>
               </span>
-              <p className="steps__title">{step.title}</p>
-              <p className="steps__text">{step.text}</p>
-            </li>
+              <h3 className="track__title">{step.title}</h3>
+              <p className="track__text">{step.text}</p>
+            </Reveal>
           ))}
         </ol>
         <ul className="principles">
-          {HERO_BADGES.map((badge) => (
-            <li key={badge.title} className="principles__item">
+          {HERO_BADGES.map((badge, index) => (
+            <Reveal as="li" key={badge.title} className="principles__item" delay={index}>
               <badge.icon size={20} className="principles__icon" aria-hidden="true" />
               <p className="principles__title">{badge.title}</p>
               <p className="principles__text">{badge.text}</p>
-            </li>
+            </Reveal>
           ))}
         </ul>
       </section>
 
       {/* The role screens live on their own page; home keeps only the public story. */}
       <section className="band band--compact" aria-labelledby="workspace-heading">
-        <div className="card workspace-teaser">
+        <Reveal className="card card--interactive workspace-teaser">
           <div>
             <h2 id="workspace-heading">Working on claims?</h2>
             <p className="muted">Organizations, verifiers, auditors and the Authority act on claims from their workspace.</p>
@@ -184,9 +259,8 @@ export function DashboardPage() {
           <Link className="btn btn-secondary" to="/workspace">
             Open your workspace
           </Link>
-        </div>
+        </Reveal>
       </section>
-
     </div>
   );
 }
