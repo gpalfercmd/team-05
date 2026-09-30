@@ -59,6 +59,12 @@ describe('/workspace', () => {
     expect(screen.queryByRole('heading', { name: 'What needs your action' })).not.toBeInTheDocument();
   });
 
+  it('explains who does what before anyone connects a wallet', async () => {
+    renderRoute('/workspace', testEnv());
+    expect(await screen.findByRole('heading', { level: 2, name: 'Who does what' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3, name: 'Auditor' })).toHaveLength(1);
+  });
+
   it('asks a visitor to connect, with a connect button on the page', async () => {
     openWorkspace(undefined, demoChainState(), false);
     expect(await screen.findByText(/Connect your wallet to see the actions for your role/)).toBeInTheDocument();
@@ -84,6 +90,7 @@ describe('/workspace', () => {
     openWorkspace(WALLETS.verifier2, proofSubmitted(), true);
     const list = await screen.findByRole('region', { name: 'What needs your action' });
     expect(await within(list).findByText('Confirm the supplementary proof.')).toBeInTheDocument();
+    expect(within(list).getByText('1 waiting')).toBeInTheDocument();
     expect(within(list).getByRole('link', { name: 'Open actions for claim 0xabab…abab' })).toHaveAttribute('href', `/workspace?claim=${CLAIM_ID}`);
     expect(within(list).getByRole('link', { name: 'Public page of claim 0xabab…abab' })).toHaveAttribute('href', `/claims/${CLAIM_ID}`);
   });

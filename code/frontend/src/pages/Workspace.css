@@ -1,0 +1,173 @@
+/* =============================================================================
+   Proof of Aid — Team 05 — Workspace: the to-do first, the role screens as cards, and who does what
+   Copyright (c) 2026 Guillermo Palau Fernández, Iago Rey Rey, Francisco Barbero Vázquez
+   Licensed under the MIT License. See LICENSE for details.
+   Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
+   ============================================================================= */
+
+/* "What needs your action" comes first and is marked: an accent bar and the count of items. */
+.needs-action {
+  position: relative;
+  padding-left: calc(var(--space-lg) + 6px);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-line));
+  overflow: hidden;
+}
+
+.needs-action::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: linear-gradient(var(--color-accent), color-mix(in srgb, var(--color-accent) 40%, transparent));
+}
+
+.action-list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.action-list__head > h2 {
+  margin: 0;
+}
+
+.action-list__count {
+  padding: 2px 12px;
+  font-size: var(--text-label-size);
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+}
+
+.action-list__item {
+  background: var(--color-surface);
+  border-color: var(--color-line);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Each role action is a card of its own inside the role screens. */
+.role-screens .action-form,
+.role-screens .claim-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-raised);
+}
+
+.role-screens .claim-panel {
+  background: var(--color-neutral);
+}
+
+.roles-overview {
+  display: grid;
+}
+
+.role-cards {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .role-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .role-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.role-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.role-card__title {
+  margin: 0;
+  font-size: var(--text-subheading-size);
+  font-weight: var(--text-subheading-weight);
+}
+
+.role-card__text {
+  margin: 0;
+  color: var(--color-on-neutral);
+}
+
+.role-card[data-mine='true'] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.role-card__mine {
+  justify-self: start;
+  margin: var(--space-xs) 0 0;
+  padding: 2px 12px;
+  font-size: var(--text-caption-size);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .role-card {
+    transition:
+      transform var(--duration-panel) var(--ease-out),
+      box-shadow var(--duration-panel) var(--ease-out),
+      border-color var(--duration-panel) var(--ease-standard);
+  }
+
+  .role-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  }
+
+  .action-list__item {
+    transition:
+      transform var(--duration-panel) var(--ease-out),
+      box-shadow var(--duration-panel) var(--ease-out);
+  }
+
+  .action-list__item:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  /* A new count pops so a change in what waits for you is noticed. */
+  .action-list__count {
+    animation: count-pop 500ms var(--ease-spring) both;
+  }
+
+  .needs-action::before {
+    animation: bar-grow 900ms var(--ease-out) 200ms both;
+    transform-origin: top;
+  }
+}
+
+@keyframes count-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}

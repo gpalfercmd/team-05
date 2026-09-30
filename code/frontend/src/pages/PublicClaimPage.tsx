@@ -176,7 +176,7 @@ function LoadError({ error, retry }: { error: ClaimLoadError; retry: () => void 
 /** Title, one verdict line and the way in to the file check: what a visitor needs before scrolling. */
 function ClaimHeader({ claim }: { claim: ClaimView | undefined }) {
   return (
-    <div className="page__header claim-hero">
+    <div className="page__header page__header--panel claim-hero">
       <p className="caption claim-crumb">
         <Link to="/">Dashboard</Link> · <Link to="/claims">Claims</Link> · Claim record
       </p>

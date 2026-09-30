@@ -16,7 +16,7 @@ export function ClaimsIndexPage() {
   const { contracts } = useAppConfig();
   return (
     <div className="page">
-      <div className="page__header">
+      <div className="page__header page__header--panel">
         <p className="caption claim-crumb">
           <Link to="/">Dashboard</Link> · Claims
         </p>

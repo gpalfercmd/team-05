@@ -8,10 +8,13 @@
 import { Link, useSearchParams } from 'react-router';
 import { isHex, type Hex } from 'viem';
 import { ConnectButton } from '../components/ConnectButton';
+import { Reveal } from '../components/Reveal';
 import { ActionList } from '../components/wallet/ActionList';
+import { RoleCards } from '../components/wallet/RoleCards';
 import { WalletPanel } from '../components/wallet/WalletPanel';
 import { useRole } from '../hooks/useRole';
 import { useRegistries, useWallet } from '../hooks/useWallet';
+import './Workspace.css';
 
 const CLAIM_ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
@@ -33,7 +36,7 @@ export function WorkspacePage() {
 
   return (
     <div className="page">
-      <div className="page__header">
+      <div className="page__header page__header--panel">
         <p className="caption claim-crumb">
           <Link to="/">Dashboard</Link> · Workspace
         </p>
@@ -45,23 +48,30 @@ export function WorkspacePage() {
         </p>
       </div>
 
-      <div className="workspace-grid">
-        {ready && wallet.status === 'connected' && (
-          <section className="card" aria-labelledby="needs-action-heading">
-            <ActionList role={role.role} viewer={wallet.address} verifierOrganization={role.verifierOrganization} />
-          </section>
-        )}
+      {ready && wallet.status === 'connected' && (
+        <Reveal as="section" className="card needs-action" aria-labelledby="needs-action-heading">
+          <ActionList role={role.role} viewer={wallet.address} verifierOrganization={role.verifierOrganization} />
+        </Reveal>
+      )}
 
-        <section className="card wallet-stack" aria-labelledby="role-screens-heading">
-          <h2 id="role-screens-heading">Role screens</h2>
-          <WalletPanel initialClaim={linkedClaim} />
-          {registries !== undefined && wallet.status === 'disconnected' && (
-            <div>
-              <ConnectButton />
-            </div>
-          )}
-        </section>
-      </div>
+      <Reveal as="section" className="card wallet-stack role-screens" aria-labelledby="role-screens-heading">
+        <h2 id="role-screens-heading">Role screens</h2>
+        <WalletPanel initialClaim={linkedClaim} />
+        {registries !== undefined && wallet.status === 'disconnected' && (
+          <div>
+            <ConnectButton />
+          </div>
+        )}
+      </Reveal>
+
+      <section className="roles-overview" aria-labelledby="roles-heading">
+        <Reveal className="section-head">
+          <p className="eyebrow">The roles</p>
+          <h2 id="roles-heading">Who does what</h2>
+          <p className="muted">Each wallet holds one role in the registry. You see only the actions your role may take.</p>
+        </Reveal>
+        <RoleCards current={ready ? role.role : undefined} />
+      </section>
     </div>
   );
 }

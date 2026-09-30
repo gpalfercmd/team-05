@@ -5,9 +5,9 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode } from 'react';
 
-type RevealProps = {
+type RevealProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'style'> & {
   children: ReactNode;
   /** Wrapper element; a list item inside a list, a section for a band. */
   as?: ElementType;
@@ -26,7 +26,7 @@ function startsRevealed(): boolean {
  * Content is hidden only while JavaScript can still reveal it, and never under reduced motion,
  * so the page cannot end up blank. The reveal happens once; scrolling away does not hide it again.
  */
-export function Reveal({ children, as, className, delay = 0 }: RevealProps) {
+export function Reveal({ children, as, className, delay = 0, ...rest }: RevealProps) {
   const Tag: ElementType = as ?? 'div';
   const ref = useRef<HTMLElement>(null);
   const [revealed, setRevealed] = useState(startsRevealed);
@@ -53,7 +53,7 @@ export function Reveal({ children, as, className, delay = 0 }: RevealProps) {
 
   const style = { '--reveal-index': delay } as CSSProperties;
   return (
-    <Tag ref={ref} className={className === undefined ? 'reveal' : `reveal ${className}`} data-revealed={revealed} style={style}>
+    <Tag {...rest} ref={ref} className={className === undefined ? 'reveal' : `reveal ${className}`} data-revealed={revealed} style={style}>
       {children}
     </Tag>
   );

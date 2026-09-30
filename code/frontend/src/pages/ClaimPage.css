@@ -5,30 +5,7 @@
    Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
    ============================================================================= */
 
-/* The verdict is the first thing on the page: a tinted panel with the status, the title and the action. */
-.claim-hero {
-  position: relative;
-  padding: var(--space-lg);
-  background:
-    radial-gradient(28rem 12rem at 100% 0, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--color-surface), var(--color-surface));
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  box-shadow: var(--shadow-raised);
-}
-
-@media (min-width: 768px) {
-  .claim-hero {
-    padding: var(--space-xl);
-  }
-}
-
-.claim-hero > h1 {
-  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
+/* The verdict is the first thing on the page; the panel itself is .page__header--panel (global.css). */
 .claim-hero__status {
   margin: 0;
 }

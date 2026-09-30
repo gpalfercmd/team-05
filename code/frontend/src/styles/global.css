@@ -227,6 +227,29 @@ pre {
   margin: 0;
 }
 
+/* Inner-page header as a raised panel with a teal wash: claim, workspace and claims index share it. */
+.page__header--panel {
+  padding: var(--space-lg);
+  background:
+    radial-gradient(28rem 12rem at 100% 0, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
+    var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-raised);
+}
+
+@media (min-width: 768px) {
+  .page__header--panel {
+    padding: var(--space-xl);
+  }
+}
+
+.page__header--panel > h1 {
+  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
 /* Hero: pill tag, headline, lead, two actions and a stat row below a hairline. */
 .hero {
   padding-block: var(--space-xl) var(--space-lg);

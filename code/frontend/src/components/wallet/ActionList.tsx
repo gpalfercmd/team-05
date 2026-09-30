@@ -84,9 +84,13 @@ export function ActionList({ role, viewer, verifierOrganization }: ActionListPro
   }
 
   const listed = lookup.state === 'ready' && !empty;
+  const waiting = (lookup.state === 'ready' ? lookup.items.length : 0) + (funds === null ? 0 : 1);
   return (
     <div className="wallet-stack">
-      <h2 id="needs-action-heading">What needs your action</h2>
+      <div className="action-list__head">
+        <h2 id="needs-action-heading">What needs your action</h2>
+        {listed && <span className="action-list__count">{waiting} waiting</span>}
+      </div>
       {(funds !== null || listed) && (
         <ul className="action-list">
           {funds}
