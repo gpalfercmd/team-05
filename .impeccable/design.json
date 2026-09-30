@@ -436,33 +436,16 @@
         "purpose": "Only on .card and the claim subnav; bordered tiles carry none."
       }
     ],
-    "motion": [
-      {
-        "name": "duration-fast",
-        "value": "150ms",
-        "purpose": "Button and control state transitions."
-      },
-      {
-        "name": "duration-panel",
-        "value": "250ms",
-        "purpose": "Verification reveal and timeline entry."
-      },
-      {
-        "name": "ease-standard",
-        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Default easing for every transition."
-      },
-      {
-        "name": "skeleton-shimmer",
-        "value": "1.2s ease-in-out infinite",
-        "purpose": "Loading skeleton sweep."
-      },
-      {
-        "name": "reduced-motion",
-        "value": "durations collapse to 0.01ms",
-        "purpose": "prefers-reduced-motion removes all motion."
-      }
-    ],
+    "motion": {
+      "duration-fast": "150ms",
+      "duration-panel": "250ms",
+      "duration-enter": "650ms",
+      "duration-draw": "900ms",
+      "ease-standard": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "ease-out": "cubic-bezier(0.22, 1, 0.36, 1)",
+      "stagger": "90ms",
+      "reducedMotion": "every moving rule sits inside prefers-reduced-motion: no-preference"
+    },
     "breakpoints": [
       {
         "name": "phone",
@@ -480,7 +463,15 @@
         "name": "container",
         "value": "1120px"
       }
-    ]
+    ],
+    "elevation": {
+      "shadow-raised": "0 1px 2px rgba(16,24,40,0.05), 0 8px 24px -12px rgba(31,58,95,0.18)",
+      "shadow-lift": "0 2px 4px rgba(16,24,40,0.06), 0 18px 40px -14px rgba(31,58,95,0.28)"
+    },
+    "spacing-rhythm": {
+      "space-section": "clamp(56px, 8vw, 104px)",
+      "space-block": "clamp(32px, 4vw, 56px)"
+    }
   },
   "components": [
     {
@@ -566,7 +557,7 @@
   ],
   "narrative": {
     "northStar": "The Public Ledger",
-    "overview": "ClearTrust looks like a well-kept public register: calm, factual, record-like, with every line checkable and nothing decorative. The interface never performs trust with gloss or emphasis. It shows the record, the fingerprint of the record, and the verdict, in that order. Surfaces are near-white and near-grey, ink is navy-tinted, and one restrained teal marks what can be acted on.\n\nThe component philosophy is \"quiet and precise\": hairline borders, soft 8 to 12px corners, almost no shadow, like entries in a ledger. Density is moderate and record-like: label above value, one column, wide bands with generous vertical rhythm on marketing surfaces, tight audit-style lists inside the workspace. Motion only confirms a state change.\n\nThe brand commitment carried over from the product is the ClearTrust name in camel case, the mark in `code/frontend/src/components/CleartrustMark.tsx`, and the tagline \"check aid claims without exposing people\". Both light and dark themes are first class.",
+    "overview": "ClearTrust looks like a well-kept public register: calm, factual, record-like, with every line checkable and nothing decorative. The interface never performs trust with gloss or emphasis. It shows the record, the fingerprint of the record, and the verdict, in that order. Surfaces are near-white and near-grey, ink is navy-tinted, and one restrained teal marks what can be acted on.\n\nThe component philosophy is \"quiet and precise\": hairline borders, soft 8 to 12px corners, almost no shadow, like entries in a ledger. Density is moderate and record-like: label above value, one column, wide bands with generous vertical rhythm on marketing surfaces, tight audit-style lists inside the workspace. Motion only confirms a state change.\n\nThe brand commitment carried over from the product is the ClearTrust name in camel case, the mark in `code/frontend/src/components/CleartrustMark.tsx`, and the tagline \"check aid claims without exposing people\". Both light and dark themes are first class.\n\nBold refresh (2026-09-30): raised surfaces (--shadow-raised, --shadow-lift), a section spacing scale (--space-section, --space-block), motion tokens (--duration-enter, --duration-draw, --ease-out, --stagger), scroll reveals, a split hero, a claim progress stepper and role cards. Palette, fonts and the brand mark are unchanged.",
     "keyCharacteristics": [
       "Flat by default: 1px hairlines carry structure, shadow is nearly absent.",
       "One interactive color (Verification Teal) on a navy and slate neutral field.",

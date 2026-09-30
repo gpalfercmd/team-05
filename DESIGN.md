@@ -178,17 +178,17 @@ components:
 
 ClearTrust looks like a well-kept public register: calm, factual, record-like, with every line checkable and nothing decorative. The interface never performs trust with gloss or emphasis. It shows the record, the fingerprint of the record, and the verdict, in that order. Surfaces are near-white and near-grey, ink is navy-tinted, and one restrained teal marks what can be acted on.
 
-The component philosophy is "quiet and precise": hairline borders, soft 8 to 12px corners, almost no shadow, like entries in a ledger. Density is moderate and record-like: label above value, one column, wide bands with generous vertical rhythm on marketing surfaces, tight audit-style lists inside the workspace. Motion only confirms a state change.
+The component philosophy is "quiet and precise, but alive" (bold refresh, 2026-09-30): hairline borders, soft 8 to 16px corners, and raised cards that rest on a soft navy-tinted shadow and lift toward the pointer. Density is moderate and record-like: label above value, one column, wide bands with generous vertical rhythm on marketing surfaces, tight audit-style lists inside the workspace. Motion explains structure (blocks arrive as they scroll into view, progress fills in, a file check lands with a ring or a shake) and always confirms state; it is fully off under reduced motion.
 
 The brand commitment carried over from the product is the ClearTrust name in camel case, the mark in `code/frontend/src/components/CleartrustMark.tsx`, and the tagline "check aid claims without exposing people". Both light and dark themes are first class.
 
 **Key Characteristics:**
-- Flat by default: 1px hairlines carry structure, shadow is nearly absent.
+- Raised, not glossy: 1px hairlines plus one soft shadow scale (raised at rest, lift on hover).
 - One interactive color (Verification Teal) on a navy and slate neutral field.
 - Status is always icon plus label, never color alone.
 - Hashes and addresses are monospaced, exact and copyable.
 - Full-bleed bands alternate neutral and surface backgrounds.
-- Motion is 150ms to 250ms, and fully removed under reduced-motion.
+- Motion: 150ms to 250ms for feedback, 650ms to 900ms for entrances and drawn progress, all on ease-out curves, and fully removed under reduced-motion.
 
 ## Colors
 
@@ -254,18 +254,28 @@ Dark mode applies through `prefers-color-scheme` unless `data-theme="light"` is 
 
 A single container of 1120px maximum width with a 16px gutter, becoming 24px from 768px. Breakpoints at 480, 768 and 960px: phones (480 and below) tighten bands, cards and grids; 768 lifts gutters and band padding; 960 places two-column screens side by side and the nav inline with the brand.
 
-The spacing scale is 4, 8, 16, 24, 48 and 96px. Full-bleed bands hold 48px vertical padding (80px from 768px) and alternate Ledger Paper and Page White; their background bleeds to the viewport edge while the content keeps container width. Inner pages open with an eyebrow, title and lead above a hairline. Data reads as label above value in one column, like an audit record, on any width.
+The spacing scale is 4, 8, 16, 24, 48 and 96px. Full-bleed bands hold 48px vertical padding on phones and `--space-section` (`clamp(56px, 8vw, 104px)`) from 768px, with `--space-block` (`clamp(32px, 4vw, 56px)`) for blocks inside a page and alternate Ledger Paper and Page White; their background bleeds to the viewport edge while the content keeps container width. Inner pages open with an eyebrow, title and lead above a hairline. Data reads as label above value in one column, like an audit record, on any width.
 
 ## Elevation & Depth
 
-The system is flat. Depth is conveyed by 1px hairlines and by alternating band backgrounds, not by shadow. There is a single shadow token.
+Depth is layered but quiet: 1px hairlines (`--color-line`, the hairline at 70%) carry structure, and two navy-tinted shadows lift surfaces that can be acted on. Dark theme swaps both for black shadows.
 
 ### Shadow Vocabulary
-- **Card** (`box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1)`): used on `.card` and on the sticky claim subnav only.
+- **Raised** (`--shadow-raised`: `0 1px 2px rgba(16,24,40,.05), 0 8px 24px -12px rgba(31,58,95,.18)`): every `.card`, claim card, role card, header panel and the claim subnav at rest.
+- **Lift** (`--shadow-lift`: `0 2px 4px rgba(16,24,40,.06), 0 18px 40px -14px rgba(31,58,95,.28)`): cards that can be acted on while hovered or focused, and the hero illustration.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Shadow appears only on `.card` and the claim subnav. Bordered tiles carry no shadow, and no element gains one on hover.
-**The Hairline Rule.** Structure is a 1px Hairline border. Never a heavier stroke, except the dashed 2px drop zone and the 6px verdict edge.
+**The Earned-Lift Rule.** Only surfaces that lead somewhere (claim cards, role cards, the workspace teaser, list items) rise on hover; static content cards do not move.
+**The Hairline Rule.** Structure is a 1px hairline border. Never a heavier stroke, except the dashed 2px drop zone and the 6px verdict edge.
+
+## Motion
+
+Tokens: `--duration-fast` 150ms, `--duration-panel` 250ms, `--duration-enter` 650ms, `--duration-draw` 900ms, `--ease-standard`, `--ease-out` (`cubic-bezier(.22,1,.36,1)`), `--stagger` 90ms. No bounce or elastic easing.
+- **Reveal:** `<Reveal>` fades a block up 22px the first time it scrolls into view (IntersectionObserver, once), staggered by `delay` steps. It starts revealed when there is no observer or under reduced motion, so the page never stays blank.
+- **Feedback:** buttons rise 2px on hover and press to 97%; interactive cards lift 4px.
+- **Drawn progress:** the claim stepper's rail and markers, the card stage bars and the home how-it-works rail fill in after the block is revealed.
+- **File check result:** a match lands with a ring and an icon pop; a mismatch shakes once. The label, icon and sentence carry the verdict; motion never does.
+- Every moving rule sits inside `@media (prefers-reduced-motion: no-preference)`; the global reduce rule also collapses any remaining animation and transition.
 
 ## Shapes
 
@@ -290,8 +300,12 @@ Quiet and precise: every component is a bordered plain surface with a single tea
 - **Drop zone:** Ledger Paper, 2px dashed Hairline border, 12px radius, centered icon, hint and button. While dragging, border turns teal with an 8% teal tint.
 
 ### Cards and tiles
-- **Card:** Page White, 12px radius, 24px padding, the one card shadow, no border.
-- **Bordered tile:** Page White, 1px Hairline, 12px radius, 24px padding, no shadow (claim cards, principles cells).
+- **Card:** Page White with a faint teal top light, 12px radius, 24px padding, 1px `--color-line` border and the raised shadow. `.card--interactive` adds the lift on hover.
+- **Claim card:** the same surface, with a status badge, a four-segment progress bar (`StageDots`, count also as text), the claim ID and one action whose link stretches over the whole card.
+- **Panel header (`.page__header--panel`):** the inner-page header as a 16px-radius raised panel with a teal wash top right; shared by claim, claims and workspace.
+- **Hero:** split on wide screens: headline with a drawn teal underline under the key phrase, the one-line Valencia case, a primary "Look up a claim" action, and an illustration card (labelled Illustration) of a file check with real demo values.
+- **Progress stepper (claim page):** five steps (Anchored, Internal review, Auditor, Verified, Dispute window or Settled), each with a marker, its label, its state written out (Done, Waiting here, Not reached yet, Stopped here, Not reached) and a date only where the claim's own events give one.
+- **Role card:** one per role in the workspace, with what the role does; the connected wallet's is marked "Your role" in text.
 
 ### Status badge
 Pill (9999px), 2px 10px padding, label type, icon plus label inside a tinted background from the seven status pairs. Never color alone.
@@ -326,17 +340,17 @@ Rounded 4px blocks with a 12 to 22% grey shimmer sweeping in 1.2s, sized to the 
 - **Do** use Verification Teal as the only interactive color (buttons, links, focus ring, eyebrow).
 - **Do** pair every status and verdict with an icon and a label.
 - **Do** show hashes and addresses in JetBrains Mono, copyable, never wrapped mid-value.
-- **Do** separate content with 1px Hairline borders, and keep shadow to `.card` and the claim subnav.
+- **Do** separate content with 1px hairline borders and the two shadow tokens; only cards that lead somewhere lift on hover.
 - **Do** use the 2px teal focus outline with a 2px offset on every interactive element.
 - **Do** alternate full-bleed bands between Ledger Paper and Page White.
-- **Do** honor `prefers-reduced-motion` and keep motion to 150ms or 250ms on `cubic-bezier(0.4, 0, 0.2, 1)`.
+- **Do** honor `prefers-reduced-motion`: every moving rule lives inside `no-preference`, and content is fully visible without motion.
 - **Do** keep 44px minimum touch height for buttons on coarse pointers.
 
 ### Don't:
 - **Don't** use Brand Blue or the mark gradient for UI chrome, text or states.
 - **Don't** convey status by color alone.
 - **Don't** underline navigation links; the current page is a neutral pill with an inset border.
-- **Don't** add shadows to bordered tiles or to hover states.
+- **Don't** lift static content cards, use bounce or elastic easing, or let motion carry a verdict on its own.
 - **Don't** add decoration that is not part of the record.
 - **Don't** give inputs a separate focus border; the global ring is the focus treatment.
 - **Don't** use Ledger Navy as a button fill.

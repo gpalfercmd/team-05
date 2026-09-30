@@ -7,18 +7,9 @@
 
 /* "What needs your action" comes first and is marked: an accent bar and the count of items. */
 .needs-action {
-  position: relative;
-  padding-left: calc(var(--space-lg) + 6px);
-  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-line));
-  overflow: hidden;
-}
-
-.needs-action::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 6px;
-  background: linear-gradient(var(--color-accent), color-mix(in srgb, var(--color-accent) 40%, transparent));
+  border-color: var(--color-accent);
+  background: linear-gradient(180deg, var(--color-accent-soft), var(--color-surface) 140px);
+  box-shadow: var(--shadow-raised), 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .action-list__head {
@@ -150,12 +141,7 @@
 
   /* A new count pops so a change in what waits for you is noticed. */
   .action-list__count {
-    animation: count-pop 500ms var(--ease-spring) both;
-  }
-
-  .needs-action::before {
-    animation: bar-grow 900ms var(--ease-out) 200ms both;
-    transform-origin: top;
+    animation: count-pop 500ms var(--ease-out) both;
   }
 }
 
@@ -163,11 +149,5 @@
   from {
     transform: scale(0.6);
     opacity: 0;
-  }
-}
-
-@keyframes bar-grow {
-  from {
-    transform: scaleY(0);
   }
 }

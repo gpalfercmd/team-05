@@ -507,11 +507,11 @@
   }
 
   .proof-card__match {
-    animation: match-pop 700ms var(--ease-spring) 1700ms both;
+    animation: match-pop 700ms var(--ease-out) 1700ms both;
   }
 
   .proof-card__match svg {
-    animation: match-tilt 700ms var(--ease-spring) 1900ms both;
+    animation: match-tilt 700ms var(--ease-out) 1900ms both;
   }
 
   /* The rail draws itself when the step is revealed; the node pops in. */
@@ -524,7 +524,7 @@
   }
 
   .track__node {
-    transition: transform 600ms var(--ease-spring) calc(var(--reveal-index, 0) * var(--stagger));
+    transition: transform 600ms var(--ease-out) calc(var(--reveal-index, 0) * var(--stagger));
   }
 
   .track__step[data-revealed='false'] .track__node {

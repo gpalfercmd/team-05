@@ -74,7 +74,7 @@
   .icon-button {
     transition:
       background-color var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-spring);
+      transform var(--duration-fast) var(--ease-out);
   }
 
     .site-header__brand:hover svg {
@@ -82,6 +82,6 @@
   }
 
   .site-header__brand svg {
-    transition: transform var(--duration-panel) var(--ease-spring);
+    transition: transform var(--duration-panel) var(--ease-out);
   }
 }

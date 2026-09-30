@@ -84,7 +84,7 @@
   }
 
   .verification-result[data-state='match'] .verification-result__icon {
-    animation: icon-pop 700ms var(--ease-spring) 150ms both;
+    animation: icon-pop 700ms var(--ease-out) 150ms both;
   }
 
   .verification-result[data-state='mismatch'] {
@@ -94,7 +94,7 @@
   }
 
   .verification-result[data-state='mismatch'] .verification-result__icon {
-    animation: icon-pop 500ms var(--ease-spring) 120ms both;
+    animation: icon-pop 500ms var(--ease-out) 120ms both;
   }
 
   .verification-result__hashes > div {

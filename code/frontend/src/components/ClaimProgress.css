@@ -165,7 +165,7 @@
   /* Markers pop in one after the other; the teal rail then grows to the next one. */
   .stepper__marker {
     transition:
-      transform 500ms var(--ease-spring) calc(var(--step) * 130ms + 150ms),
+      transform 500ms var(--ease-out) calc(var(--step) * 130ms + 150ms),
       background-color var(--duration-panel) var(--ease-standard);
   }
 
