@@ -14,8 +14,7 @@
   min-width: 0;
   padding: var(--space-md);
   background: color-mix(in srgb, var(--result-color) 8%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--result-color) 40%, var(--color-surface));
-  border-left: 6px solid var(--result-color);
+  border: 1px solid color-mix(in srgb, var(--result-color) 55%, var(--color-surface));
   border-radius: var(--radius-md);
   animation: verification-reveal var(--duration-panel) var(--ease-standard);
 }
@@ -30,6 +29,22 @@
 
 .verification-result[data-state='manifest-mismatch'] {
   --result-color: var(--color-warning);
+}
+
+.verification-result[data-state='incomplete'] {
+  --result-color: var(--color-secondary);
+}
+
+.verification-result__chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-sm);
+  margin: 0;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
 }
 
 .verification-result__header {

@@ -5,8 +5,9 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import type { ReactNode } from 'react';
-import { bundleLabel, fileCheckDetail } from '../evidence/labels';
+import type { ComponentProps, ReactNode } from 'react';
+import { bundleLabel, fileCheckDetail, mismatchNextSteps } from '../evidence/labels';
+import type { FileCheck } from '../evidence/verification';
 import type { ManifestState } from '../evidence/verification';
 import { useEvidenceVerifier, type CheckOutcome, type LoadedManifest, type VerifierMode } from '../hooks/useEvidenceVerifier';
 import type { ClaimView } from '../types/claim';
@@ -19,7 +20,22 @@ type EvidenceVerifierProps = { claim: ClaimView; manifests: ReadonlyMap<number, 
 
 const RECORDED_ROOT_LABEL = 'Recorded evidence fingerprint (onchain root)';
 
-function OutcomeView({ outcome }: { outcome: CheckOutcome }) {
+/** Like with like: the value computed from the visitor's file next to the fingerprint listed for it. */
+function fileRows(check: FileCheck): Pick<ComponentProps<typeof VerificationResult>, 'computed' | 'expected'> {
+  if (check.kind !== 'match') {
+    return { computed: { label: 'Fingerprint of your file (SHA-256)', value: check.file.sha256 }, expected: undefined };
+  }
+  const salted = check.computedFingerprint !== check.file.sha256;
+  return {
+    computed: {
+      label: salted ? 'Fingerprint of your file, computed with the listed salt' : 'Fingerprint of your file (SHA-256)',
+      value: check.computedFingerprint,
+    },
+    expected: { label: 'Fingerprint listed for this file', value: check.listedFingerprint },
+  };
+}
+
+function OutcomeView({ outcome, multipleBundles }: { outcome: CheckOutcome; multipleBundles: boolean }) {
   let view: ReactNode;
   switch (outcome.kind) {
     case 'error':
@@ -38,21 +54,25 @@ function OutcomeView({ outcome }: { outcome: CheckOutcome }) {
           subject={check.file.name}
           recordedAt={outcome.bundle.recordedAt}
           detail={fileCheckDetail(check, outcome.bundle.rootIndex)}
-          computed={{ label: 'Fingerprint of your file (SHA-256)', value: check.file.sha256 }}
-          expected={{ label: RECORDED_ROOT_LABEL, value: outcome.bundle.root }}
+          {...fileRows(check)}
+          chainRoot={check.kind === 'match' ? outcome.bundle.root : undefined}
+          nextSteps={mismatchNextSteps({ hasPrivateFiles: outcome.hasPrivateFiles, multipleBundles })}
         />
       ));
       break;
     case 'bundle': {
       const { check, bundle } = outcome;
+      const incomplete = check.kind === 'incomplete';
       view = (
         <VerificationResult
           state={check.kind}
           subject={`${check.fileCount} ${check.fileCount === 1 ? 'file' : 'files'} checked as the complete ${bundleLabel(bundle.rootIndex).toLowerCase()}`}
           plural={check.fileCount > 1}
           recordedAt={bundle.recordedAt}
+          detail={incomplete ? `Incomplete: ${check.fileCount} of ${check.listedCount} files` : undefined}
           computed={{ label: 'Fingerprint computed from your files (Merkle root)', value: check.computedRoot }}
           expected={{ label: RECORDED_ROOT_LABEL, value: check.onchainRoot }}
+          nextSteps={mismatchNextSteps({ hasPrivateFiles: outcome.hasPrivateFiles, multipleBundles })}
         />
       );
       break;
@@ -91,7 +111,8 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
   const verifier = useEvidenceVerifier(claim, manifests);
   const { bundle, mode, verified, busy } = verifier;
   const hasDownloads = bundle !== undefined && bundle.downloads.length > 0;
-  const modes: { value: VerifierMode; label: string; disabled: boolean }[] = [
+  const { privateFiles } = verifier;
+  const modes: { value: VerifierMode; label: string; caption?: string; disabled: boolean }[] = [
     {
       value: 'files',
       label:
@@ -100,7 +121,14 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
           : 'Single files (with matching file list)',
       disabled: verified === undefined,
     },
-    { value: 'bundle', label: 'A complete bundle (all files together)', disabled: false },
+    {
+      value: 'bundle',
+      label: 'A complete bundle (all files together)',
+      ...(privateFiles > 0
+        ? { caption: `Needs ${privateFiles} private ${privateFiles === 1 ? 'file' : 'files'} only reviewers hold` }
+        : {}),
+      disabled: privateFiles > 0,
+    },
   ];
 
   return (
@@ -146,7 +174,10 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
               disabled={option.disabled || busy}
               onChange={() => verifier.selectMode(option.value)}
             />
-            <span>{option.label}</span>
+            <span>
+              {option.label}
+              {option.caption !== undefined && <span className="choice__caption">{option.caption}</span>}
+            </span>
           </label>
         ))}
       </fieldset>
@@ -168,7 +199,7 @@ export function EvidenceVerifier({ claim, manifests }: EvidenceVerifierProps) {
         ) : (
           verifier.outcome !== undefined && (
             <>
-              <OutcomeView outcome={verifier.outcome} />
+              <OutcomeView outcome={verifier.outcome} multipleBundles={claim.evidence.length > 1} />
               <button type="button" className="btn btn-secondary" onClick={verifier.clearOutcome}>
                 Clear results
               </button>

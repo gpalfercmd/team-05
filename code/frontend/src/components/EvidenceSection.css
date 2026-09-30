@@ -131,6 +131,12 @@
   accent-color: var(--color-accent);
 }
 
+.choice__caption {
+  display: block;
+  font-size: var(--text-caption-size);
+  color: var(--color-on-neutral);
+}
+
 .choice[data-disabled='true'] {
   color: var(--color-on-neutral);
   cursor: not-allowed;

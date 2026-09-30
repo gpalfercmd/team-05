@@ -59,8 +59,26 @@ export const MISMATCH_MEANING = {
     'What this means: together, these files are not the set recorded for this bundle. One of them was changed, or a file was added or left out.',
 } as const;
 
-export const MISMATCH_NEXT_STEPS = [
-  'Check that you chose the right evidence bundle for this file.',
-  'Use the original file as downloaded from this page, not an edited, re-saved or converted copy.',
-  'Private files cannot be checked publicly: only their fingerprints are shown, and only authorized reviewers can check them.',
-] as const;
+const RIGHT_BUNDLE_STEP = 'Check that you chose the right evidence bundle for this file.';
+const ORIGINAL_FILE_STEP = 'Use the original file as downloaded from this page, not an edited, re-saved or converted copy.';
+const PRIVATE_FILE_STEP =
+  'Private files cannot be checked publicly: only their fingerprints are shown, and only authorized reviewers can check them.';
+
+/** Every step, for when nothing is known about the bundle. */
+export const MISMATCH_NEXT_STEPS = [RIGHT_BUNDLE_STEP, ORIGINAL_FILE_STEP, PRIVATE_FILE_STEP] as const;
+
+/** Only the steps that can apply: a bundle hint needs several bundles, the private-file hint needs private files. */
+export function mismatchNextSteps({
+  hasPrivateFiles,
+  multipleBundles,
+}: {
+  hasPrivateFiles: boolean;
+  multipleBundles: boolean;
+}): readonly string[] {
+  const steps = [
+    ...(multipleBundles ? [RIGHT_BUNDLE_STEP] : []),
+    ORIGINAL_FILE_STEP,
+    ...(hasPrivateFiles ? [PRIVATE_FILE_STEP] : []),
+  ];
+  return steps;
+}

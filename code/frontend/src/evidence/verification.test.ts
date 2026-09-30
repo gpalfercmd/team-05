@@ -117,14 +117,28 @@ describe('examineManifest (untrusted input)', () => {
 describe('checkFilesAgainstManifest', () => {
   it('matches a listed public file and names it', () => {
     expect(checkFilesAgainstManifest(verified(), [receipt])).toEqual([
-      { kind: 'match', file: receipt, visibility: 'public', listedName: receipt.name },
+      {
+        kind: 'match',
+        file: receipt,
+        visibility: 'public',
+        listedName: receipt.name,
+        computedFingerprint: receipt.sha256,
+        listedFingerprint: receipt.sha256,
+      },
     ]);
   });
 
   it('matches a private file by fingerprint without revealing a name', () => {
     const upload = { name: 'my-copy.jpg', sha256: photo.sha256 };
     expect(checkFilesAgainstManifest(verified(), [upload])).toEqual([
-      { kind: 'match', file: upload, visibility: 'private', listedName: undefined },
+      {
+        kind: 'match',
+        file: upload,
+        visibility: 'private',
+        listedName: undefined,
+        computedFingerprint: photo.sha256,
+        listedFingerprint: photo.sha256,
+      },
     ]);
   });
 
@@ -161,6 +175,20 @@ describe('checkBundle (no file list needed)', () => {
 
   it('does not match when a file is missing', () => {
     expect(checkBundle([receipt, invoice], ROOT)).toMatchObject({ ok: true, value: { kind: 'mismatch', fileCount: 2 } });
+  });
+
+  it('reports fewer files than the verified list holds as incomplete, not as a mismatch', () => {
+    expect(checkBundle([receipt, invoice], ROOT, manifest)).toMatchObject({
+      ok: true,
+      value: { kind: 'incomplete', fileCount: 2, listedCount: 3 },
+    });
+  });
+
+  it('still calls a changed file a mismatch when every listed file was provided', () => {
+    expect(checkBundle([TAMPERED, invoice, photo], ROOT, manifest)).toMatchObject({
+      ok: true,
+      value: { kind: 'mismatch', fileCount: 3, listedCount: 3 },
+    });
   });
 
   it('rejects an empty selection', () => {
@@ -217,7 +245,15 @@ describe('salted fingerprints (P8.2, manifest version 2)', () => {
   it('matches a public salted file through SHA-256(salt ‖ file)', () => {
     const file = dropped(saltedReceipt, saltedReceipt.commitment);
     expect(checkFilesAgainstManifest(verifiedSalted(), [file])).toEqual([
-      { kind: 'match', file, visibility: 'public', listedName: saltedReceipt.name },
+      {
+        kind: 'match',
+        file,
+        visibility: 'public',
+        listedName: saltedReceipt.name,
+        // Like with like: the value computed with the entry's salt equals the listed commitment.
+        computedFingerprint: saltedReceipt.commitment,
+        listedFingerprint: saltedReceipt.commitment,
+      },
     ]);
     expect(listedFingerprint(file, saltedManifest)).toBe(saltedReceipt.commitment);
   });

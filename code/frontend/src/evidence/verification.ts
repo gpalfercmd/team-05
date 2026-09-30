@@ -41,12 +41,24 @@ export type ManifestState =
   | { kind: 'checked'; check: ManifestCheck };
 
 export type FileCheck =
-  | { kind: 'match'; file: HashedFile; visibility: 'public' | 'private'; listedName: string | undefined }
+  | {
+      kind: 'match';
+      file: HashedFile;
+      visibility: 'public' | 'private';
+      listedName: string | undefined;
+      /** What was computed from the visitor's file: its SHA-256, or its commitment with the entry's salt. */
+      computedFingerprint: Hex;
+      /** The fingerprint the verified list holds for that entry; equal to `computedFingerprint`. */
+      listedFingerprint: Hex;
+    }
   | { kind: 'mismatch'; file: HashedFile; sameNameListed: boolean };
 
 export type BundleCheck = {
-  kind: 'match' | 'mismatch';
+  /** `incomplete`: fewer files than the verified list holds, so the root cannot be reproduced (not tampering). */
+  kind: 'match' | 'mismatch' | 'incomplete';
   fileCount: number;
+  /** How many files the verified list holds; `undefined` when no list was available to count them. */
+  listedCount: number | undefined;
   computedRoot: Hex;
   onchainRoot: Hex;
 };
@@ -91,6 +103,10 @@ export function examineManifest(raw: unknown, claimId: Hex, onchainRoots: readon
   return state;
 }
 
+/** How many entries of a verified list are private: files only authorized reviewers can provide. */
+export const privateFileCount = (verified: VerifiedManifest): number =>
+  verified.manifest.files.filter((file) => !file.public).length;
+
 /** The verified list, if this state holds one for bundle `rootIndex`. */
 export function verifiedFor(state: ManifestState | undefined, rootIndex: number): VerifiedManifest | undefined {
   const verified = state?.kind === 'checked' && state.check.ok ? state.check.value : undefined;
@@ -105,18 +121,22 @@ export function publicSalts(manifest: EvidenceManifest): Hex[] {
 }
 
 /**
- * True when `entry` lists this file: its plain SHA-256 equals the fingerprint (unsalted, pre-P8.2
- * files), or the entry publishes a salt and SHA-256(salt ‖ file) equals it. A private salted entry
- * publishes no salt, so it can never be matched here; that is what keeps guessed files unconfirmable.
+ * The value computed from `file` that equals `entry`'s fingerprint, or `undefined` when the entry
+ * does not list it: its plain SHA-256 (unsalted, pre-P8.2 files), or SHA-256(salt ‖ file) when the
+ * entry publishes a salt. A private salted entry publishes no salt, so it can never be matched
+ * here; that is what keeps guessed files unconfirmable.
  */
-function lists(entry: ManifestFile, file: HashedFile): boolean {
+function computedFor(entry: ManifestFile, file: HashedFile): Hex | undefined {
   const salt = entry.public ? entry.salt : undefined;
-  const listed =
-    sameHex(entry.sha256, file.sha256) ||
-    (salt !== undefined &&
-      (file.salted ?? []).some((digest) => sameHex(digest.salt, salt) && sameHex(digest.commitment, entry.sha256)));
-  return listed;
+  const salted =
+    salt === undefined
+      ? undefined
+      : (file.salted ?? []).find((digest) => sameHex(digest.salt, salt) && sameHex(digest.commitment, entry.sha256));
+  const computed = sameHex(entry.sha256, file.sha256) ? file.sha256 : salted?.commitment;
+  return computed;
 }
+
+const lists = (entry: ManifestFile, file: HashedFile): boolean => computedFor(entry, file) !== undefined;
 
 /** The fingerprint this file has in the list (its salted commitment when salted), else its SHA-256. */
 export function listedFingerprint(file: HashedFile, manifest: EvidenceManifest | undefined): Hex {
@@ -141,6 +161,8 @@ export function checkFilesAgainstManifest(verified: VerifiedManifest, files: rea
             file,
             visibility: entry.public ? 'public' : 'private',
             listedName: entry.public ? entry.name : undefined,
+            computedFingerprint: computedFor(entry, file) ?? entry.sha256,
+            listedFingerprint: entry.sha256,
           };
     return check;
   });
@@ -162,9 +184,15 @@ export function checkBundle(
   if (!computed.ok) {
     return computed;
   }
+  const listedCount = manifest?.files.length;
+  const matches = sameHex(computed.value, onchainRoot);
+  // Fewer files than the verified list holds can never reproduce the root: that is a shortfall to
+  // report neutrally, not evidence that anything changed.
+  const incomplete = !matches && listedCount !== undefined && files.length < listedCount;
   const check = ok<BundleCheck>({
-    kind: sameHex(computed.value, onchainRoot) ? 'match' : 'mismatch',
+    kind: matches ? 'match' : incomplete ? 'incomplete' : 'mismatch',
     fileCount: files.length,
+    listedCount,
     computedRoot: computed.value,
     onchainRoot,
   });

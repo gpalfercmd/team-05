@@ -11,6 +11,7 @@ import {
   checkBundle,
   checkFilesAgainstManifest,
   checkManifest,
+  privateFileCount,
   publicSalts,
   verifiedFor,
   type BundleCheck,
@@ -28,8 +29,8 @@ import { err, ok, type Result } from '../utils/result';
 export type VerifierMode = 'files' | 'bundle';
 
 export type CheckOutcome =
-  | { kind: 'files'; bundle: EvidenceBundle; checks: FileCheck[] }
-  | { kind: 'bundle'; bundle: EvidenceBundle; check: BundleCheck }
+  | { kind: 'files'; bundle: EvidenceBundle; checks: FileCheck[]; hasPrivateFiles: boolean }
+  | { kind: 'bundle'; bundle: EvidenceBundle; check: BundleCheck; hasPrivateFiles: boolean }
   | { kind: 'error'; message: string };
 
 /** A file list the visitor loaded; unlike a published one, it always exists once loaded. */
@@ -73,12 +74,16 @@ function evaluate(
   if (!hashed.ok) {
     return { kind: 'error', message: hashed.error };
   }
+  // Without a verified list nothing says which files are private, so the private-file help stays.
+  const hasPrivateFiles = verified === undefined || privateFileCount(verified) > 0;
   let outcome: CheckOutcome;
   if (mode === 'files' && verified !== undefined) {
-    outcome = { kind: 'files', bundle, checks: checkFilesAgainstManifest(verified, hashed.value) };
+    outcome = { kind: 'files', bundle, checks: checkFilesAgainstManifest(verified, hashed.value), hasPrivateFiles };
   } else {
     const check = checkBundle(hashed.value, bundle.root, verified?.manifest);
-    outcome = check.ok ? { kind: 'bundle', bundle, check: check.value } : { kind: 'error', message: merkleErrorMessage(check.error) };
+    outcome = check.ok
+      ? { kind: 'bundle', bundle, check: check.value, hasPrivateFiles }
+      : { kind: 'error', message: merkleErrorMessage(check.error) };
   }
   return outcome;
 }
@@ -102,8 +107,10 @@ export function useEvidenceVerifier(claim: ClaimView, published: ReadonlyMap<num
   const bundle = claim.evidence[rootIndex];
   // A list the visitor loaded wins over the published one; either only counts once verified.
   const verified = verifiedFor(loadedManifest?.state, rootIndex) ?? verifiedFor(published.get(rootIndex), rootIndex);
+  // Files the public can never provide: a complete-bundle check would always fail on them.
+  const privateFiles = verified === undefined ? 0 : privateFileCount(verified);
   // Single-file checks need a verified list; without one, only whole-bundle checks are possible.
-  const mode: VerifierMode = verified === undefined ? 'bundle' : (chosenMode ?? 'files');
+  const mode: VerifierMode = verified === undefined ? 'bundle' : privateFiles > 0 ? 'files' : (chosenMode ?? 'files');
 
   const selectBundle = (index: number) => {
     setRootIndex(index);
@@ -148,5 +155,5 @@ export function useEvidenceVerifier(claim: ClaimView, published: ReadonlyMap<num
     setOutcome(undefined);
   };
 
-  return { bundle, rootIndex, mode, verified, loadedManifest, outcome, busy, selectBundle, selectMode, clearOutcome, checkFiles, loadManifest };
+  return { bundle, rootIndex, mode, verified, privateFiles, loadedManifest, outcome, busy, selectBundle, selectMode, clearOutcome, checkFiles, loadManifest };
 }

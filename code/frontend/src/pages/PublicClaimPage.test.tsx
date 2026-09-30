@@ -10,9 +10,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import manifestText from '../../public/demo-evidence/manifest.json?raw';
 import receipt from '../../public/demo-evidence/receipt-001.txt?raw';
-import { FULL_STORY_CLAIM_ID } from '../mocks/claims';
+import { DEMO_ORIGINAL_ROOT, FULL_STORY_CLAIM_ID } from '../mocks/claims';
 import { renderRoute } from '../test/renderRoute';
 
+const RECEIPT_FINGERPRINT = '0xffbce320bdf4a4da57257e33b2cca258a0913db00739bcf5483ff7fec1cfe4ae';
 const textFile = (text: string, name: string) => new File([text], name, { type: 'text/plain' });
 
 async function openFullStory() {
@@ -110,10 +111,32 @@ describe('PublicClaimPage (demo data)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('refuses the same file twice in a bundle with a plain explanation', async () => {
+  it('shows one fingerprint twice for a match, with the recorded bundle root as the link in the chain', async () => {
     const user = userEvent.setup();
     await openFullStory();
-    await user.click(screen.getByRole('radio', { name: /^A complete bundle/ }));
+    await user.upload(screen.getByLabelText('Choose files to check'), textFile(receipt, 'receipt-001.txt'));
+    await screen.findByText('Match');
+    const panel = section('Verify it yourself').querySelector('[data-state="match"]') as HTMLElement;
+    const computed = within(panel).getByText('Fingerprint of your file (SHA-256)').nextElementSibling as HTMLElement;
+    const listed = within(panel).getByText('Fingerprint listed for this file').nextElementSibling as HTMLElement;
+    const shown = (element: HTMLElement) => element.querySelector('[title]')?.getAttribute('title');
+    expect(shown(computed)).toBe(RECEIPT_FINGERPRINT);
+    expect(shown(listed)).toBe(RECEIPT_FINGERPRINT);
+    expect(within(panel).getByText(/The file list matches the recorded bundle fingerprint/)).toBeInTheDocument();
+    expect(within(panel).getByTitle(DEMO_ORIGINAL_ROOT)).toBeInTheDocument();
+  });
+
+  it('offers no complete-bundle check for the public when the bundle has a private file', async () => {
+    await openFullStory();
+    expect(screen.getByRole('radio', { name: /A complete bundle/ })).toBeDisabled();
+    expect(screen.getByText('Needs 1 private file only reviewers hold')).toBeInTheDocument();
+  });
+
+  it('refuses the same file twice in a bundle with a plain explanation', async () => {
+    const user = userEvent.setup();
+    // The second demo claim has no published file list, so a whole bundle is the only check.
+    renderRoute('/claims/0x82d7d0558f02cc464b6a7ea582b1b419d4b5fbde2722a96b33b24c62fc980b3c');
+    await screen.findByRole('heading', { level: 2, name: 'Current status' });
     await user.upload(screen.getByLabelText('Choose files to check'), [
       textFile(receipt, 'receipt-001.txt'),
       textFile(receipt, 'copy-of-receipt.txt'),
