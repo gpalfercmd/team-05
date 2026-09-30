@@ -35,7 +35,8 @@ async function renderWith(metadata?: MetadataCheck) {
 describe('ClaimMetadata (P8.4)', () => {
   it('shows the checked title, description, region and date with a match note', async () => {
     const card = await renderWith();
-    expect(within(card).getByRole('heading', { level: 3, name: '500 food kits delivered in district X' })).toBeInTheDocument();
+    // The page headline carries the title; the card must not repeat it as a heading.
+    expect(within(card).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
     expect(card).toHaveTextContent(/Food kits \(rice, oil, lentils\) for 500 households/);
     expect(card).toHaveTextContent('RegionDistrict X');
     expect(card).toHaveTextContent('Date of the aid2026-09-12');

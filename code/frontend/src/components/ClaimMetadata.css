@@ -15,13 +15,6 @@
   margin: 0;
 }
 
-.claim-metadata__title {
-  margin: 0;
-  font-size: var(--text-subheading-size);
-  font-weight: var(--text-subheading-weight);
-  overflow-wrap: anywhere;
-}
-
 /* The description is the one field that may span lines; keep the author's line breaks. */
 .claim-metadata__description {
   margin: 0;

@@ -5,7 +5,7 @@
 // Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
 // =============================================================================
 
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { AuthorizedEvidence } from '../components/AuthorizedEvidence';
 import { ClaimMetadata } from '../components/ClaimMetadata';
@@ -18,6 +18,7 @@ import { SkeletonBlocks } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 import { Timeline } from '../components/Timeline';
 import { VerificationSummary } from '../components/VerificationSummary';
+import { claimHeadline, verdictLine } from '../data/verdict';
 import { examineManifest, type ManifestState } from '../evidence/verification';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useChainTime } from '../hooks/useChainTime';
@@ -62,9 +63,6 @@ function ClaimRecord({ claim }: { claim: ClaimView }) {
           </dd>
         </div>
       </dl>
-      <p className="caption">
-        <a href="#verify">Check a file of this claim yourself</a>
-      </p>
     </section>
   );
 }
@@ -154,9 +152,45 @@ function LoadError({ error, retry }: { error: ClaimLoadError; retry: () => void 
   );
 }
 
+/** Title, one verdict line and the way in to the file check: what a visitor needs before scrolling. */
+function ClaimHeader({ claim }: { claim: ClaimView | undefined }) {
+  return (
+    <div className="page__header">
+      <p className="caption claim-crumb">
+        <Link to="/">Dashboard</Link> · <Link to="/claims">Claims</Link> · Claim record
+      </p>
+      <h1>{claim === undefined ? 'Claim record' : claimHeadline(claim)}</h1>
+      {claim !== undefined && (
+        <>
+          <p className="claim-verdict">{verdictLine(claim)}</p>
+          <p className="claim-header__action">
+            <a className="btn btn-primary" href="#verify">
+              Check a file
+            </a>
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PublicClaimPage() {
   const { claimId } = useParams();
   const lookup = useClaim(claimId);
+  const claim = lookup.state === 'found' ? lookup.claim : undefined;
+  const tabTitle = claim === undefined ? undefined : `${claimHeadline(claim)} · ClearTrust`;
+
+  // Tabs of different claims must be told apart; the previous title comes back when leaving.
+  useEffect(() => {
+    if (tabTitle === undefined) {
+      return undefined;
+    }
+    const previous = document.title;
+    document.title = tabTitle;
+    return () => {
+      document.title = previous;
+    };
+  }, [tabTitle]);
 
   let content: ReactNode;
   switch (lookup.state) {
@@ -196,16 +230,7 @@ export function PublicClaimPage() {
 
   return (
     <div className="page">
-      <div className="page__header">
-        <p className="caption claim-crumb">
-          <Link to="/">Dashboard</Link> · <Link to="/claims">Claims</Link> · Claim record
-        </p>
-        <p className="eyebrow">Public claim record</p>
-        <h1>Claim record</h1>
-        <p className="page__lead">
-          Anyone can check this claim. Its evidence stays private; only its fingerprints are public.
-        </p>
-      </div>
+      <ClaimHeader claim={claim} />
       {content}
       <p>
         <Link to="/">Back to the dashboard</Link>

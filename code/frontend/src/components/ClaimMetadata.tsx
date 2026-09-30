@@ -59,7 +59,6 @@ export function ClaimMetadata({ claim }: { claim: ClaimView }) {
       <h2 id="metadata-heading">What was claimed</h2>
       {check.state === 'verified' && (
         <>
-          <h3 className="claim-metadata__title">{check.metadata.title}</h3>
           <p className="claim-metadata__description">{check.metadata.description}</p>
           <dl className="detail-list">
             <div>

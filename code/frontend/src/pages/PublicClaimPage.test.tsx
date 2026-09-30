@@ -54,7 +54,8 @@ describe('PublicClaimPage (demo data)', () => {
   it('shows the claim’s title and description only after checking them against the recorded fingerprint', async () => {
     await openFullStory();
     const card = section('What was claimed');
-    expect(within(card).getByRole('heading', { level: 3, name: '500 food kits delivered in district X' })).toBeInTheDocument();
+    expect(within(card).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
+    expect(within(card).getByText(/Food kits \(rice, oil, lentils\)/)).toBeInTheDocument();
     expect(within(card).getByText('Title and description match the blockchain record.')).toBeInTheDocument();
   });
 
@@ -170,5 +171,28 @@ describe('PublicClaimPage (demo data)', () => {
     expect(section('Deposits')).toHaveTextContent('0.0101 ETH');
     expect(section('Deposits')).not.toHaveTextContent(/Dispute window|Disputes open/);
     expect(section('Verify it yourself')).toHaveTextContent(/none that matches the blockchain is available/);
+  });
+
+  it('opens with the claim title, one verdict line and a way to check a file', async () => {
+    await openFullStory();
+    expect(screen.getByRole('heading', { level: 1, name: '500 food kits delivered in district X' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Verified · checked by 1 internal reviewer and 1 independent auditor · 1 dispute, dismissed'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Check a file' })).toHaveAttribute('href', '#verify');
+    expect(screen.queryByText('Public claim record')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Anyone can check this claim/)).not.toBeInTheDocument();
+  });
+
+  it('names the browser tab after the claim', async () => {
+    await openFullStory();
+    expect(document.title).toBe('500 food kits delivered in district X · ClearTrust');
+  });
+
+  it('in demo mode never claims the data comes from a chain', async () => {
+    await openFullStory();
+    expect(screen.getByText('Demo data (no chain)')).toBeInTheDocument();
+    expect(screen.queryByText(/Anvil/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/read directly from the blockchain/)).not.toBeInTheDocument();
   });
 });
