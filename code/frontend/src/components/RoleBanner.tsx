@@ -11,7 +11,7 @@ import { useRole } from '../hooks/useRole';
 // Styles live in Header.css: the banner is the header's second row.
 export function RoleBanner() {
   const { label } = useRole();
-  const { chain } = useAppConfig();
+  const { chain, contracts } = useAppConfig();
   return (
     <section className="role-banner" aria-label="Current role">
       <div className="container role-banner__inner">
@@ -19,7 +19,7 @@ export function RoleBanner() {
           Viewing as <strong>{label}</strong>
         </span>
         <span>
-          Network <strong>{chain.name}</strong>
+          Network <strong>{contracts.mode === 'mock' ? 'Demo data (no chain)' : chain.name}</strong>
         </span>
       </div>
     </section>

@@ -9,13 +9,15 @@ import { Link } from 'react-router';
 import { useAppConfig } from '../hooks/useAppConfig';
 
 export function Footer() {
-  const { chain } = useAppConfig();
+  const { chain, contracts } = useAppConfig();
   return (
     <footer className="site-footer">
       <div className="container site-footer__inner">
         <span>ClearTrust — check aid claims without exposing people.</span>
         <span>
-          Status and evidence fingerprints read directly from the blockchain ({chain.name}).{' '}
+          {contracts.mode === 'mock'
+            ? 'Demo data: sample records, not read from a blockchain.'
+            : `Status and evidence fingerprints read directly from the blockchain (${chain.name}).`}{' '}
           <Link to="/claims">Browse claims</Link> · <Link to="/workspace">Workspace</Link>
         </span>
       </div>
