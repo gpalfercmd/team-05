@@ -71,13 +71,14 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  font-weight: 700;
+  width: 40px;
+  height: 40px;
+  font-family: var(--font-mono);
+  font-weight: 400;
   color: var(--color-on-neutral);
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .stepper__step[data-state='done'] .stepper__marker {
@@ -89,7 +90,7 @@
 .stepper__step[data-state='current'] .stepper__marker {
   color: var(--color-accent);
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 5px var(--color-accent-soft);
+  background: var(--color-accent-soft);
 }
 
 .stepper__step[data-state='stopped'] .stepper__marker {
@@ -107,10 +108,10 @@
   content: '';
   position: absolute;
   z-index: 0;
-  left: 21px;
-  top: 44px;
+  left: 20px;
+  top: 40px;
   bottom: calc(-1 * var(--space-md));
-  width: 2px;
+  width: 1px;
   background: var(--color-border);
 }
 
@@ -118,10 +119,10 @@
   content: '';
   position: absolute;
   z-index: 0;
-  left: 21px;
-  top: 44px;
+  left: 20px;
+  top: 40px;
   bottom: calc(-1 * var(--space-md));
-  width: 2px;
+  width: 1px;
   background: var(--color-accent);
   transform-origin: top;
 }
@@ -129,19 +130,19 @@
 @media (min-width: 768px) {
   .stepper__step:not(:last-child)::before,
   .stepper__step[data-state='done']:not(:last-child)::after {
-    left: 44px;
+    left: 40px;
     right: 0;
-    top: 21px;
+    top: 20px;
     bottom: auto;
     width: auto;
-    height: 2px;
+    height: 1px;
     transform-origin: left;
   }
 }
 
 .stepper__label {
   grid-area: label;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .stepper__state {
@@ -162,43 +163,29 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Markers pop in one after the other; the teal rail then grows to the next one. */
+  /* Markers settle in one after the other; the teal rail then draws to the next one. */
   .stepper__marker {
     transition:
-      transform 500ms var(--ease-out) calc(var(--step) * 130ms + 150ms),
-      background-color var(--duration-panel) var(--ease-standard);
+      transform var(--duration-enter) var(--ease-out) calc(var(--step) * 80ms),
+      opacity var(--duration-enter) var(--ease-out) calc(var(--step) * 80ms);
   }
 
   [data-revealed='false'] .stepper__marker {
-    transform: scale(0.5);
+    transform: translateY(8px);
+    opacity: 0;
   }
 
   .stepper__step[data-state='done']:not(:last-child)::after {
-    transition: transform 700ms var(--ease-out) calc(var(--step) * 130ms + 350ms);
+    transition: transform var(--duration-draw) var(--ease-out) calc(var(--step) * 80ms + 200ms);
   }
 
   [data-revealed='false'] .stepper__step[data-state='done']:not(:last-child)::after {
     transform: scaleY(0);
-  }
-
-  .stepper__step[data-state='current'] .stepper__marker {
-    animation: current-ring 2.2s ease-out calc(var(--step) * 130ms + 900ms) infinite;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
   [data-revealed='false'] .stepper__step[data-state='done']:not(:last-child)::after {
     transform: scaleX(0);
-  }
-}
-
-@keyframes current-ring {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
-  }
-
-  70%,
-  100% {
-    box-shadow: 0 0 0 12px transparent;
   }
 }

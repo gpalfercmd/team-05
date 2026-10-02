@@ -11,14 +11,18 @@
 }
 
 .claim-hero__status .status-badge {
-  padding: 6px 16px 6px 12px;
-  font-size: var(--text-label-size);
-  font-weight: 600;
+  padding: 4px 12px 4px 10px;
+  font-size: var(--text-caption-size);
 }
 
+/* The verdict is one editorial serif sentence. */
 .claim-hero .claim-verdict {
   max-width: 44rem;
-  font-size: 1.375rem;
+  font-family: var(--font-serif);
+  font-size: 1.625rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 /* One heading gathers the file check and the recorded evidence; side by side on wide screens. */
@@ -55,7 +59,7 @@
 
 /* The file check is the card with the main action: it carries the accent. */
 .verifier {
-  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-line));
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
 }
 
 .drop-zone:hover {
@@ -68,86 +72,50 @@
 .verification-result__icon {
   padding: 5px;
   box-sizing: content-box;
-  background: color-mix(in srgb, var(--result-color) 14%, transparent);
-  border-radius: 50%;
+  background: color-mix(in srgb, var(--result-color) 12%, transparent);
+  border-radius: var(--radius-md);
 }
 
 .verification-result__label {
+  font-family: var(--font-serif);
   font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .verification-result[data-state='match'] {
-    animation:
-      verification-reveal var(--duration-panel) var(--ease-standard),
-      match-ring 1.1s var(--ease-out) 150ms both;
+  .verification-result[data-state] {
+    animation: verification-reveal var(--duration-enter) var(--ease-out);
   }
 
-  .verification-result[data-state='match'] .verification-result__icon {
-    animation: icon-pop 700ms var(--ease-out) 150ms both;
-  }
-
-  .verification-result[data-state='mismatch'] {
-    animation:
-      verification-reveal var(--duration-panel) var(--ease-standard),
-      shake 480ms var(--ease-standard) 120ms both;
-  }
-
+  .verification-result[data-state='match'] .verification-result__icon,
   .verification-result[data-state='mismatch'] .verification-result__icon {
-    animation: icon-pop 500ms var(--ease-out) 120ms both;
+    animation: icon-in var(--duration-enter) var(--ease-out) 120ms both;
   }
 
   .verification-result__hashes > div {
-    animation: hash-slide 500ms var(--ease-out) 300ms both;
+    animation: hash-slide var(--duration-enter) var(--ease-out) 240ms both;
   }
 
   .verification-result__hashes > div + div {
-    animation-delay: 450ms;
+    animation-delay: 320ms;
   }
 
   .verifier__results .btn {
-    animation: verification-reveal var(--duration-panel) var(--ease-standard) 500ms both;
+    animation: verification-reveal var(--duration-enter) var(--ease-out) 400ms both;
   }
 }
 
-@keyframes match-ring {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 50%, transparent);
-  }
-
-  100% {
-    box-shadow: 0 0 0 18px transparent;
-  }
-}
-
-@keyframes icon-pop {
+@keyframes icon-in {
   from {
-    transform: scale(0.3) rotate(-30deg);
+    transform: scale(0.85);
     opacity: 0;
-  }
-}
-
-@keyframes shake {
-  20% {
-    transform: translateX(-8px);
-  }
-
-  40% {
-    transform: translateX(7px);
-  }
-
-  60% {
-    transform: translateX(-4px);
-  }
-
-  80% {
-    transform: translateX(2px);
   }
 }
 
 @keyframes hash-slide {
   from {
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateY(6px);
   }
 }

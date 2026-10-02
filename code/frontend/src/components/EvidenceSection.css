@@ -149,7 +149,7 @@
   padding: var(--space-lg) var(--space-md);
   text-align: center;
   background: var(--color-neutral);
-  border: 2px dashed var(--color-border);
+  border: 1px dashed var(--color-border);
   border-radius: var(--radius-lg);
   transition:
     border-color var(--duration-fast) var(--ease-standard),
