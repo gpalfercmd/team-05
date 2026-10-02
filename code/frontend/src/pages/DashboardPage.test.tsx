@@ -48,4 +48,13 @@ describe('DashboardPage', () => {
       'Anyone verifies',
     ]);
   });
+
+  it('numbers the steps 01 to 03 and names the list of guarantees', async () => {
+    renderRoute('/');
+    const section = (await screen.findByRole('heading', { level: 2, name: 'How tracking works' })).closest('section') as HTMLElement;
+    const numbers = Array.from(section.querySelectorAll('ol .track__number')).map((node) => node.textContent);
+    expect(numbers).toEqual(['01', '02', '03']);
+    const guarantees = within(section).getByRole('list', { name: 'What ClearTrust guarantees' });
+    expect(within(guarantees).getAllByRole('listitem')).toHaveLength(3);
+  });
 });

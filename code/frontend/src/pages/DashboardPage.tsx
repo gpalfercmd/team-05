@@ -231,14 +231,14 @@ export function DashboardPage() {
             <Reveal as="li" key={step.title} className="track__step" delay={index}>
               <span className="track__node" aria-hidden="true">
                 <step.icon size={22} />
-                <span className="track__number">{index + 1}</span>
+                <span className="track__number">{String(index + 1).padStart(2, '0')}</span>
               </span>
               <h3 className="track__title">{step.title}</h3>
               <p className="track__text">{step.text}</p>
             </Reveal>
           ))}
         </ol>
-        <ul className="principles">
+        <ul className="principles" aria-label="What ClearTrust guarantees">
           {HERO_BADGES.map((badge, index) => (
             <Reveal as="li" key={badge.title} className="principles__item" delay={index}>
               <badge.icon size={20} className="principles__icon" aria-hidden="true" />
