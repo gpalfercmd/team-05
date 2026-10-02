@@ -6,6 +6,10 @@
 // =============================================================================
 
 // Global styles first so component styles, imported through App, come later in the cascade.
+import '@fontsource-variable/geist';
+import '@fontsource-variable/newsreader';
+import '@fontsource-variable/newsreader/wght-italic.css';
+import '@fontsource/jetbrains-mono/400.css';
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/motion.css';

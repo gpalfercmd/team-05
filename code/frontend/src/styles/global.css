@@ -32,6 +32,11 @@ body {
   overflow-x: clip;
 }
 
+h1,
+h2 {
+  font-family: var(--font-serif);
+}
+
 h1 {
   margin: 0 0 var(--space-md);
   font-size: var(--text-heading-size);
@@ -46,6 +51,11 @@ h2 {
   font-size: var(--text-subheading-size);
   font-weight: var(--text-subheading-weight);
   line-height: var(--text-subheading-line-height);
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-weight: 500;
 }
 
 p {
@@ -87,6 +97,10 @@ pre {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 .skip-link {
@@ -209,9 +223,9 @@ pre {
   margin: 0;
   font-size: var(--text-caption-size);
   font-weight: var(--text-label-weight);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-on-neutral);
 }
 
 /* Page header on inner pages: eyebrow, title and lead above a hairline. */
@@ -227,27 +241,26 @@ pre {
   margin: 0;
 }
 
-/* Inner-page header as a raised panel with a teal wash: claim, workspace and claims index share it. */
+/* Inner-page header: flat, open, a hairline below. Claim, workspace and claims index share it. */
 .page__header--panel {
-  padding: var(--space-lg);
-  background:
-    radial-gradient(28rem 12rem at 100% 0, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
-    var(--color-surface);
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  box-shadow: var(--shadow-raised);
+  padding: var(--space-lg) 0 var(--space-xl);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 @media (min-width: 768px) {
   .page__header--panel {
-    padding: var(--space-xl);
+    padding: var(--space-xl) 0 var(--space-xl);
   }
 }
 
 .page__header--panel > h1 {
-  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  font-size: clamp(2.25rem, 1.5rem + 3vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
 }
 
 /* Hero: pill tag, headline, lead, two actions and a stat row below a hairline. */
@@ -277,8 +290,8 @@ pre {
 .hero h1 {
   max-width: 48rem;
   margin: var(--space-lg) 0 var(--space-md);
-  font-size: clamp(var(--text-heading-size), 1.25rem + 2.8vw, 3rem);
-  line-height: 1.1;
+  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 4rem);
+  line-height: 1.05;
 }
 
 .hero .page__lead {
@@ -290,9 +303,11 @@ pre {
   align-items: center;
   gap: var(--space-sm);
   margin: 0;
-  padding: var(--space-xs) 12px;
+  padding: 3px 10px;
   font-size: var(--text-caption-size);
   font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-tag-tracking);
+  text-transform: uppercase;
   color: var(--color-on-neutral);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -332,10 +347,11 @@ pre {
 
 .stats__value {
   display: block;
-  font-size: var(--text-subheading-size);
-  font-weight: var(--text-heading-weight);
-  line-height: var(--text-subheading-line-height);
-  letter-spacing: var(--text-heading-tracking);
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   color: var(--color-primary);
 }
 
@@ -434,7 +450,7 @@ pre {
   font-weight: var(--text-label-weight);
   color: var(--color-on-primary);
   background: var(--color-accent);
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
 }
 
 .steps__title {
@@ -506,14 +522,8 @@ pre {
   height: 16px;
   margin-bottom: var(--space-sm);
   border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-on-neutral) 12%, transparent),
-    color-mix(in srgb, var(--color-on-neutral) 22%, transparent),
-    color-mix(in srgb, var(--color-on-neutral) 12%, transparent)
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  background: color-mix(in srgb, var(--color-on-neutral) 14%, transparent);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
 
 .skeleton__block--title {
@@ -530,12 +540,9 @@ pre {
   margin-bottom: 0;
 }
 
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.45;
   }
 }
 
@@ -558,15 +565,20 @@ pre {
   }
 }
 
-/* The one raised surface: a hairline, a soft shadow and a faint top light. Pages reuse it; a card that
-   can be acted on adds .card--interactive and lifts when pointed at (see motion.css). */
+/* The one surface: flat white, a 1px hairline, generous padding. A card that can be acted on adds
+   .card--interactive and takes a faint shadow when pointed at (see motion.css). */
 .card {
   min-width: 0;
   padding: var(--space-lg);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 3%, var(--color-surface)), var(--color-surface) 90px);
-  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-raised);
+}
+
+@media (min-width: 768px) {
+  .card {
+    padding: 32px;
+  }
 }
 
 /* Inline verdict lines: a success note, or a warning notice (icon + text, never colour alone). */
@@ -587,7 +599,7 @@ pre {
 .notice {
   padding: var(--space-sm) var(--space-md);
   background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
-  border-left: 4px solid var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, var(--color-border));
   border-radius: var(--radius-sm);
 }
 
@@ -680,7 +692,7 @@ pre {
   letter-spacing: var(--text-label-tracking);
   line-height: 1.2;
   text-decoration: none;
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
@@ -696,7 +708,6 @@ pre {
 .btn-primary {
   color: var(--color-on-primary);
   background: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12), 0 6px 14px -6px color-mix(in srgb, var(--color-accent) 70%, transparent);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -705,12 +716,13 @@ pre {
 
 .btn-secondary {
   color: var(--color-accent);
-  background: transparent;
-  border-color: var(--color-accent);
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  background: var(--color-accent-soft);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
 }
 
 /* Icon-only buttons: same accent language, sized for touch. */
@@ -820,7 +832,6 @@ pre {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
   font-size: var(--text-label-size);
   font-weight: var(--text-label-weight);
 }
@@ -904,7 +915,7 @@ pre {
 /* Site footer: quiet closing band, same container width. */
 .site-footer {
   border-top: 1px solid var(--color-border);
-  background: linear-gradient(180deg, var(--color-surface), var(--color-neutral));
+  background: var(--color-neutral);
   margin-top: var(--space-xl);
 }
 
@@ -950,15 +961,15 @@ pre {
 }
 
 .site-footer__nav a {
-  color: var(--color-primary);
+  color: var(--color-on-neutral);
   text-decoration: none;
   font-weight: var(--text-label-weight);
   padding: 6px 2px;
-  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
 }
 
 .site-footer__nav a:hover {
-  background-size: 100% 1px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 /* Sticky header on all widths (condensed on phones). */

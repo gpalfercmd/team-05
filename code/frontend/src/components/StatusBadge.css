@@ -10,10 +10,11 @@
   align-items: center;
   gap: 6px;
   padding: 2px 10px;
-  font-size: var(--text-label-size);
-  font-weight: var(--text-label-weight);
-  letter-spacing: var(--text-label-tracking);
-  line-height: 1.5;
+  font-size: var(--text-caption-size);
+  font-weight: 600;
+  letter-spacing: var(--text-tag-tracking);
+  text-transform: uppercase;
+  line-height: 1.6;
   white-space: nowrap;
   color: var(--badge-fg);
   background: var(--badge-bg);

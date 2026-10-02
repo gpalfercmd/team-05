@@ -9,7 +9,7 @@
    fully visible layout, not a slowed-down animation. */
 @media (prefers-reduced-motion: no-preference) {
   /* Reveal: hidden only until <Reveal> sees the block in view (never hidden without JavaScript
-     support, since the component starts revealed when it cannot observe). */
+     support, since the component starts revealed when it cannot observe). 12px, 600ms, 80ms apart. */
   .reveal {
     transition:
       opacity var(--duration-enter) var(--ease-out),
@@ -19,36 +19,26 @@
 
   .reveal[data-revealed='false'] {
     opacity: 0;
-    transform: translateY(22px);
+    transform: translateY(12px);
   }
 
-  /* Buttons: rise on hover, press down on click. */
+  /* Buttons: a quiet colour shift, a slight press. No lift, no shadow. */
   .btn {
     transition:
       background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-panel) var(--ease-out),
       transform var(--duration-fast) var(--ease-out);
   }
 
-  .btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    box-shadow: 0 2px 4px rgba(16, 24, 40, 0.14), 0 12px 22px -8px color-mix(in srgb, var(--color-accent) 80%, transparent);
-  }
-
   .btn:active:not(:disabled) {
-    transform: translateY(0) scale(0.97);
-    transition-duration: 60ms;
+    transform: scale(0.98);
   }
 
-  /* Interactive cards lift toward the pointer. */
+  /* Interactive cards take the one allowed shadow, at 0.04 alpha. */
   .card--interactive,
   .claim-card {
     transition:
-      transform var(--duration-panel) var(--ease-out),
       box-shadow var(--duration-panel) var(--ease-out),
       border-color var(--duration-panel) var(--ease-standard);
   }
@@ -56,19 +46,8 @@
   .card--interactive:hover,
   .claim-card:hover,
   .claim-card:focus-within {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-lift);
-    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-  }
-
-  .card--interactive:active,
-  .claim-card:active {
-    transform: translateY(-1px) scale(0.995);
-    transition-duration: 80ms;
-  }
-
-  .icon-button:active {
-    transform: scale(0.88);
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
   }
 
   .icon-button {
@@ -77,11 +56,7 @@
       transform var(--duration-fast) var(--ease-out);
   }
 
-    .site-header__brand:hover svg {
-    transform: rotate(-12deg) scale(1.08);
-  }
-
-  .site-header__brand svg {
-    transition: transform var(--duration-panel) var(--ease-out);
+  .icon-button:active {
+    transform: scale(0.92);
   }
 }
