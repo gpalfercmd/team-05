@@ -5,11 +5,10 @@
    Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
    ============================================================================= */
 
-/* "What needs your action" comes first and is marked: an accent bar and the count of items. */
+/* "What needs your action" comes first and is marked by a teal hairline and the count of items. */
 .needs-action {
-  border-color: var(--color-accent);
-  background: linear-gradient(180deg, var(--color-accent-soft), var(--color-surface) 140px);
-  box-shadow: var(--shadow-raised), 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  border-left: 3px solid var(--color-accent);
 }
 
 .action-list__head {
@@ -24,30 +23,29 @@
 }
 
 .action-list__count {
-  padding: 2px 12px;
+  padding: 2px 10px;
   font-size: var(--text-label-size);
   font-weight: 600;
   color: var(--color-on-primary);
   background: var(--color-accent);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
 }
 
 .action-list__item {
   background: var(--color-surface);
-  border-color: var(--color-line);
-  box-shadow: var(--shadow-raised);
+  border-color: var(--color-border);
 }
 
 /* Each role action is a card of its own inside the role screens. */
 .role-screens .action-form,
 .role-screens .claim-panel {
   background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  box-shadow: var(--shadow-raised);
+  border: 1px solid var(--color-border);
 }
 
 .role-screens .claim-panel {
   background: var(--color-neutral);
+  border: 0;
 }
 
 .roles-overview {
@@ -62,6 +60,8 @@
   list-style: none;
 }
 
+/* A bento: two columns on tablets; on wide screens a six-column grid of
+   alternating wide and narrow cells, so the grid reads as a composition, not a list. */
 @media (min-width: 640px) {
   .role-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -70,7 +70,21 @@
 
 @media (min-width: 960px) {
   .role-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .role-card {
+    grid-column: span 2;
+  }
+
+  .role-card:nth-child(1),
+  .role-card:nth-child(4) {
+    grid-column: span 4;
+  }
+
+  .role-card:nth-child(5),
+  .role-card:nth-child(6) {
+    grid-column: span 3;
   }
 }
 
@@ -82,15 +96,16 @@
   min-width: 0;
   padding: var(--space-lg);
   background: var(--color-surface);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-raised);
 }
 
 .role-card__title {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: var(--text-subheading-size);
-  font-weight: var(--text-subheading-weight);
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .role-card__text {
@@ -106,48 +121,27 @@
 .role-card__mine {
   justify-self: start;
   margin: var(--space-xs) 0 0;
-  padding: 2px 12px;
+  padding: 2px 8px;
   font-size: var(--text-caption-size);
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: var(--text-tag-tracking);
+  text-transform: uppercase;
   color: var(--color-on-primary);
   background: var(--color-accent);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .role-card {
+  .role-card,
+  .action-list__item {
     transition:
-      transform var(--duration-panel) var(--ease-out),
       box-shadow var(--duration-panel) var(--ease-out),
       border-color var(--duration-panel) var(--ease-standard);
   }
 
-  .role-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lift);
-    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-  }
-
-  .action-list__item {
-    transition:
-      transform var(--duration-panel) var(--ease-out),
-      box-shadow var(--duration-panel) var(--ease-out);
-  }
-
+  .role-card:hover,
   .action-list__item:hover {
-    transform: translateX(4px);
     box-shadow: var(--shadow-lift);
-  }
-
-  /* A new count pops so a change in what waits for you is noticed. */
-  .action-list__count {
-    animation: count-pop 500ms var(--ease-out) both;
-  }
-}
-
-@keyframes count-pop {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
   }
 }
