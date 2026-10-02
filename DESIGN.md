@@ -202,7 +202,7 @@ A warm, low-chroma monochrome with a single teal accent. Reds, greens, ambers an
 - **Stone** (`stone`, `#5f5e5b`): quiet outlines, such as the timeline marker.
 
 ### Tertiary
-- **Verification Teal** (`verification-teal`, `#0f766e`): the only interactive color. Primary button fill, links, the focus ring, icon buttons, the current-page underline in the nav, the latest timeline marker, the "needs your action" edge and the file-check accent.
+- **Verification Teal** (`verification-teal`, `#0f766e`): the only interactive color. Primary button fill, links, the focus ring, icon buttons, the current-page underline in the nav, the latest timeline marker, the "needs your action" border and the file-check accent.
 
 ### Neutral
 - **Bone** (`bone`, `#f7f6f3`): the page canvas, the header, the footer, drop zone and inset panels.
@@ -272,7 +272,7 @@ Depth comes from hairlines and whitespace. Surfaces are flat.
 ### Named Rules
 **The Flat Rule.** No resting shadow, no gradient, no glass. The sticky header's backdrop blur is the only blur.
 **The Earned-Lift Rule.** Only surfaces that lead somewhere (claim cards, role cards, action items, the workspace teaser) take the hover shadow; static cards do nothing.
-**The Hairline Rule.** Structure is a 1px hairline. The only thicker line is the 3px teal edge on "What needs your action".
+**The Hairline Rule.** Structure is a 1px hairline. The one teal border marks "What needs your action".
 
 ## Motion
 

@@ -610,7 +610,7 @@
       },
       {
         "name": "The Hairline Rule",
-        "body": "Structure is a 1px hairline. The only thicker line is the 3px teal edge on \"What needs your action\".",
+        "body": "Structure is a 1px hairline. Teal marks \"What needs your action\" with a full 1px border.",
         "section": "elevation"
       }
     ],

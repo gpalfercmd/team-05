@@ -5,10 +5,9 @@
    Built with dbv-specs-ops · https://github.com/davidbuenov/dbv-specs-ops
    ============================================================================= */
 
-/* "What needs your action" comes first and is marked by a teal hairline and the count of items. */
+/* "What needs your action" comes first and is marked by a full teal hairline and the count of items. */
 .needs-action {
-  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-  border-left: 3px solid var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 .action-list__head {
